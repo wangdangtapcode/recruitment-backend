@@ -21,7 +21,17 @@ import com.example.user_service.dto.Response;
 public class GlobalExceptionHandler {
     @ExceptionHandler(value = {
             UsernameNotFoundException.class,
-            BadCredentialsException.class,
+            BadCredentialsException.class
+    })
+    public ResponseEntity<Response<Object>> handleAuthenticationException(Exception ex) {
+        Response<Object> response = new Response<Object>();
+        response.setStatusCode(HttpStatus.UNAUTHORIZED.value());
+        response.setError(ex.getMessage());
+        response.setMessage("Tài khoản/mật khẩu không hợp lệ");
+        return ResponseEntity.status(response.getStatusCode()).body(response);
+    }
+
+    @ExceptionHandler(value = {
             IdInvalidException.class,
             CustomException.class,
             MissingRequestCookieException.class

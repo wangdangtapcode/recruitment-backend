@@ -17,7 +17,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Service;
 
-import com.example.user_service.dto.ResponseLoginDTO;
+import com.example.user_service.dto.login.ResponseLoginDTO;
 import com.nimbusds.jose.util.Base64;
 
 @Service
@@ -54,7 +54,7 @@ public class JwtUtil {
         }
     }
 
-    public String createAccessToken(String email, ResponseLoginDTO.UserLogin dto) {
+    public String createAccessToken(String email, ResponseLoginDTO.UserToken dto) {
         Instant now = Instant.now();
         Instant validity = now.plus(this.accessTokenExpiration, ChronoUnit.SECONDS);
         //
@@ -68,7 +68,7 @@ public class JwtUtil {
         return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();
     }
 
-    public String createRefreshToken(String email, ResponseLoginDTO dto) {
+    public String createRefreshToken(String email, ResponseLoginDTO.UserToken dto) {
         Instant now = Instant.now();
         Instant validity = now.plus(this.accessTokenExpiration, ChronoUnit.SECONDS);
         //
@@ -76,7 +76,7 @@ public class JwtUtil {
                 .issuedAt(now)
                 .expiresAt(validity)
                 .subject(email)
-                .claim("user", dto.getUser())
+                .claim("user", dto)
                 .build();
         JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();
         return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();
