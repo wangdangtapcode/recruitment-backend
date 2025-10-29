@@ -18,7 +18,22 @@ public class CloudinaryService {
         this.cloudinary = cloudinary;
     }
 
-    public Map upload(MultipartFile file) throws IOException {
-        return cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> upload(MultipartFile file) throws IOException {
+        return (Map<String, Object>) cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+    }
+    public String uploadFile(MultipartFile file) {
+        try {
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(
+                file.getBytes(),
+                ObjectUtils.asMap(
+                    "resource_type", "auto",
+                    "type", "upload"
+                )
+            );
+            return (String) uploadResult.get("secure_url"); // Lấy URL an toàn (https)
+        } catch (IOException e) {
+            throw new RuntimeException("Không thể upload file", e);
+        }
     }
 }

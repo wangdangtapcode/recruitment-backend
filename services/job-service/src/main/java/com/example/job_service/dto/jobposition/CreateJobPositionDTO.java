@@ -2,7 +2,6 @@ package com.example.job_service.dto.jobposition;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -16,29 +15,18 @@ public class CreateJobPositionDTO {
     private String description;
     private String responsibilities;
     private String requirements;
-    private String preferredQualifications;
+    private String qualifications;
     private String benefits;
-    private BigDecimal salaryRangeMin;
-    private BigDecimal salaryRangeMax;
+    private BigDecimal salaryMin;
+    private BigDecimal salaryMax;
     private String currency;
     private String employmentType;
     private String experienceLevel;
-    private String workLocation;
-    private boolean remoteWorkAllowed;
-    private int numberOfOpenings;
-    private LocalDate applicationDeadline;
-
+    private String location;
+    private Boolean isRemote;
+    private int quantity;
+    private LocalDate deadline;
+    private String yearsOfExperience;
     @NotNull
     private Long recruitmentRequestId;
-
-    @Getter
-    @Setter
-    public static class SkillRequirement {
-        @NotNull
-        private Long skillId;
-        private String proficiencyLevel;
-        private boolean required;
-    }
-
-    private List<SkillRequirement> skills;
 }

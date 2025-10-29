@@ -7,7 +7,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ApproveRecruitmentRequestDTO {
-    @NotNull
-    private Long approvedId;
     private String approvalNotes;
 }

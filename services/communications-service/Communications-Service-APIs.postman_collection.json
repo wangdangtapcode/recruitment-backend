@@ -1,0 +1,445 @@
+{
+  "info": {
+    "name": "Communications Service APIs",
+    "description": "Collection of APIs for Communications Service - Interview scheduling and notifications",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8085/actuator/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8085",
+          "path": ["actuator", "health"]
+        }
+      }
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Create Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientId\": 1,\n  \"recipientType\": \"CANDIDATE\",\n  \"channel\": \"EMAIL\",\n  \"title\": \"Test Notification\",\n  \"message\": \"This is a test notification\",\n  \"priority\": \"NORMAL\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/notifications",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "notifications"]
+            }
+          }
+        },
+        {
+          "name": "Get Notifications by Recipient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8085/api/notifications/recipient/1/CANDIDATE",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "notifications", "recipient", "1", "CANDIDATE"]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8085/api/notifications/1/read",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "notifications", "1", "read"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Candidate Notifications",
+      "item": [
+        {
+          "name": "New Candidate Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidateId\": 1,\n  \"candidateName\": \"Nguyễn Văn A\",\n  \"candidateEmail\": \"nguyenvana@email.com\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/candidate-notifications/new-candidate",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "candidate-notifications", "new-candidate"]
+            }
+          }
+        },
+        {
+          "name": "Application Status Change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidateId\": 1,\n  \"candidateName\": \"Nguyễn Văn A\",\n  \"status\": \"SHORTLISTED\",\n  \"jobTitle\": \"Java Developer\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/candidate-notifications/application-status",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "candidate-notifications", "application-status"]
+            }
+          }
+        },
+        {
+          "name": "Interview Reminder",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidateId\": 1,\n  \"candidateName\": \"Nguyễn Văn A\",\n  \"interviewDate\": \"2024-01-15\",\n  \"interviewTime\": \"10:00 AM\",\n  \"jobTitle\": \"Java Developer\",\n  \"location\": \"Phòng họp A\",\n  \"meetingLink\": \"https://meet.google.com/abc-defg-hij\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/candidate-notifications/interview-reminder",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "candidate-notifications", "interview-reminder"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Interviews",
+      "item": [
+        {
+          "name": "Create Interview",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phỏng vấn vị trí Java Developer\",\n  \"description\": \"Phỏng vấn kỹ thuật cho vị trí Java Developer\",\n  \"interviewType\": \"TECHNICAL\",\n  \"location\": \"Phòng họp A\",\n  \"meetingLink\": \"https://meet.google.com/abc-defg-hij\",\n  \"startTime\": \"2024-01-15T10:00:00\",\n  \"endTime\": \"2024-01-15T11:00:00\",\n  \"candidateId\": 1,\n  \"interviewerId\": 2,\n  \"jobPositionId\": 1,\n  \"applicationId\": 1,\n  \"notes\": \"Chuẩn bị sẵn CV và portfolio\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/interviews",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "interviews"]
+            }
+          }
+        },
+        {
+          "name": "Get Interview by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8085/api/interviews/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "interviews", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update Interview",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Phỏng vấn vị trí Java Developer - Updated\",\n  \"description\": \"Phỏng vấn kỹ thuật cho vị trí Java Developer - Updated\",\n  \"interviewType\": \"TECHNICAL\",\n  \"location\": \"Phòng họp B\",\n  \"meetingLink\": \"https://meet.google.com/xyz-1234-567\",\n  \"startTime\": \"2024-01-15T14:00:00\",\n  \"endTime\": \"2024-01-15T15:00:00\",\n  \"notes\": \"Chuẩn bị sẵn CV, portfolio và laptop\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/interviews/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "interviews", "1"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Interview",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8085/api/interviews/1/cancel?reason=Ứng viên không thể tham gia",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "interviews", "1", "cancel"],
+              "query": [
+                {
+                  "key": "reason",
+                  "value": "Ứng viên không thể tham gia"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reschedule Interview",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8085/api/interviews/1/reschedule?newStartTime=2024-01-16T10:00:00&newEndTime=2024-01-16T11:00:00&reason=Thay đổi lịch làm việc",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "interviews", "1", "reschedule"],
+              "query": [
+                {
+                  "key": "newStartTime",
+                  "value": "2024-01-16T10:00:00"
+                },
+                {
+                  "key": "newEndTime",
+                  "value": "2024-01-16T11:00:00"
+                },
+                {
+                  "key": "reason",
+                  "value": "Thay đổi lịch làm việc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Interviews by Candidate",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8085/api/interviews/candidate/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "interviews", "candidate", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get Interviews by Interviewer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8085/api/interviews/interviewer/2",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "interviews", "interviewer", "2"]
+            }
+          }
+        },
+        {
+          "name": "Get Upcoming Interviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8085/api/interviews/upcoming",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "interviews", "upcoming"]
+            }
+          }
+        },
+        {
+          "name": "Delete Interview",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8085/api/interviews/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "interviews", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Emails",
+      "item": [
+        {
+          "name": "Send Simple Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"test@example.com\",\n  \"subject\": \"Test Email\",\n  \"message\": \"This is a test email from Communications Service\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/emails/send",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "emails", "send"]
+            }
+          }
+        },
+        {
+          "name": "Send HTML Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"test@example.com\",\n  \"subject\": \"Test HTML Email\",\n  \"htmlContent\": \"<h1>Hello World!</h1><p>This is a <strong>HTML</strong> email.</p>\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/emails/send-html",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "emails", "send-html"]
+            }
+          }
+        },
+        {
+          "name": "Send Template Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"test@example.com\",\n  \"subject\": \"Interview Invitation\",\n  \"templateName\": \"interview-invitation\",\n  \"variables\": {\n    \"candidateName\": \"Nguyễn Văn A\",\n    \"jobTitle\": \"Java Developer\",\n    \"interviewDate\": \"15/01/2024\",\n    \"interviewTime\": \"10:00 AM\",\n    \"location\": \"Phòng họp A\",\n    \"meetingLink\": \"https://meet.google.com/abc-defg-hij\",\n    \"interviewerName\": \"Trần Thị B\",\n    \"companyName\": \"ABC Company\"\n  }\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/emails/send-template",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "emails", "send-template"]
+            }
+          }
+        },
+        {
+          "name": "Send Bulk Emails",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipients\": [\"user1@example.com\", \"user2@example.com\", \"user3@example.com\"],\n  \"subject\": \"Bulk Email Test\",\n  \"message\": \"This is a bulk email test from Communications Service\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/emails/bulk",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "emails", "bulk"]
+            }
+          }
+        },
+        {
+          "name": "Send Candidate Welcome Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidateEmail\": \"newcandidate@example.com\",\n  \"candidateName\": \"Nguyễn Văn A\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8085/api/emails/candidate-welcome",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8085",
+              "path": ["api", "emails", "candidate-welcome"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
+
+

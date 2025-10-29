@@ -62,15 +62,12 @@ public class SecurityConfig {
                 .csrf(c -> c.disable())
                 .authorizeHttpRequests(
                         authz -> authz
-                                .requestMatchers(HttpMethod.GET, "/api/v1/job-categories/**").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/api/v1/job-positions/**").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/api/v1/job-skills/**").permitAll()
-                                // .anyRequest().authenticated())
-                                .anyRequest().permitAll())
+                                .requestMatchers(HttpMethod.GET, "/api/v1/job-service/job-positions/published**")
+                                .permitAll()
+                                .anyRequest().authenticated())
                 // .anyRequest().permitAll())
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())
                         .authenticationEntryPoint(customAuthenticationEntryPoint))
-
                 .formLogin(f -> f.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         return http.build();

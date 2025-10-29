@@ -27,6 +27,7 @@ public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(unique = true)
     private String name;
     @Column(columnDefinition = "MEDIUMTEXT")
     private String description;

@@ -2,6 +2,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "CommunicationsServiceApplication",
+            "request": "launch",
+            "mainClass": "com.example.communications_service.CommunicationsServiceApplication",
+            "projectName": "communications-service"
+        },
+        {
+            "type": "java",
             "name": "Spring Boot-UserServiceApplication<user-service>",
             "request": "launch",
             "cwd": "${workspaceFolder}",

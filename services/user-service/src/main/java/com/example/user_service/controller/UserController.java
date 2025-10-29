@@ -1,10 +1,8 @@
 package com.example.user_service.controller;
 
-import java.util.List;
-import java.util.Optional;
-
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,20 +33,33 @@ public class UserController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    // Unified GET endpoint for all users with filtering, pagination, and sorting
     @GetMapping
     public ResponseEntity<PaginationDTO> findAll(
-            @RequestParam("currentPage") Optional<String> currentPageOptional,
-            @RequestParam("pageSize") Optional<String> pageSizeOptional) {
+            @RequestParam(name = "departmentId", required = false) Long departmentId,
+            @RequestParam(name = "role", required = false) String role,
+            @RequestParam(name = "isActive", required = false) Boolean isActive,
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "page", defaultValue = "1", required = false) int page,
+            @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
+            @RequestParam(name = "sortBy", defaultValue = "id", required = false) String sortBy,
+            @RequestParam(name = "sortOrder", defaultValue = "desc", required = false) String sortOrder) {
 
-        String sCurrentPage = currentPageOptional.isPresent() ? currentPageOptional.get() : "";
-        String sPageSize = pageSizeOptional.isPresent() ? pageSizeOptional.get() : "";
+        // Validate pagination parameters
+        if (page < 1)
+            page = 1;
+        if (limit < 1 || limit > 100)
+            limit = 10;
 
-        int current = Integer.parseInt(sCurrentPage);
-        int pageSize = Integer.parseInt(sPageSize);
+        // Create sort object
+        Sort.Direction direction = sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort = Sort.by(direction, sortBy);
 
-        Pageable pageable = PageRequest.of(current - 1, pageSize);
+        // Create pageable object
+        Pageable pageable = PageRequest.of(page - 1, limit, sort);
 
-        return ResponseEntity.status(HttpStatus.OK).body(this.userService.getAll(pageable));
+        return ResponseEntity.status(HttpStatus.OK).body(this.userService.getAllWithFilters(
+                departmentId, role, isActive, keyword, pageable));
     }
 
     @PostMapping

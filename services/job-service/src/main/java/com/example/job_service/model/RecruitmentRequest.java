@@ -25,24 +25,23 @@ public class RecruitmentRequest {
     private String priorityLevel;
 
     @Column(columnDefinition = "TEXT")
-    private String requestReason;
+    private String reason;
 
     @Column(columnDefinition = "TEXT")
-    private String jobDescription;
+    private String description;
 
     @Column(columnDefinition = "TEXT")
     private String requirements;
 
     @Column(columnDefinition = "TEXT")
-    private String preferredQualifications;
-
-    private BigDecimal salaryRangeMin;
-    private BigDecimal salaryRangeMax;
+    private String benefits;
+    private boolean isExceedBudget;
+    // Salary only if exceeds budget
+    private BigDecimal salaryMin;
+    private BigDecimal salaryMax;
     private String currency;
-    private String employmentType;
-    private String workLocation;
-    private LocalDate expectedStartDate;
-    private LocalDate deadline;
+
+    private String location;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RecruitmentRequestStatus status;

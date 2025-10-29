@@ -16,13 +16,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.example.job_service.dto.Response;
+import com.fasterxml.jackson.databind.JsonNode;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(value = {
             UsernameNotFoundException.class,
             BadCredentialsException.class,
-            MissingRequestCookieException.class
+            MissingRequestCookieException.class,
+            IdInvalidException.class
     })
     public ResponseEntity<Response<Object>> handleException(Exception ex) {
         Response<Object> response = new Response<Object>();
@@ -30,6 +32,11 @@ public class GlobalExceptionHandler {
         response.setError(ex.getMessage());
         response.setMessage("Ngoại lệ xảy ra");
         return ResponseEntity.status(response.getStatusCode()).body(response);
+    }
+
+    @ExceptionHandler(value = UserServiceException.class)
+    public ResponseEntity<JsonNode> handleUserServiceException(UserServiceException ex) {
+        return ex.getResponseEntity();
     }
 
     @ExceptionHandler(value = NoResourceFoundException.class)

@@ -1,7 +1,5 @@
 package com.example.user_service.service;
 
-import java.util.List;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -9,8 +7,6 @@ import org.springframework.stereotype.Service;
 import com.example.user_service.dto.Meta;
 import com.example.user_service.dto.PaginationDTO;
 import com.example.user_service.dto.user.CreateUserDTO;
-import com.example.user_service.model.Department;
-import com.example.user_service.model.Role;
 import com.example.user_service.model.User;
 import com.example.user_service.repository.UserRepository;
 
@@ -30,7 +26,7 @@ public class UserService {
         Page<User> pageUser = this.userRepository.findAll(pageable);
         PaginationDTO rs = new PaginationDTO();
         Meta mt = new Meta();
-        mt.setPage(pageUser.getNumber());
+        mt.setPage(pageUser.getNumber() + 1);
         mt.setPageSize(pageUser.getSize());
 
         mt.setPages(pageUser.getTotalPages());
@@ -78,6 +74,20 @@ public class UserService {
 
     public User getById(Long id) {
         return this.userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public PaginationDTO getAllWithFilters(Long departmentId, String role, Boolean isActive, String keyword,
+            Pageable pageable) {
+        Page<User> pageUser = this.userRepository.findByFilters(departmentId, role, isActive, keyword, pageable);
+        PaginationDTO rs = new PaginationDTO();
+        Meta mt = new Meta();
+        mt.setPage(pageUser.getNumber() + 1);
+        mt.setPageSize(pageUser.getSize());
+        mt.setPages(pageUser.getTotalPages());
+        mt.setTotal(pageUser.getTotalElements());
+        rs.setMeta(mt);
+        rs.setResult(pageUser.getContent());
+        return rs;
     }
 
 }

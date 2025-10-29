@@ -63,6 +63,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         authz -> authz
                                 .requestMatchers("/api/v1/upload/**").permitAll()
+                                .requestMatchers("/api/v1/candidate-service/public/**").permitAll()
                                 .anyRequest().authenticated())
                 // .anyRequest().permitAll())
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())

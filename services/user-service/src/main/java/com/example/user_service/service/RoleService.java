@@ -2,8 +2,12 @@ package com.example.user_service.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.example.user_service.dto.Meta;
+import com.example.user_service.dto.PaginationDTO;
 import com.example.user_service.dto.role.CreateRoleDTO;
 import com.example.user_service.model.Role;
 import com.example.user_service.repository.RoleRepository;
@@ -21,8 +25,17 @@ public class RoleService {
                 .orElseThrow(() -> new RuntimeException("Role không tồn tại"));
     }
 
-    public List<Role> getAll() {
-        return roleRepository.findAll();
+    public PaginationDTO getAllWithFilters(Boolean isActive, String keyword, Pageable pageable) {
+        Page<Role> pageRole = this.roleRepository.findByFilters(isActive, keyword, pageable);
+        PaginationDTO rs = new PaginationDTO();
+        Meta mt = new Meta();
+        mt.setPage(pageRole.getNumber() + 1);
+        mt.setPageSize(pageRole.getSize());
+        mt.setPages(pageRole.getTotalPages());
+        mt.setTotal(pageRole.getTotalElements());
+        rs.setMeta(mt);
+        rs.setResult(pageRole.getContent());
+        return rs;
     }
 
     public Role create(CreateRoleDTO createRoleDTO) {

@@ -5,6 +5,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+
+import com.example.candidate_service.utils.enums.CandidateStage;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.util.Set;
@@ -20,7 +24,7 @@ public class Candidate {
     private Long id;
 
     private String fullName;
-
+    @Column(unique = true)
     private String email;
 
     private String phone;
@@ -35,31 +39,23 @@ public class Candidate {
 
     private String address;
     private String avatarUrl;
-    private String resumeUrl;
 
     private String highestEducation;
     private String university;
     private String graduationYear;
     private BigDecimal gpa;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "json")
-    private String languages;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "json")
-    private String skills;
-
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    private String status;
+    private CandidateStage stage;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "referrer_id")
-    private Candidate referrer;
+    // @ManyToOne(fetch = FetchType.LAZY)
+    // @JoinColumn(name = "referrer_id")
+    // private Candidate referrer;
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL)
+    @JsonIgnore
     private Set<Application> applications;
 
 }
