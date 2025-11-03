@@ -1,8 +1,12 @@
 package com.example.communications_service.controller;
 
+import com.example.communications_service.dto.PaginationDTO;
+import com.example.communications_service.dto.schedule.ScheduleDetailDTO;
 import com.example.communications_service.dto.schedule.ScheduleRequest;
 import com.example.communications_service.model.Schedule;
 import com.example.communications_service.service.ScheduleService;
+import com.example.communications_service.utils.SecurityUtil;
+
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +18,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/communications-service/schedules")
-@CrossOrigin(origins = "*")
 public class ScheduleController {
 
     private final ScheduleService scheduleService;
@@ -25,12 +28,14 @@ public class ScheduleController {
 
     @PostMapping
     public ResponseEntity<Schedule> createSchedule(@Valid @RequestBody ScheduleRequest request) {
+        request.setCreatedById(SecurityUtil.extractUserId());
         Schedule schedule = scheduleService.createSchedule(request);
         return ResponseEntity.ok(schedule);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Schedule> updateSchedule(@PathVariable Long id, @Valid @RequestBody ScheduleRequest request) {
+        request.setCreatedById(SecurityUtil.extractUserId());
         Schedule schedule = scheduleService.updateSchedule(id, request);
         return ResponseEntity.ok(schedule);
     }
@@ -42,29 +47,29 @@ public class ScheduleController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Schedule> getScheduleById(@PathVariable Long id) {
-        Schedule schedule = scheduleService.getScheduleById(id);
-        return ResponseEntity.ok(schedule);
+    public ResponseEntity<ScheduleDetailDTO> getScheduleById(
+            @PathVariable Long id) {
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        var data = scheduleService.getScheduleWithParticipantNames(id, token);
+        return ResponseEntity.ok(data);
     }
 
     @GetMapping
-    public ResponseEntity<com.example.communications_service.dto.PaginationDTO> getAllSchedules(
-            @RequestParam(name = "page", defaultValue = "1", required = false) int page,
-            @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
-            @RequestParam(name = "sortBy", defaultValue = "startTime", required = false) String sortBy,
-            @RequestParam(name = "sortOrder", defaultValue = "asc", required = false) String sortOrder,
-            @RequestParam(name = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(name = "year", required = false) Integer year,
+    public ResponseEntity<List<ScheduleDetailDTO>> getAllSchedules(
+            @RequestParam(name = "day", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate day,
+            @RequestParam(name = "week", required = false) Integer week,
             @RequestParam(name = "month", required = false) Integer month,
+            @RequestParam(name = "year", required = false) Integer year,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "meetingType", required = false) String meetingType,
             @RequestParam(name = "participantId", required = false) Long participantId,
-            @RequestParam(name = "participantType", required = false) String participantType) {
-
-        com.example.communications_service.dto.PaginationDTO result = scheduleService.getAllSchedules(page, limit,
-                sortBy, sortOrder,
-                date, year, month, status, meetingType, participantId, participantType);
-        return ResponseEntity.ok(result);
+            @RequestParam(name = "participantType", required = false) String participantType,
+            @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        var data = scheduleService.getSchedulesDetailed(day, week, month, year, status, meetingType, participantId,
+                participantType, token, startDate, endDate);
+        return ResponseEntity.ok(data);
     }
 
     @PutMapping("/{id}/status")
@@ -83,7 +88,7 @@ public class ScheduleController {
             @RequestParam(name = "participantType", required = false) String participantType) {
 
         // Use the new getAllSchedules method with filters
-        com.example.communications_service.dto.PaginationDTO result = scheduleService.getAllSchedules(1, 1000,
+        PaginationDTO result = scheduleService.getAllSchedules(1, 1000,
                 "startTime", "asc",
                 startDate, null, null, null, null, participantId, participantType);
 

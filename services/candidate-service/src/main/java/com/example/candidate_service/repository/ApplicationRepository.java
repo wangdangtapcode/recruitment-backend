@@ -19,20 +19,12 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
 
         List<Application> findByJobPositionId(Long jobPositionId);
 
-        boolean existsByEmailAndJobPositionId(String email, Long jobPositionId);
-
-        Optional<Application> findByEmailAndJobPositionId(String email, Long jobPositionId);
-
         @Query("SELECT a FROM Application a WHERE " +
-                        "(:jobPositionId IS NULL OR a.jobPositionId = :jobPositionId) AND " +
-                        "(:status IS NULL OR a.status = :status) AND " +
-                        "(:keyword IS NULL OR LOWER(a.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-                        "LOWER(a.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-                        "LOWER(a.phone) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-                        "LOWER(a.feedback) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-        Page<Application> findByFilters(
-                        @Param("jobPositionId") Long jobPositionId,
-                        @Param("status") String status,
-                        @Param("keyword") String keyword,
-                        Pageable pageable);
+        "(:jobPositionId IS NULL OR a.jobPositionId = :jobPositionId) AND " +
+        "(:status IS NULL OR a.status = :status) AND " +
+        "(:candidateId IS NULL OR a.candidate.id = :candidateId)")
+ Page<Application> findByFilters(@Param("jobPositionId") Long jobPositionId,
+                                 @Param("status") String status,
+                                 @Param("candidateId") Long candidateId,
+                                 Pageable pageable);
 }

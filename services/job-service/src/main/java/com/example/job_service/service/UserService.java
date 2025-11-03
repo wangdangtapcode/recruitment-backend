@@ -73,7 +73,34 @@ public class UserService {
             return ResponseEntity.internalServerError().body(errorNode);
         }
     }
-
+    public ResponseEntity<JsonNode> getPublicDepartmentById(Long departmentId) {
+        try {
+            String url = userServiceUrl + "/api/v1/user-service/departments/public/" + departmentId;
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode dataNode = root.has("data") ? root.get("data") : root;
+            return ResponseEntity.ok(dataNode);
+        } catch (HttpClientErrorException | HttpServerErrorException ex) {
+            try {
+                JsonNode errorBody = objectMapper.readTree(ex.getResponseBodyAsString());
+                return ResponseEntity.status(ex.getStatusCode()).body(errorBody);
+            } catch (Exception parseEx) {
+                ObjectNode fallback = objectMapper.createObjectNode();
+                fallback.put("statusCode", ex.getStatusCode().value());
+                fallback.put("error", ex.getStatusText());
+                fallback.put("message", "Không thể parse phản hồi lỗi từ User Service");
+                fallback.putNull("data");
+                return ResponseEntity.status(ex.getStatusCode()).body(fallback);
+            }
+        } catch (Exception e) {
+            ObjectNode errorNode = objectMapper.createObjectNode();
+            errorNode.put("statusCode", 500);
+            errorNode.put("error", "Internal Server Error");
+            errorNode.put("message", "Không thể kết nối tới User Service: " + e.getMessage());
+            errorNode.putNull("data");
+            return ResponseEntity.internalServerError().body(errorNode);
+        }
+    }
     public ResponseEntity<JsonNode> getDepartmentById(Long departmentId, String token) {
         try {
             String url = userServiceUrl + "/api/v1/user-service/departments/" + departmentId;

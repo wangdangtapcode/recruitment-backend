@@ -4,6 +4,8 @@ import com.example.communications_service.dto.schedule.ScheduleRequest;
 import com.example.communications_service.model.Schedule;
 import com.example.communications_service.service.EmailService;
 import com.example.communications_service.service.ScheduleService;
+import com.example.communications_service.utils.enums.MeetingType;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,9 +30,9 @@ public class TestController {
     public ResponseEntity<String> sendTestEmail() {
         try {
             emailService.sendSimpleEmail(
-                    "test@example.com",
-                    "Test Email từ Communications Service",
-                    "Đây là email test từ hệ thống Communications Service. Nếu bạn nhận được email này, hệ thống email đã hoạt động bình thường.");
+                    "hieugiax145@gmail.com",
+                    "Test Email",
+                    "Chó hiếu");
             return ResponseEntity.ok("Test email đã được gửi thành công!");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi khi gửi test email: " + e.getMessage());
@@ -66,7 +68,7 @@ public class TestController {
             request.setTitle("Cuộc họp test");
             request.setDescription("Đây là cuộc họp test được tạo tự động");
             request.setFormat("ONLINE");
-            request.setMeetingType("MEETING");
+            request.setMeetingType(MeetingType.MEETING);
             request.setStatus("SCHEDULED");
             request.setLocation("Phòng họp ảo");
             request.setStartTime(LocalDateTime.now().plusHours(1));

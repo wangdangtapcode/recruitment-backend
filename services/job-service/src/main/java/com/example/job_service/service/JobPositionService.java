@@ -1,13 +1,10 @@
 package com.example.job_service.service;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +18,6 @@ import com.example.job_service.exception.IdInvalidException;
 import com.example.job_service.model.JobPosition;
 import com.example.job_service.model.RecruitmentRequest;
 import com.example.job_service.repository.JobPositionRepository;
-import com.example.job_service.service.UserService;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.example.job_service.utils.enums.JobPositionStatus;
 import com.example.job_service.utils.enums.RecruitmentRequestStatus;
 
@@ -85,10 +80,26 @@ public class JobPositionService {
                 .orElseThrow(() -> new IdInvalidException("Vị trí tuyển dụng không tồn tại"));
     }
 
-    // public JobPositionResponseDTO getById(Long id) throws IdInvalidException {
-    // JobPosition position = findById(id);
-    // return JobPositionResponseDTO.fromEntity(position);
-    // }
+    public JobPositionResponseDTO getByIdWithDepartmentName(Long id, String token) throws IdInvalidException {
+        JobPosition position = this.findById(id);
+        JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
+        Long deptId = position.getRecruitmentRequest().getDepartmentId();
+        String deptName = userService.getDepartmentById(deptId, token).getBody().get("name").asText();
+        dto.setDepartmentName(deptName);
+        return dto;
+    }
+
+    public JobPositionResponseDTO getByIdWithPublished(Long id) throws IdInvalidException {
+        JobPosition position = this.findById(id);
+        if (position.getStatus() != JobPositionStatus.PUBLISHED) {
+            throw new IdInvalidException("Vị trí tuyển dụng chưa được xuất bản hoặc không khả dụng");
+        }
+        JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
+        Long deptId = position.getRecruitmentRequest().getDepartmentId();
+        String deptName = userService.getPublicDepartmentById(deptId).getBody().get("name").asText();
+        dto.setDepartmentName(deptName);
+        return dto;
+    }
 
     public PaginationDTO findAll(Pageable pageable) {
         Page<JobPosition> pageJobPosition = jobPositionRepository.findAll(pageable);

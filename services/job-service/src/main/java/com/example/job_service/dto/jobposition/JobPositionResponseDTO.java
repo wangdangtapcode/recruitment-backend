@@ -29,7 +29,7 @@ public class JobPositionResponseDTO {
     private boolean isRemote;
     private int quantity;
     private LocalDate deadline;
-
+    private Long departmentId;
     private int applicationCount;
     private JobPositionStatus status;
     private RecruitmentRequest recruitmentRequest;
@@ -58,7 +58,7 @@ public class JobPositionResponseDTO {
         dto.setStatus(position.getStatus());
 
         dto.setRecruitmentRequest(position.getRecruitmentRequest());
-
+        dto.setDepartmentId(position.getRecruitmentRequest().getDepartmentId());
         // Set additional fields for UI display
         dto.setYearsOfExperience(position.getYearsOfExperience());
 

@@ -30,10 +30,15 @@ public class SecurityUtil {
     }
 
     public static Optional<String> getCurrentUserJWT() {
-        SecurityContext securityContext = SecurityContextHolder.getContext();
-        return Optional.ofNullable(securityContext.getAuthentication())
-                .filter(auth -> auth.getCredentials() instanceof String)
-                .map(auth -> (String) auth.getCredentials());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            // Trường hợp Resource Server JWT
+            return Optional.of(jwtAuth.getToken().getTokenValue());
+        } else if (authentication != null && authentication.getCredentials() instanceof String token) {
+            // Trường hợp UsernamePasswordAuthenticationToken (ở login)
+            return Optional.of(token);
+        }
+        return Optional.empty();
     }
 
     public static Long extractUserId() {

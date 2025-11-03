@@ -67,7 +67,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         authz -> authz
                                 .requestMatchers("/", "/api/v1/user-service/auth/login",
-                                        "/api/v1/user-service/auth/refresh")
+                                        "/api/v1/user-service/auth/refresh",
+                                        "/api/v1/user-service/departments/public/**")
                                 .permitAll()
                                 // .requestMatchers("/", "/api/v1/login", "api/v1/users").permitAll()
                                 .anyRequest().authenticated())

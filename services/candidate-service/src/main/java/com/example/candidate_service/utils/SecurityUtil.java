@@ -30,32 +30,41 @@ public class SecurityUtil {
     }
 
     public static Optional<String> getCurrentUserJWT() {
-        SecurityContext securityContext = SecurityContextHolder.getContext();
-        return Optional.ofNullable(securityContext.getAuthentication())
-                .filter(auth -> auth.getCredentials() instanceof String)
-                .map(auth -> (String) auth.getCredentials());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            // Trường hợp Resource Server JWT
+            return Optional.of(jwtAuth.getToken().getTokenValue());
+        } else if (authentication != null && authentication.getCredentials() instanceof String token) {
+            // Trường hợp UsernamePasswordAuthenticationToken (ở login)
+            return Optional.of(token);
+        }
+        return Optional.empty();
     }
+
     public static Long extractUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return null;
-    
+        if (auth == null)
+            return null;
+
         // Trường hợp phổ biến: JwtAuthenticationToken
         if (auth instanceof JwtAuthenticationToken token) {
             Object user = token.getTokenAttributes().get("user");
             if (user instanceof java.util.Map<?, ?> map) {
                 Object id = map.get("id");
-                if (id instanceof Number n) return n.longValue();
+                if (id instanceof Number n)
+                    return n.longValue();
             }
             return null;
         }
-    
+
         // Một số cấu hình để principal là Jwt
         Object principal = auth.getPrincipal();
         if (principal instanceof Jwt jwt) {
             Object user = jwt.getClaim("user");
             if (user instanceof java.util.Map<?, ?> map) {
                 Object id = map.get("id");
-                if (id instanceof Number n) return n.longValue();
+                if (id instanceof Number n)
+                    return n.longValue();
             }
         }
         return null;

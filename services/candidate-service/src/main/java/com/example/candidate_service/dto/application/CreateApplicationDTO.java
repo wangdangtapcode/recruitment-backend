@@ -1,10 +1,6 @@
 package com.example.candidate_service.dto.application;
 
-import java.time.LocalDate;
-
 import org.springframework.web.multipart.MultipartFile;
-
-import com.example.candidate_service.utils.enums.ApplicationStatus;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -16,6 +12,8 @@ public class CreateApplicationDTO {
     @NotNull(message = "Job Position ID không được để trống")
     private Long jobPositionId;
 
+    // Khi tạo mới Application chỉ cần jobPositionId, cvFile, notes, createdBy. Phần
+    // thông tin này lấy từ candidate.
     @NotNull(message = "Họ tên không được để trống")
     private String fullName;
     @NotNull(message = "Email không được để trống")

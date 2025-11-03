@@ -19,12 +19,13 @@ public class ApplicationResponseDTO {
     private String feedback;
     private String notes;
     private Long candidateId;
-    private String fullName;
-
-    private String email;
-
-    private String phone;
     private Long jobPositionId;
+    private String jobPositionTitle;
+    private Long departmentId;
+    private String departmentName; // filled by service via job-service
+    private String fullName;
+    private String email;
+    private String phone;
 
     public static ApplicationResponseDTO fromEntity(com.example.candidate_service.model.Application application) {
         ApplicationResponseDTO dto = new ApplicationResponseDTO();
@@ -37,9 +38,12 @@ public class ApplicationResponseDTO {
         dto.setFeedback(application.getFeedback());
         dto.setNotes(application.getNotes());
         dto.setJobPositionId(application.getJobPositionId());
-        dto.setFullName(application.getFullName());
-        dto.setEmail(application.getEmail());
-        dto.setPhone(application.getPhone());
+        dto.setCandidateId(application.getCandidate() != null ? application.getCandidate().getId() : null);
+        if (application.getCandidate() != null) {
+            dto.setFullName(application.getCandidate().getFullName());
+            dto.setEmail(application.getCandidate().getEmail());
+            dto.setPhone(application.getCandidate().getPhone());
+        }
         return dto;
     }
 }

@@ -17,8 +17,8 @@ public class UpdateApplicationDTO {
     private String priority; // optional
     private String resumeUrl; // optional (direct URL update)
     private MultipartFile cvFile; // optional (upload replaces resumeUrl)
-    private String fullName; // optional
-    private String email; // optional
-    private String phone; // optional
     private Long updatedBy;
+    private String fullName; // optional, dùng cập nhật Candidate
+    private String email; // optional, dùng cập nhật Candidate
+    private String phone; // optional, dùng cập nhật Candidate
 }

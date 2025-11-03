@@ -18,10 +18,17 @@ import com.example.candidate_service.exception.IdInvalidException;
 import com.example.candidate_service.model.Application;
 import com.example.candidate_service.model.Candidate;
 import com.example.candidate_service.repository.ApplicationRepository;
-import com.example.candidate_service.repository.CandidateRepository;
 import com.example.candidate_service.utils.enums.ApplicationStatus;
 import com.example.candidate_service.utils.enums.CandidateStage;
 import com.example.candidate_service.messaging.ApplicationEventsProducer;
+import com.example.candidate_service.dto.application.ApplicationDetailResponseDTO;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.Set;
 
 @Service
 public class ApplicationService {
@@ -30,22 +37,25 @@ public class ApplicationService {
     private final CandidateService candidateService;
     private final CloudinaryService cloudinaryService;
     private final ApplicationEventsProducer applicationEventsProducer;
+    private final JobService jobService;
+    private final CommunicationService communicationService;
+    private final CommentService commentService;
 
     public ApplicationService(ApplicationRepository applicationRepository, CandidateService candidateService,
-            CloudinaryService cloudinaryService, ApplicationEventsProducer applicationEventsProducer) {
+            CloudinaryService cloudinaryService, ApplicationEventsProducer applicationEventsProducer,
+            JobService jobService, CommunicationService communicationService, CommentService commentService) {
         this.applicationRepository = applicationRepository;
         this.candidateService = candidateService;
         this.cloudinaryService = cloudinaryService;
         this.applicationEventsProducer = applicationEventsProducer;
+        this.jobService = jobService;
+        this.communicationService = communicationService;
+        this.commentService = commentService;
     }
 
-    public PaginationDTO getAllApplicationsWithFilters(Long candidateId,
-            Long jobPositionId,
-            String status,
-            String keyword,
-            Pageable pageable) {
-        Page<Application> applications = applicationRepository.findByFilters(jobPositionId, status,
-                keyword,
+    public PaginationDTO getAllApplicationsWithFilters(Long candidateId, Long jobPositionId, String status,
+            Pageable pageable, String token) {
+        Page<Application> applications = applicationRepository.findByFilters(jobPositionId, status, candidateId,
                 pageable);
 
         PaginationDTO paginationDTO = new PaginationDTO();
@@ -57,8 +67,48 @@ public class ApplicationService {
         meta.setTotal(applications.getTotalElements());
 
         paginationDTO.setMeta(meta);
+
+        // Batch collect unique jobPositionIds
+        Set<Long> uniqueJobIds = applications.getContent().stream()
+                .map(Application::getJobPositionId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        Map<Long, String> idToTitle = new HashMap<>();
+        Map<Long, Long> idToDepartmentId = new HashMap<>();
+        Map<Long, String> idToDepartmentName = new HashMap<>();
+        for (Long jpId : uniqueJobIds) {
+            try {
+                var res = jobService.getJobPositionById(jpId, token);
+                if (res.getStatusCode().is2xxSuccessful() && res.getBody() != null) {
+                    var body = res.getBody();
+                    if (body.has("title")) {
+                        idToTitle.put(jpId, body.get("title").asText());
+                    }
+                    if (body.has("departmentId")) {
+                        idToDepartmentId.put(jpId, body.get("departmentId").asLong());
+                    }
+                    if (body.has("departmentName")) {
+                        idToDepartmentName.put(jpId, body.get("departmentName").asText());
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
         paginationDTO.setResult(applications.getContent().stream()
-                .map(ApplicationResponseDTO::fromEntity)
+                .map(app -> {
+                    ApplicationResponseDTO dto = ApplicationResponseDTO.fromEntity(app);
+                    if (dto.getJobPositionId() != null) {
+                        dto.setJobPositionTitle(idToTitle.get(dto.getJobPositionId()));
+                    }
+                    if (dto.getJobPositionId() != null) {
+                        dto.setDepartmentId(idToDepartmentId.get(dto.getJobPositionId()));
+                    }
+                    if (dto.getJobPositionId() != null) {
+                        dto.setDepartmentName(idToDepartmentName.get(dto.getJobPositionId()));
+                    }
+                    return dto;
+                })
                 .toList());
 
         return paginationDTO;
@@ -84,14 +134,12 @@ public class ApplicationService {
         application.setCreatedBy(dto.getCreatedBy());
 
         application.setResumeUrl(cvUrl);
-        application.setFullName(dto.getFullName());
-        application.setEmail(dto.getEmail());
-        application.setPhone(dto.getPhone());
         application.setNotes(dto.getNotes());
         Candidate candidate = new Candidate();
         if (existsCandidate) {
             candidate = candidateService.findByEmail(dto.getEmail());
         } else {
+            candidate.setStage(CandidateStage.NEW);
             candidate.setEmail(dto.getEmail());
             candidate.setFullName(dto.getFullName());
             candidate.setPhone(dto.getPhone());
@@ -122,12 +170,6 @@ public class ApplicationService {
             application.setNotes(dto.getNotes());
         if (dto.getPriority() != null)
             application.setPriority(dto.getPriority());
-        if (dto.getFullName() != null)
-            application.setFullName(dto.getFullName());
-        if (dto.getEmail() != null)
-            application.setEmail(dto.getEmail());
-        if (dto.getPhone() != null)
-            application.setPhone(dto.getPhone());
         Candidate candidate = application.getCandidate();
         if (candidate != null) {
             if (!candidate.getEmail().equals(dto.getEmail())) {
@@ -191,15 +233,13 @@ public class ApplicationService {
         application.setStatus(ApplicationStatus.SUBMITTED);
 
         application.setResumeUrl(cvUrl);
-        application.setFullName(dto.getFullName());
-        application.setEmail(dto.getEmail());
-        application.setPhone(dto.getPhone());
         application.setNotes(dto.getNotes());
         Candidate candidate = new Candidate();
 
         if (existsCandidate) {
             candidate = candidateService.findByEmail(dto.getEmail());
         } else {
+            candidate.setStage(CandidateStage.NEW);
             candidate.setEmail(dto.getEmail());
             candidate.setFullName(dto.getFullName());
             candidate.setPhone(dto.getPhone());
@@ -245,5 +285,49 @@ public class ApplicationService {
 
         Application savedApplication = applicationRepository.save(application);
         return ApplicationResponseDTO.fromEntity(savedApplication);
+    }
+
+    public ApplicationDetailResponseDTO getApplicationDetailById(Long id, String token) throws IdInvalidException {
+        Application application = applicationRepository.findById(id)
+                .orElseThrow(() -> new IdInvalidException("Đơn ứng tuyển không tồn tại"));
+        ApplicationDetailResponseDTO dto = new ApplicationDetailResponseDTO();
+        dto.setId(application.getId());
+        dto.setAppliedDate(application.getAppliedDate());
+        dto.setStatus(application.getStatus());
+        dto.setPriority(application.getPriority());
+        dto.setRejectionReason(application.getRejectionReason());
+        dto.setResumeUrl(application.getResumeUrl());
+        dto.setFeedback(application.getFeedback());
+        dto.setNotes(application.getNotes());
+        if (application.getCandidate() != null) {
+            dto.setFullName(application.getCandidate().getFullName());
+            dto.setEmail(application.getCandidate().getEmail());
+            dto.setPhone(application.getCandidate().getPhone());
+        }
+        // Comments
+        if (application.getComments() != null) {
+            dto.setComments(commentService.getByApplicationId(application.getId(), token));
+        }
+        // JobPosition from job service (call by positionId)
+        if (application.getJobPositionId() != null) {
+            dto.setJobPosition(jobService.getJobPositionById(application.getJobPositionId(), token).getBody());
+        }
+        // Upcoming schedules for this candidate (from communications-service)
+        if (application.getCandidate() != null && application.getCandidate().getId() != null) {
+            var res = communicationService.getUpcomingSchedulesForCandidate(application.getCandidate().getId(), token);
+            if (res.getStatusCode().is2xxSuccessful() && res.getBody() != null) {
+                if (res.getBody().isArray()) {
+                    List<Object> list = new ArrayList<>();
+                    res.getBody().forEach(list::add);
+                    dto.setUpcomingSchedules(list);
+                } else if (res.getBody().has("data")) {
+                    // trường hợp dịch vụ trả về có field data
+                    List<Object> list = new ArrayList<>();
+                    res.getBody().get("data").forEach(list::add);
+                    dto.setUpcomingSchedules(list);
+                }
+            }
+        }
+        return dto;
     }
 }

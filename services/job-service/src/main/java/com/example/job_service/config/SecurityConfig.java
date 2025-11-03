@@ -62,7 +62,7 @@ public class SecurityConfig {
                 .csrf(c -> c.disable())
                 .authorizeHttpRequests(
                         authz -> authz
-                                .requestMatchers(HttpMethod.GET, "/api/v1/job-service/job-positions/published**")
+                                .requestMatchers(HttpMethod.GET, "/api/v1/job-service/job-positions/published/**")
                                 .permitAll()
                                 .anyRequest().authenticated())
                 // .anyRequest().permitAll())

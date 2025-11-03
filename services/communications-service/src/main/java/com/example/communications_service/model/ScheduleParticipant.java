@@ -1,5 +1,7 @@
 package com.example.communications_service.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,5 +28,6 @@ public class ScheduleParticipant {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id")
+    @JsonIgnore
     private Schedule schedule;
 }

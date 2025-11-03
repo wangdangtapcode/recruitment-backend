@@ -59,7 +59,11 @@ public class DepartmentController {
     public ResponseEntity<Department> getById(@PathVariable Long id) {
         return ResponseEntity.ok(departmentService.getById(id));
     }
-
+    @GetMapping("/public/{id}")
+    @ApiMessage("Lấy phòng ban theo id (công khai)")
+    public ResponseEntity<Department> getPublicById(@PathVariable Long id) {
+        return ResponseEntity.ok(departmentService.getById(id));
+    }
     @GetMapping(params = "ids")
     @ApiMessage("Lấy danh sách phòng ban theo nhiều IDs")
     public ResponseEntity<List<Department>> getByIds(@RequestParam("ids") String ids) {

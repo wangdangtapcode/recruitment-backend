@@ -45,6 +45,17 @@
             "mainClass": "com.example.gateway.GatewayApplication",
             "projectName": "gateway",
             "args": "",
+            "envFile": "${workspaceFolder}/.env",
+            "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=51112 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=gateway"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-TestServiceApplication<test-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.example.test_service.TestServiceApplication",
+            "projectName": "test-service",
+            "args": "",
             "envFile": "${workspaceFolder}/.env"
         }
     ]

@@ -20,6 +20,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Response<Object>> handleAllException(Exception ex) {
+        Response<Object> res = new Response<Object>();
+        res.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        res.setMessage(ex.getMessage());
+        res.setError("Internal Server Error");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(res);
+    }
+
     @ExceptionHandler(value = {
             UsernameNotFoundException.class,
             BadCredentialsException.class,
@@ -29,8 +39,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Response<Object>> handleException(Exception ex) {
         Response<Object> response = new Response<Object>();
         response.setStatusCode(HttpStatus.BAD_REQUEST.value());
-        response.setError(ex.getMessage());
-        response.setMessage("Ngoại lệ xảy ra");
+        response.setMessage(ex.getMessage());
+        response.setError("Ngoại lệ xảy ra");
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
@@ -38,8 +48,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Response<Object>> handleNotFoundException(NoResourceFoundException ex) {
         Response<Object> response = new Response<Object>();
         response.setStatusCode(HttpStatus.NOT_FOUND.value());
-        response.setError(ex.getMessage());
-        response.setMessage("404 Not Found.URL không tồn tại");
+        response.setMessage(ex.getMessage());
+        response.setError("404 Not Found.URL không tồn tại");
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
@@ -58,5 +68,6 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
+
 
 }

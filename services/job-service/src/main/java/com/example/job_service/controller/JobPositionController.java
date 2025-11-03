@@ -41,8 +41,8 @@ public class JobPositionController {
     @GetMapping("/{id}")
     @ApiMessage("Lấy thông tin vị trí tuyển dụng theo ID")
     public ResponseEntity<JobPositionResponseDTO> getById(@PathVariable Long id) throws IdInvalidException {
-        JobPosition position = jobPositionService.findById(id);
-        return ResponseEntity.ok(JobPositionResponseDTO.fromEntity(position));
+        String token = SecurityUtil.getCurrentUserJWT().orElse("");
+        return ResponseEntity.ok(jobPositionService.getByIdWithDepartmentName(id, token));
     }
 
     // Unified GET endpoint for all job positions with filtering, pagination, and
@@ -94,13 +94,45 @@ public class JobPositionController {
     }
 
     @GetMapping("/published")
-    @ApiMessage("Lấy danh sách vị trí tuyển dụng đã được xuất bản")
-    public ResponseEntity<List<JobPositionResponseDTO>> getPublished() {
-        List<JobPosition> positions = jobPositionService.findPublished();
-        List<JobPositionResponseDTO> response = positions.stream()
-                .map(JobPositionResponseDTO::fromEntity)
-                .toList();
-        return ResponseEntity.ok(response);
+    @ApiMessage("Lấy danh sách vị trí tuyển dụng đã xuất bản (phân trang)")
+    public ResponseEntity<PaginationDTO> getPublishedPaged(
+            @RequestParam(name = "departmentId", required = false) Long departmentId,
+            @RequestParam(name = "categoryId", required = false) Long categoryId,
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "page", defaultValue = "1", required = false) int page,
+            @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
+            @RequestParam(name = "sortBy", defaultValue = "id", required = false) String sortBy,
+            @RequestParam(name = "sortOrder", defaultValue = "desc", required = false) String sortOrder) {
+
+        if (page < 1)
+            page = 1;
+        if (limit < 1 || limit > 100)
+            limit = 10;
+
+        Sort.Direction direction = sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort = Sort.by(direction, sortBy);
+        Pageable pageable = PageRequest.of(page - 1, limit, sort);
+
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        if (token == null) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+
+        return ResponseEntity.ok(
+                jobPositionService.findAllWithFilters(
+                        departmentId,
+                        JobPositionStatus.PUBLISHED,
+                        categoryId,
+                        true,
+                        keyword,
+                        pageable,
+                        token));
+    }
+
+    @GetMapping("/published/{id}")
+    @ApiMessage("Lấy thông tin vị trí tuyển dụng đã được xuất bản theo ID")
+    public ResponseEntity<JobPositionResponseDTO> getPublishedById(@PathVariable Long id) throws IdInvalidException {
+        return ResponseEntity.ok(jobPositionService.getByIdWithPublished(id));
     }
 
     @GetMapping("/department/{departmentId}")

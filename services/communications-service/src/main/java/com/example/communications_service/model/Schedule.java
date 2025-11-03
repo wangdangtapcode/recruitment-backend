@@ -6,6 +6,9 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.example.communications_service.utils.enums.MeetingType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "schedule")
 @Getter
@@ -24,7 +27,8 @@ public class Schedule {
     private String description;
 
     private String format;
-    private String meetingType;
+    @Enumerated(EnumType.STRING)
+    private MeetingType meetingType;
     @Column(name = "status")
     private String status; //
 
@@ -54,7 +58,6 @@ public class Schedule {
     @PrePersist
     public void prePersist() {
         createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate

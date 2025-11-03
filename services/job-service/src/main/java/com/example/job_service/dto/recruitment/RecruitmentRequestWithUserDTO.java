@@ -34,7 +34,8 @@ public class RecruitmentRequestWithUserDTO {
     private JsonNode department;
     private String jobCategoryName;
     private boolean active;
-
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     public static RecruitmentRequestWithUserDTO fromEntity(RecruitmentRequest entity) {
         RecruitmentRequestWithUserDTO dto = new RecruitmentRequestWithUserDTO();
         dto.setId(entity.getId());
@@ -62,6 +63,8 @@ public class RecruitmentRequestWithUserDTO {
         dto.setDepartmentId(entity.getDepartmentId());
         dto.setJobCategoryName(entity.getJobCategory() != null ? entity.getJobCategory().getName() : null);
         dto.setActive(entity.isActive());
+        dto.setCreatedAt(entity.getCreatedAt());
+        dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
     }
 }

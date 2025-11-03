@@ -1,8 +1,6 @@
 package com.example.candidate_service.controller;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.candidate_service.dto.application.ApplicationDetailResponseDTO;
 import com.example.candidate_service.dto.application.ApplicationResponseDTO;
 import com.example.candidate_service.dto.PaginationDTO;
 import com.example.candidate_service.dto.application.CreateApplicationDTO;
@@ -36,27 +35,24 @@ public class ApplicationController {
             @RequestParam(name = "candidateId", required = false) Long candidateId,
             @RequestParam(name = "jobPositionId", required = false) Long jobPositionId,
             @RequestParam(name = "status", required = false) String status,
-            @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
             @RequestParam(name = "sortBy", defaultValue = "id", required = false) String sortBy,
             @RequestParam(name = "sortOrder", defaultValue = "desc", required = false) String sortOrder) {
 
-        // Validate pagination parameters
         if (page < 1)
             page = 1;
         if (limit < 1 || limit > 100)
             limit = 10;
 
-        // Create sort object
         Sort.Direction direction = sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
         Sort sort = Sort.by(direction, sortBy);
 
-        // Create pageable object
         Pageable pageable = PageRequest.of(page - 1, limit, sort);
 
+        String token = SecurityUtil.getCurrentUserJWT().orElse("");
         return ResponseEntity.ok(applicationService.getAllApplicationsWithFilters(
-                candidateId, jobPositionId, status, keyword, pageable));
+                candidateId, jobPositionId, status, pageable, token));
     }
 
     @PostMapping
@@ -68,12 +64,15 @@ public class ApplicationController {
     }
 
     @GetMapping("/{id}")
-    @ApiMessage("Lấy thông tin đơn ứng tuyển")
-    public ResponseEntity<ApplicationResponseDTO> getApplicationById(@PathVariable Long id) throws IdInvalidException {
-        return ResponseEntity.ok(applicationService.getApplicationById(id));
+    @ApiMessage("Lấy chi tiết đơn ứng tuyển")
+    public ResponseEntity<ApplicationDetailResponseDTO> getDetail(@PathVariable Long id) throws IdInvalidException {
+        String token = SecurityUtil.getCurrentUserJWT().orElse("");
+
+        System.out.println("token: " + token);
+        return ResponseEntity.ok(applicationService.getApplicationDetailById(id, token));
     }
 
-    @PutMapping("/{id}/status")
+    @PutMapping("/status/{id}")
     @ApiMessage("Cập nhật trạng thái đơn ứng tuyển")
     public ResponseEntity<ApplicationResponseDTO> updateApplicationStatus(
             @PathVariable Long id,

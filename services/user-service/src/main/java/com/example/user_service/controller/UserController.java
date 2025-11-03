@@ -1,5 +1,7 @@
 package com.example.user_service.controller;
 
+import java.util.List;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -84,5 +86,14 @@ public class UserController {
         User user = this.userService.getById(id);
         return ResponseEntity.ok(user);
     }
-
+    @GetMapping(params = "ids")
+    public ResponseEntity<List<User>> findByIds(@RequestParam("ids") String ids) {
+        List<Long> userIds = List.of(ids.split(","))
+                .stream()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
+                .toList();
+        return ResponseEntity.ok(this.userService.getByIds(userIds));
+    }
 }

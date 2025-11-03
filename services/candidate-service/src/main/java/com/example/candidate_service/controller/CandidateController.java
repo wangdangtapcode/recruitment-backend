@@ -1,5 +1,7 @@
 package com.example.candidate_service.controller;
 
+import java.util.List;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -16,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.candidate_service.dto.PaginationDTO;
-import com.example.candidate_service.dto.candidate.CandidateResponseDTO;
+import com.example.candidate_service.dto.candidate.CandidateDetailResponseDTO;
 import com.example.candidate_service.dto.candidate.CreateCandidateDTO;
 import com.example.candidate_service.dto.candidate.UpdateCandidateDTO;
 import com.example.candidate_service.exception.IdInvalidException;
@@ -60,24 +62,24 @@ public class CandidateController {
 
     @GetMapping("/{id}")
     @ApiMessage("Lấy thông tin ứng viên")
-    public ResponseEntity<CandidateResponseDTO> getById(@PathVariable Long id) throws IdInvalidException {
-        CandidateResponseDTO candidate = candidateService.getById(id);
+    public ResponseEntity<CandidateDetailResponseDTO> getById(@PathVariable Long id) throws IdInvalidException {
+        CandidateDetailResponseDTO candidate = candidateService.getById(id);
         return ResponseEntity.ok(candidate);
     }
 
     @PostMapping
     @ApiMessage("Tạo mới ứng viên")
-    public ResponseEntity<CandidateResponseDTO> create(@Validated @RequestBody CreateCandidateDTO dto) {
-        CandidateResponseDTO saved = candidateService.create(dto);
+    public ResponseEntity<CandidateDetailResponseDTO> create(@Validated @RequestBody CreateCandidateDTO dto) {
+        CandidateDetailResponseDTO saved = candidateService.create(dto);
         return ResponseEntity.ok(saved);
     }
 
     @PutMapping("/{id}")
     @ApiMessage("Cập nhật thông tin ứng viên")
-    public ResponseEntity<CandidateResponseDTO> update(@PathVariable Long id,
+    public ResponseEntity<CandidateDetailResponseDTO> update(@PathVariable Long id,
             @Validated @RequestBody UpdateCandidateDTO dto)
             throws IdInvalidException {
-        CandidateResponseDTO saved = candidateService.update(id, dto);
+        CandidateDetailResponseDTO saved = candidateService.update(id, dto);
         return ResponseEntity.ok(saved);
     }
 
@@ -90,9 +92,19 @@ public class CandidateController {
 
     @PutMapping("/{id}/stage")
     @ApiMessage("Cập nhật giai đoạn (stage) của ứng viên")
-    public ResponseEntity<CandidateResponseDTO> changeStage(@PathVariable Long id,
+    public ResponseEntity<CandidateDetailResponseDTO> changeStage(@PathVariable Long id,
             @RequestParam CandidateStage stage) throws IdInvalidException {
-        CandidateResponseDTO saved = candidateService.changeStage(id, stage);
+        CandidateDetailResponseDTO saved = candidateService.changeStage(id, stage);
         return ResponseEntity.ok(saved);
+    }
+    @GetMapping(params = "ids")
+    public ResponseEntity<List<CandidateDetailResponseDTO>> findByIds(@RequestParam("ids") String ids) {
+        List<Long> candidateIds = List.of(ids.split(","))
+                .stream()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
+                .toList();
+        return ResponseEntity.ok(this.candidateService.getByIds(candidateIds));
     }
 }

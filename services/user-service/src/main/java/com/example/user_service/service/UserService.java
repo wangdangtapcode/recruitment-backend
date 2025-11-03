@@ -1,5 +1,7 @@
 package com.example.user_service.service;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -88,6 +90,10 @@ public class UserService {
         rs.setMeta(mt);
         rs.setResult(pageUser.getContent());
         return rs;
+    }
+
+    public List<User> getByIds(List<Long> ids) {
+        return this.userRepository.findAllById(ids);
     }
 
 }

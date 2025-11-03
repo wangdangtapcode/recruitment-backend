@@ -1,5 +1,6 @@
 package com.example.candidate_service.service;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -10,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.candidate_service.repository.CandidateRepository;
 import com.example.candidate_service.dto.Meta;
 import com.example.candidate_service.dto.PaginationDTO;
-import com.example.candidate_service.dto.candidate.CandidateResponseDTO;
+import com.example.candidate_service.dto.candidate.CandidateGetAllResponseDTO;
+import com.example.candidate_service.dto.candidate.CandidateDetailResponseDTO;
 import com.example.candidate_service.dto.candidate.CreateCandidateDTO;
 import com.example.candidate_service.dto.candidate.UpdateCandidateDTO;
 import com.example.candidate_service.exception.IdInvalidException;
@@ -48,18 +50,18 @@ public class CandidateService {
         meta.setPages(pageData.getTotalPages());
         meta.setTotal(pageData.getTotalElements());
         paginationDTO.setMeta(meta);
-        paginationDTO.setResult(pageData.getContent().stream().map(CandidateResponseDTO::fromEntity).toList());
+        paginationDTO.setResult(pageData.getContent().stream().map(CandidateGetAllResponseDTO::fromEntity).toList());
         return paginationDTO;
     }
 
-    public CandidateResponseDTO getById(Long id) throws IdInvalidException {
+    public CandidateDetailResponseDTO getById(Long id) throws IdInvalidException {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("ứng viên không tồn tại"));
-        return CandidateResponseDTO.fromEntity(candidate);
+        return CandidateDetailResponseDTO.fromEntity(candidate);
     }
 
     @Transactional
-    public CandidateResponseDTO create(CreateCandidateDTO dto) {
+    public CandidateDetailResponseDTO create(CreateCandidateDTO dto) {
         Candidate candidate = new Candidate();
         candidate.setFullName(dto.getFullName());
         candidate.setEmail(dto.getEmail());
@@ -78,11 +80,11 @@ public class CandidateService {
         candidate.setStage(dto.getStage());
 
         Candidate saved = candidateRepository.save(candidate);
-        return CandidateResponseDTO.fromEntity(saved);
+        return CandidateDetailResponseDTO.fromEntity(saved);
     }
 
     @Transactional
-    public CandidateResponseDTO update(Long id, UpdateCandidateDTO dto) throws IdInvalidException {
+    public CandidateDetailResponseDTO update(Long id, UpdateCandidateDTO dto) throws IdInvalidException {
         Candidate existing = candidateRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("ứng viên không tồn tại"));
 
@@ -103,7 +105,7 @@ public class CandidateService {
         Optional.ofNullable(dto.getStage()).ifPresent(existing::setStage);
 
         Candidate saved = candidateRepository.save(existing);
-        return CandidateResponseDTO.fromEntity(saved);
+        return CandidateDetailResponseDTO.fromEntity(saved);
     }
 
     @Transactional
@@ -114,11 +116,14 @@ public class CandidateService {
     }
 
     @Transactional
-    public CandidateResponseDTO changeStage(Long id, CandidateStage stage) throws IdInvalidException {
+    public CandidateDetailResponseDTO changeStage(Long id, CandidateStage stage) throws IdInvalidException {
         Candidate existing = candidateRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("ứng viên không tồn tại"));
         existing.setStage(stage);
         Candidate saved = candidateRepository.save(existing);
-        return CandidateResponseDTO.fromEntity(saved);
+        return CandidateDetailResponseDTO.fromEntity(saved);
+    }
+    public List<CandidateDetailResponseDTO> getByIds(List<Long> ids) {
+        return candidateRepository.findAllById(ids).stream().map(CandidateDetailResponseDTO::fromEntity).toList();
     }
 }

@@ -25,6 +25,8 @@ public class GatewayRouteConfig {
                 // Communications Service Routes
                 .route("communications-service", r -> r.path("/api/v1/communications-service/**")
                         .uri("http://localhost:8085"))
+                .route("test-service", r -> r.path("/api/v1/test-service/**")
+                        .uri("http://localhost:8086"))
                 .build();
     }
 }
