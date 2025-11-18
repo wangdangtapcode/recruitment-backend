@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
@@ -74,4 +75,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
+    @ExceptionHandler(value = AccessDeniedException.class)
+    public ResponseEntity<Response<Object>> handleAccessDeniedException(AccessDeniedException ex) {
+        Response<Object> response = new Response<Object>();
+        response.setStatusCode(HttpStatus.FORBIDDEN.value());
+        response.setError(ex.getMessage());
+        response.setMessage("403 Forbidden.Bạn không có quyền truy cập tài nguyên này");
+        return ResponseEntity.status(response.getStatusCode()).body(response);
+    }
 }

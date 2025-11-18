@@ -15,7 +15,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/communications-service/notifications")
-@CrossOrigin(origins = "*")
 public class NotificationController {
 
     private final NotificationService notificationService;
@@ -31,8 +30,7 @@ public class NotificationController {
                 request.getRecipientType(),
                 request.getChannel(),
                 request.getTitle(),
-                request.getMessage(),
-                request.getPriority());
+                request.getMessage());
 
         // Send notification immediately
         notificationService.sendNotification(notification);
@@ -48,8 +46,7 @@ public class NotificationController {
                 request.getRecipientType(),
                 request.getChannel(),
                 request.getTemplateId(),
-                request.getVariables(),
-                request.getPriority());
+                request.getVariables());
 
         // Send notification immediately
         notificationService.sendNotification(notification);
@@ -65,8 +62,7 @@ public class NotificationController {
                     request.getRecipientType(),
                     request.getChannel(),
                     request.getTitle(),
-                    request.getMessage(),
-                    request.getPriority());
+                    request.getMessage());
             notificationService.sendNotification(notification);
         }
 

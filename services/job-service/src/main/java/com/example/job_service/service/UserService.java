@@ -34,9 +34,9 @@ public class UserService {
         this.objectMapper = new ObjectMapper();
     }
 
-    public ResponseEntity<JsonNode> getUserById(Long userId, String token) {
+    public ResponseEntity<JsonNode> getEmployeeById(Long employeeId, String token) {
         try {
-            String url = userServiceUrl + "/api/v1/user-service/users/" + userId;
+            String url = userServiceUrl + "/api/v1/user-service/employees/" + employeeId;
 
             HttpHeaders headers = new HttpHeaders();
             if (token != null && !token.isEmpty()) {
@@ -73,6 +73,7 @@ public class UserService {
             return ResponseEntity.internalServerError().body(errorNode);
         }
     }
+
     public ResponseEntity<JsonNode> getPublicDepartmentById(Long departmentId) {
         try {
             String url = userServiceUrl + "/api/v1/user-service/departments/public/" + departmentId;
@@ -101,6 +102,7 @@ public class UserService {
             return ResponseEntity.internalServerError().body(errorNode);
         }
     }
+
     public ResponseEntity<JsonNode> getDepartmentById(Long departmentId, String token) {
         try {
             String url = userServiceUrl + "/api/v1/user-service/departments/" + departmentId;
@@ -135,13 +137,13 @@ public class UserService {
         }
     }
 
-    public Map<Long, JsonNode> getUsersByIds(List<Long> userIds, String token) {
-        return userIds.stream().collect(Collectors.toMap(
+    public Map<Long, JsonNode> getEmployeesByIds(List<Long> employeeIds, String token) {
+        return employeeIds.stream().collect(Collectors.toMap(
                 id -> id,
                 id -> {
                     try {
-                        // Hàm getUserById sẽ ném lỗi nếu user-service trả lỗi
-                        ResponseEntity<JsonNode> response = getUserById(id, token);
+                        // Hàm getEmployeeById sẽ ném lỗi nếu user-service trả lỗi
+                        ResponseEntity<JsonNode> response = getEmployeeById(id, token);
                         return response.getBody();
                     } catch (HttpClientErrorException | HttpServerErrorException ex) {
                         // Trả nguyên JSON body từ user-service ra ngoài

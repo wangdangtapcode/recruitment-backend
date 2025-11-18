@@ -1,10 +1,8 @@
 package com.example.user_service.model;
 
-import java.time.Instant;
 import java.util.List;
 
 import com.example.user_service.utils.SecurityUtil;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
@@ -40,7 +38,7 @@ public class Department {
 
     @OneToMany(mappedBy = "department", fetch = FetchType.LAZY)
     @JsonIgnore
-    private List<User> users;
+    private List<Employee> employees;
 
     @PrePersist
     public void handleBeforeCreate() {

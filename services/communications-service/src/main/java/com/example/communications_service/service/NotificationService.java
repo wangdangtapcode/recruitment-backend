@@ -35,14 +35,13 @@ public class NotificationService {
     }
 
     public Notification createNotification(Long recipientId, String recipientType, String channel,
-            String title, String message, String priority) {
+            String title, String message) {
         Notification notification = new Notification();
         notification.setRecipientId(recipientId);
         notification.setRecipientType(recipientType);
         notification.setChannel(channel);
         notification.setTitle(title);
         notification.setMessage(message);
-        notification.setPriority(priority);
         notification.setNotificationType(channel);
 
         return notificationRepository.save(notification);
@@ -50,7 +49,7 @@ public class NotificationService {
 
     public Notification createNotificationFromTemplate(Long recipientId, String recipientType,
             String channel, Long templateId,
-            Map<String, Object> variables, String priority) {
+            Map<String, Object> variables) {
         Optional<NotificationTemplate> templateOpt = notificationTemplateRepository.findById(templateId);
         if (templateOpt.isEmpty()) {
             throw new RuntimeException("Template not found with id: " + templateId);
@@ -61,7 +60,7 @@ public class NotificationService {
         String processedMessage = processTemplate(template.getContent(), variables);
 
         Notification notification = createNotification(recipientId, recipientType, channel,
-                processedTitle, processedMessage, priority);
+                processedTitle, processedMessage);
         notification.setTemplate(template);
 
         return notification;
@@ -89,7 +88,6 @@ public class NotificationService {
             notification.setSentAt(LocalDateTime.now());
             notification.setDeliveryStatus("SENT");
             notification.setDelivered(true);
-            notification.setDeliveredAt(LocalDateTime.now());
 
         } catch (Exception e) {
             notification.setDeliveryStatus("FAILED");
@@ -129,12 +127,20 @@ public class NotificationService {
 
     private String getRecipientEmail(Long recipientId, String recipientType) {
         // TODO: Implement logic to get email from user-service or candidate-service
+        // For USER: Call user-service API to get employee email
+        // For CANDIDATE: Call candidate-service API to get candidate email
         // This would typically involve a REST call to the respective service
+        // Currently returns placeholder - should be implemented when user/candidate
+        // services provide email endpoints
         return "recipient@example.com";
     }
 
     private String getRecipientPhone(Long recipientId, String recipientType) {
         // TODO: Implement logic to get phone from user-service or candidate-service
+        // For USER: Call user-service API to get employee phone
+        // For CANDIDATE: Call candidate-service API to get candidate phone
+        // Currently returns placeholder - should be implemented when user/candidate
+        // services provide phone endpoints
         return "+84901234567";
     }
 

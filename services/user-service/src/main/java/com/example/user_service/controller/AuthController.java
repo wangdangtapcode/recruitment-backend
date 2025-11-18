@@ -14,12 +14,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.user_service.dto.login.LoginDTO;
 import com.example.user_service.dto.login.ResponseLoginDTO;
 import com.example.user_service.exception.CustomException;
 import com.example.user_service.model.User;
+import com.example.user_service.service.PermissionService;
 import com.example.user_service.service.UserService;
 import com.example.user_service.utils.JwtUtil;
 import com.example.user_service.utils.SecurityUtil;
@@ -34,15 +36,17 @@ public class AuthController {
         private final AuthenticationManagerBuilder authenticationManagerBuilder;
         private final JwtUtil jwtUtil;
         private final UserService userService;
+        private final PermissionService permissionService;
 
         @Value("${user-service.jwt.refresh-token-validity-in-seconds}")
         private long refreshTokenExpiration;
 
         public AuthController(AuthenticationManagerBuilder authenticationManagerBuilder, JwtUtil jwtUtil,
-                        UserService userService) {
+                        UserService userService, PermissionService permissionService) {
                 this.authenticationManagerBuilder = authenticationManagerBuilder;
                 this.jwtUtil = jwtUtil;
                 this.userService = userService;
+                this.permissionService = permissionService;
         }
 
         @PostMapping("/login")
@@ -61,13 +65,31 @@ public class AuthController {
                 ResponseLoginDTO responseLoginDTO = new ResponseLoginDTO();
 
                 User currentUserDB = this.userService.handleGetUserByUsername(loginDTO.getUsername());
-                ResponseLoginDTO.UserToken userToken = new ResponseLoginDTO.UserToken(currentUserDB.getId(),
-                                currentUserDB.getEmail(), currentUserDB.getName());
+
+                // Lấy thông tin từ Employee
+                Long employeeId = currentUserDB.getEmployee() != null ? currentUserDB.getEmployee().getId() : null;
+                String employeeName = currentUserDB.getEmployee() != null ? currentUserDB.getEmployee().getName()
+                                : null;
+                String employeeEmail = currentUserDB.getEmployee() != null ? currentUserDB.getEmployee().getEmail()
+                                : currentUserDB.getEmail();
+
+                // Tạo token với cả userId và employeeId
+                ResponseLoginDTO.UserToken userToken = new ResponseLoginDTO.UserToken(
+                                currentUserDB.getId(),
+                                employeeId != null ? employeeId : 0L,
+                                employeeEmail,
+                                employeeName != null ? employeeName : "");
 
                 if (currentUserDB != null) {
-                        ResponseLoginDTO.UserLogin userLogin = new ResponseLoginDTO.UserLogin(currentUserDB.getId(),
-                                        currentUserDB.getEmail(), currentUserDB.getName(), currentUserDB.getRole(),
-                                        currentUserDB.getDepartment());
+                        ResponseLoginDTO.UserLogin userLogin = new ResponseLoginDTO.UserLogin(
+                                        currentUserDB.getId(),
+                                        employeeId != null ? employeeId : 0L,
+                                        employeeEmail,
+                                        employeeName != null ? employeeName : "",
+                                        currentUserDB.getRole(),
+                                        currentUserDB.getEmployee() != null
+                                                        ? currentUserDB.getEmployee().getDepartment()
+                                                        : null);
                         responseLoginDTO.setUser(userLogin);
                 }
                 // access token
@@ -100,11 +122,23 @@ public class AuthController {
                 ResponseLoginDTO.UserLogin userLogin = new ResponseLoginDTO.UserLogin();
                 ResponseLoginDTO.UserGetAccount userGetAccount = new ResponseLoginDTO.UserGetAccount();
                 if (currentUserDB != null) {
-                        userLogin.setId(currentUserDB.getId());
-                        userLogin.setEmail(currentUserDB.getEmail());
-                        userLogin.setName(currentUserDB.getName());
+                        Long employeeId = currentUserDB.getEmployee() != null ? currentUserDB.getEmployee().getId()
+                                        : null;
+                        String employeeName = currentUserDB.getEmployee() != null
+                                        ? currentUserDB.getEmployee().getName()
+                                        : null;
+                        String employeeEmail = currentUserDB.getEmployee() != null
+                                        ? currentUserDB.getEmployee().getEmail()
+                                        : currentUserDB.getEmail();
+
+                        userLogin.setUserId(currentUserDB.getId());
+                        userLogin.setEmployeeId(employeeId != null ? employeeId : 0L);
+                        userLogin.setEmail(employeeEmail);
+                        userLogin.setName(employeeName != null ? employeeName : "");
                         userLogin.setRole(currentUserDB.getRole());
-                        userLogin.setDepartment(currentUserDB.getDepartment());
+                        userLogin.setDepartment(currentUserDB.getEmployee() != null
+                                        ? currentUserDB.getEmployee().getDepartment()
+                                        : null);
                         userGetAccount.setUser(userLogin);
                 }
                 return ResponseEntity.ok().body(userGetAccount);
@@ -130,12 +164,31 @@ public class AuthController {
                 ResponseLoginDTO responseLoginDTO = new ResponseLoginDTO();
 
                 User currentUserDB = this.userService.handleGetUserByUsername(email);
-                ResponseLoginDTO.UserToken userToken = new ResponseLoginDTO.UserToken(currentUserDB.getId(),
-                                currentUserDB.getEmail(), currentUserDB.getName());
+
+                // Lấy thông tin từ Employee
+                Long employeeId = currentUserDB.getEmployee() != null ? currentUserDB.getEmployee().getId() : null;
+                String employeeName = currentUserDB.getEmployee() != null ? currentUserDB.getEmployee().getName()
+                                : null;
+                String employeeEmail = currentUserDB.getEmployee() != null ? currentUserDB.getEmployee().getEmail()
+                                : currentUserDB.getEmail();
+
+                // Tạo token với cả userId và employeeId
+                ResponseLoginDTO.UserToken userToken = new ResponseLoginDTO.UserToken(
+                                currentUserDB.getId(),
+                                employeeId != null ? employeeId : 0L,
+                                employeeEmail,
+                                employeeName != null ? employeeName : "");
+
                 if (currentUserDB != null) {
-                        ResponseLoginDTO.UserLogin userLogin = new ResponseLoginDTO.UserLogin(currentUserDB.getId(),
-                                        currentUserDB.getEmail(), currentUserDB.getName(), currentUserDB.getRole(),
-                                        currentUserDB.getDepartment());
+                        ResponseLoginDTO.UserLogin userLogin = new ResponseLoginDTO.UserLogin(
+                                        currentUserDB.getId(),
+                                        employeeId != null ? employeeId : 0L,
+                                        employeeEmail,
+                                        employeeName != null ? employeeName : "",
+                                        currentUserDB.getRole(),
+                                        currentUserDB.getEmployee() != null
+                                                        ? currentUserDB.getEmployee().getDepartment()
+                                                        : null);
                         responseLoginDTO.setUser(userLogin);
                 }
                 // access token
@@ -181,6 +234,18 @@ public class AuthController {
                 return ResponseEntity.ok()
                                 .header(HttpHeaders.SET_COOKIE, deleteSpringCookie.toString())
                                 .body(null);
+        }
+
+        @GetMapping("/check")
+        @ApiMessage("Kiểm tra quyền")
+        public ResponseEntity<Boolean> checkPermission(@RequestParam("name") String name) {
+                Long userId = SecurityUtil.extractUserId();
+                if (userId == null) {
+                        return ResponseEntity.ok(false);
+                }
+                System.out.println("name: " + name);
+                System.out.println("userId: " + userId);
+                return ResponseEntity.ok(permissionService.check(name, userId));
         }
 
 }

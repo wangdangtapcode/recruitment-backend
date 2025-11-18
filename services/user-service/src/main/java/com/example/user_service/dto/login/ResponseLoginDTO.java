@@ -21,9 +21,10 @@ public class ResponseLoginDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class UserLogin {
-        private long id;
+        private long userId;
+        private long employeeId;
         private String email;
-        private String name;
+        private String name; // Lấy từ Employee
         private Role role;
         private Department department;
     }
@@ -33,9 +34,10 @@ public class ResponseLoginDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class UserToken {
-        private long id;
+        private long userId; // Lưu userId vào token
+        private long employeeId; // Lưu employeeId vào token
         private String email;
-        private String name;
+        private String name; // Lấy từ Employee
     }
 
     @Getter

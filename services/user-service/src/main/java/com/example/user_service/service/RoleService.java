@@ -15,14 +15,17 @@ import com.example.user_service.repository.RoleRepository;
 @Service
 public class RoleService {
     private final RoleRepository roleRepository;
+    private final PermissionService permissionService;
 
-    public RoleService(RoleRepository roleRepository) {
+    public RoleService(RoleRepository roleRepository,
+            PermissionService permissionService) {
         this.roleRepository = roleRepository;
+        this.permissionService = permissionService;
     }
 
     public Role getById(Long id) {
         return roleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Role không tồn tại"));
+                .orElse(null);
     }
 
     public PaginationDTO getAllWithFilters(Boolean isActive, String keyword, Pageable pageable) {
@@ -42,6 +45,13 @@ public class RoleService {
         Role role = new Role();
         role.setName(createRoleDTO.getName());
         role.setDescription(createRoleDTO.getDescription());
+        if (createRoleDTO.getIsActive() != null) {
+            role.set_active(createRoleDTO.getIsActive());
+        } else {
+            role.set_active(true);
+        }
+        role.setPermissions(permissionService.findByIds(createRoleDTO.getPermissionIds()));
+
         return roleRepository.save(role);
     }
 
@@ -49,10 +59,25 @@ public class RoleService {
         Role role = this.getById(id);
         role.setName(createRoleDTO.getName());
         role.setDescription(createRoleDTO.getDescription());
+        if (createRoleDTO.getIsActive() != null) {
+            role.set_active(createRoleDTO.getIsActive());
+        }
+        if (createRoleDTO.getPermissionIds() != null) {
+            role.setPermissions(permissionService.findByIds(createRoleDTO.getPermissionIds()));
+        }
         return roleRepository.save(role);
     }
 
     public void delete(Long id) {
+
         roleRepository.deleteById(id);
+    }
+
+    public boolean existsByName(String name) {
+        return roleRepository.existsByName(name);
+    }
+
+    public List<Role> getByIds(List<Long> ids) {
+        return this.roleRepository.findAllById(ids);
     }
 }

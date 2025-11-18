@@ -66,10 +66,11 @@ public class RecruitmentRequestService {
     }
 
     @Transactional
-    public RecruitmentRequest approve(Long id, ApproveRecruitmentRequestDTO dto) throws IdInvalidException {
+    public RecruitmentRequest approve(Long id, ApproveRecruitmentRequestDTO dto, Long approvedId)
+            throws IdInvalidException {
         RecruitmentRequest rr = this.findById(id);
         rr.setStatus(RecruitmentRequestStatus.APPROVED);
-        rr.setApprovedId(id);
+        rr.setApprovedId(approvedId); // Lưu employeeId
         rr.setApprovalNotes(dto.getApprovalNotes());
         rr.setApprovedAt(LocalDateTime.now());
         return recruitmentRequestRepository.save(rr);
@@ -132,7 +133,8 @@ public class RecruitmentRequestService {
         RecruitmentRequestWithUserDTO dto = RecruitmentRequestWithUserDTO.fromEntity(request);
 
         if (request.getRequesterId() != null) {
-            ResponseEntity<JsonNode> requesterResponse = userService.getUserById(request.getRequesterId(), token);
+            // Lấy thông tin employee (requesterId lưu employeeId)
+            ResponseEntity<JsonNode> requesterResponse = userService.getEmployeeById(request.getRequesterId(), token);
             if (requesterResponse.getStatusCode().is2xxSuccessful()) {
                 dto.setRequester(requesterResponse.getBody());
             } else {
@@ -142,7 +144,8 @@ public class RecruitmentRequestService {
         }
 
         if (request.getApprovedId() != null) {
-            ResponseEntity<JsonNode> approverResponse = userService.getUserById(request.getApprovedId(), token);
+            // Lấy thông tin employee (approvedId lưu employeeId)
+            ResponseEntity<JsonNode> approverResponse = userService.getEmployeeById(request.getApprovedId(), token);
             if (approverResponse.getStatusCode().is2xxSuccessful()) {
                 dto.setApprover(approverResponse.getBody());
             } else {
@@ -172,8 +175,8 @@ public class RecruitmentRequestService {
         mt.setTotal(requests.getTotalElements());
         rs.setMeta(mt);
 
-        // Lấy tất cả user IDs cần thiết
-        List<Long> userIds = requests.getContent().stream()
+        // Lấy tất cả employee IDs cần thiết (requesterId và approvedId lưu employeeId)
+        List<Long> employeeIds = requests.getContent().stream()
                 .flatMap(request -> {
                     if (request.getRequesterId() != null && request.getApprovedId() != null) {
                         return List.of(request.getRequesterId(), request.getApprovedId()).stream();
@@ -194,8 +197,8 @@ public class RecruitmentRequestService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // Lấy thông tin tất cả users một lần
-        Map<Long, JsonNode> userMap = userService.getUsersByIds(userIds, token);
+        // Lấy thông tin tất cả employees một lần
+        Map<Long, JsonNode> employeeMap = userService.getEmployeesByIds(employeeIds, token);
 
         // Lấy thông tin tất cả departments một lần
         Map<Long, JsonNode> departmentMap = departmentIds.stream()
@@ -215,14 +218,14 @@ public class RecruitmentRequestService {
                 .map(request -> {
                     RecruitmentRequestWithUserDTO dto = RecruitmentRequestWithUserDTO.fromEntity(request);
 
-                    // Set requester info
+                    // Set requester info (requesterId lưu employeeId)
                     if (request.getRequesterId() != null) {
-                        dto.setRequester(userMap.get(request.getRequesterId()));
+                        dto.setRequester(employeeMap.get(request.getRequesterId()));
                     }
 
-                    // Set approver info
+                    // Set approver info (approvedId lưu employeeId)
                     if (request.getApprovedId() != null) {
-                        dto.setApprover(userMap.get(request.getApprovedId()));
+                        dto.setApprover(employeeMap.get(request.getApprovedId()));
                     }
 
                     // Set department info

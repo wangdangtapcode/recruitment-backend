@@ -31,9 +31,9 @@ public class UserService {
         this.restTemplate = restTemplate;
     }
 
-    public ResponseEntity<JsonNode> getUserName(Long userId, String token) {
+    public ResponseEntity<JsonNode> getEmployeeName(Long employeeId, String token) {
         try {
-            String url = userServiceUrl + "/api/v1/user-service/users/" + userId;
+            String url = userServiceUrl + "/api/v1/user-service/employees/" + employeeId;
 
             HttpHeaders headers = new HttpHeaders();
             if (token != null && !token.isEmpty()) {
@@ -69,10 +69,10 @@ public class UserService {
         }
     }
 
-    public ResponseEntity<JsonNode> getUserNames(List<Long> userIds, String token) {
+    public ResponseEntity<JsonNode> getEmployeeNames(List<Long> employeeIds, String token) {
         try {
-            String url = userServiceUrl + "/api/v1/user-service/users?ids="
-                    + userIds.stream().map(String::valueOf).collect(Collectors.joining(","));
+            String url = userServiceUrl + "/api/v1/user-service/employees?ids="
+                    + employeeIds.stream().map(String::valueOf).collect(Collectors.joining(","));
 
             HttpHeaders headers = new HttpHeaders();
             if (token != null && !token.isEmpty()) {
@@ -83,12 +83,12 @@ public class UserService {
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
             JsonNode root = objectMapper.readTree(response.getBody());
-            JsonNode data = root.get("data"); // expected array of users
+            JsonNode data = root.get("data"); // expected array of employees
             ObjectNode idToName = objectMapper.createObjectNode();
             if (data != null && data.isArray()) {
-                for (JsonNode user : data) {
-                    if (user.has("id") && user.has("name")) {
-                        idToName.put(String.valueOf(user.get("id").asLong()), user.get("name").asText());
+                for (JsonNode employee : data) {
+                    if (employee.has("id") && employee.has("name")) {
+                        idToName.put(String.valueOf(employee.get("id").asLong()), employee.get("name").asText());
                     }
                 }
             }
@@ -113,6 +113,37 @@ public class UserService {
             errorNode.put("message", "Không thể kết nối tới User Service: " + e.getMessage());
             errorNode.putNull("data");
             return ResponseEntity.internalServerError().body(errorNode);
+        }
+    }
+
+    /**
+     * Lấy userId (employeeId) từ email
+     * Gọi API user-service để tìm employee theo email
+     */
+    public Long getUserIdByEmail(String email) {
+        try {
+            String url = userServiceUrl + "/api/v1/user-service/users/email/" + email;
+
+            HttpHeaders headers = new HttpHeaders();
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode data = root.get("data");
+
+            if (data != null && data.has("employeeId")) {
+                return data.get("employeeId").asLong();
+            }
+
+            // Nếu không có employeeId, thử tìm trực tiếp employee
+            if (data != null && data.has("id")) {
+                return data.get("id").asLong();
+            }
+
+            return null;
+        } catch (Exception e) {
+            // Nếu không tìm thấy hoặc lỗi, trả về null (có thể là email bên ngoài)
+            return null;
         }
     }
 

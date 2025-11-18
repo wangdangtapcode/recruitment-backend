@@ -9,6 +9,10 @@ import org.springframework.stereotype.Service;
 import com.example.user_service.dto.Meta;
 import com.example.user_service.dto.PaginationDTO;
 import com.example.user_service.dto.user.CreateUserDTO;
+import com.example.user_service.dto.user.UpdateUserDTO;
+import com.example.user_service.exception.CustomException;
+import com.example.user_service.model.Employee;
+import com.example.user_service.model.Role;
 import com.example.user_service.model.User;
 import com.example.user_service.repository.UserRepository;
 
@@ -16,12 +20,12 @@ import com.example.user_service.repository.UserRepository;
 public class UserService {
     private final UserRepository userRepository;
     private final RoleService roleService;
-    private final DepartmentService departmentService;
+    private final EmployeeService employeeService;
 
-    public UserService(UserRepository userRepository, RoleService roleService, DepartmentService departmentService) {
+    public UserService(UserRepository userRepository, RoleService roleService, EmployeeService employeeService) {
         this.userRepository = userRepository;
         this.roleService = roleService;
-        this.departmentService = departmentService;
+        this.employeeService = employeeService;
     }
 
     public PaginationDTO getAll(Pageable pageable) {
@@ -41,11 +45,60 @@ public class UserService {
 
     public User create(CreateUserDTO createUserDTO) {
         User user = new User();
-        user.setName(createUserDTO.getName());
+        // User không có field name, name lấy từ Employee
         user.setEmail(createUserDTO.getEmail());
         user.setPassword(createUserDTO.getPassword());
-        user.setRole(this.roleService.getById(createUserDTO.getRoleId()));
-        user.setDepartment(this.departmentService.getById(createUserDTO.getDepartmentId()));
+        Role role = this.roleService.getById(createUserDTO.getRoleId());
+        if (role == null) {
+            throw new CustomException("Vai trò không tồn tại");
+        }
+        user.setRole(role);
+        user.set_active(true);
+
+        // Link với Employee đã tồn tại
+        Employee employee = this.employeeService.getById(createUserDTO.getEmployeeId());
+        if (employee == null) {
+            throw new CustomException("Nhân viên không tồn tại");
+        }
+        user.setEmployee(employee);
+        employee.setUser(user);
+
+        return this.userRepository.save(user);
+    }
+
+    public User update(Long id, UpdateUserDTO updateUserDTO) {
+
+        User user = this.getById(id);
+        if (user == null) {
+            throw new CustomException("Người dùng không tồn tại");
+        }
+        if (updateUserDTO.getEmail() != null) {
+            user.setEmail(updateUserDTO.getEmail());
+        }
+        if (updateUserDTO.getPassword() != null) {
+            user.setPassword(updateUserDTO.getPassword());
+        }
+        if (updateUserDTO.getRoleId() != null) {
+            Role role = this.roleService.getById(updateUserDTO.getRoleId());
+            if (role == null) {
+                throw new CustomException("Vai trò không tồn tại");
+            }
+            user.setRole(role);
+        }
+        if (updateUserDTO.getIsActive() != null) {
+            user.set_active(updateUserDTO.getIsActive());
+        }
+
+        // Link với Employee đã tồn tại
+        if (updateUserDTO.getEmployeeId() != null) {
+            Employee employee = this.employeeService.getById(updateUserDTO.getEmployeeId());
+            if (employee == null) {
+                throw new CustomException("Nhân viên không tồn tại");
+            }
+            user.setEmployee(employee);
+            employee.setUser(user);
+        }
+
         return this.userRepository.save(user);
     }
 

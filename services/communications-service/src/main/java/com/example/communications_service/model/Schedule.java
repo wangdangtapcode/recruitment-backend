@@ -49,7 +49,7 @@ public class Schedule {
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ScheduleParticipant> participants;
 
-    private Long createdById;
+    private Long createdById; // Lưu employeeId (người tạo lịch hẹn)
 
     private LocalDateTime createdAt;
 

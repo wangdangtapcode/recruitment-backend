@@ -11,10 +11,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/communications-service/candidate-notifications")
-@CrossOrigin(origins = "*")
 public class CandidateNotificationController {
 
     private final NotificationService notificationService;
+
     public CandidateNotificationController(NotificationService notificationService) {
         this.notificationService = notificationService;
     }
@@ -33,8 +33,7 @@ public class CandidateNotificationController {
                     "EMAIL",
                     "Chào mừng bạn đến với hệ thống tuyển dụng",
                     "Xin chào " + candidateName
-                            + ",\n\nCảm ơn bạn đã đăng ký với chúng tôi. Chúng tôi sẽ liên hệ với bạn sớm nhất có thể.\n\nTrân trọng,\nĐội ngũ tuyển dụng",
-                    "HIGH");
+                            + ",\n\nCảm ơn bạn đã đăng ký với chúng tôi. Chúng tôi sẽ liên hệ với bạn sớm nhất có thể.\n\nTrân trọng,\nĐội ngũ tuyển dụng");
 
             // Send welcome email
             notificationService.sendNotification(welcomeNotification);
@@ -45,8 +44,7 @@ public class CandidateNotificationController {
                     "USER",
                     "EMAIL",
                     "Ứng viên mới đã đăng ký",
-                    "Ứng viên mới: " + candidateName + " (" + candidateEmail + ") đã đăng ký vào hệ thống.",
-                    "NORMAL");
+                    "Ứng viên mới: " + candidateName + " (" + candidateEmail + ") đã đăng ký vào hệ thống.");
 
             notificationService.sendNotification(hrNotification);
 
@@ -107,8 +105,7 @@ public class CandidateNotificationController {
                     "CANDIDATE",
                     "EMAIL",
                     title,
-                    message,
-                    "HIGH");
+                    message);
 
             notificationService.sendNotification(notification);
 
@@ -154,8 +151,7 @@ public class CandidateNotificationController {
                     "CANDIDATE",
                     "EMAIL",
                     "Nhắc nhở phỏng vấn",
-                    message,
-                    "URGENT");
+                    message);
 
             notificationService.sendNotification(notification);
 
@@ -177,7 +173,3 @@ public class CandidateNotificationController {
         return ResponseEntity.ok(notifications);
     }
 }
-
-
-
-

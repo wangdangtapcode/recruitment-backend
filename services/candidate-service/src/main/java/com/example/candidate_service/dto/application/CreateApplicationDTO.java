@@ -24,5 +24,5 @@ public class CreateApplicationDTO {
     private MultipartFile cvFile;
 
     private String notes;
-    private Long createdBy;
+    private Long createdBy; // Employee Id (người tạo đơn ứng tuyển)
 }

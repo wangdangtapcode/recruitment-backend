@@ -24,7 +24,7 @@ public class Notification {
     private String message;
 
     @Column(name = "recipient_id")
-    private Long recipientId; // ID của User hoặc Candidate
+    private Long recipientId; 
 
     // Có thể thêm loại người nhận để phân biệt
     @Column(name = "recipient_type")
@@ -36,14 +36,8 @@ public class Notification {
     @Column(name = "channel")
     private String channel; // "EMAIL", "SMS", "ZALO", "IN_APP"
 
-    @Column(name = "priority")
-    private String priority = "NORMAL"; // "LOW", "NORMAL", "HIGH", "URGENT"
-
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
-
-    @Column(name = "delivered_at")
-    private LocalDateTime deliveredAt;
 
     @Column(name = "read_at")
     private LocalDateTime readAt;

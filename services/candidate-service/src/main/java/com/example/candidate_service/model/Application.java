@@ -34,9 +34,9 @@ public class Application {
     @Column(columnDefinition = "TEXT")
     private String notes;
     @Column(nullable = true)
-    private Long createdBy;
+    private Long createdBy; // Lưu employeeId (người tạo đơn ứng tuyển)
     @Column(nullable = true)
-    private Long updatedBy;
+    private Long updatedBy; // Lưu employeeId (người cập nhật đơn ứng tuyển)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "candidate_id", nullable = true)
     @JsonIgnore

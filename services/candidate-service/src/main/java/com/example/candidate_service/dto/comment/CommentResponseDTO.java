@@ -9,8 +9,8 @@ import lombok.Setter;
 @Setter
 public class CommentResponseDTO {
     private Long id;
-    private Long userId;
-    private String userName;
+    private Long employeeId;
+    private String employeeName;
     private String content;
     private LocalDateTime createdAt;
 }

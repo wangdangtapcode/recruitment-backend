@@ -42,16 +42,16 @@ public class CommentController {
     @ApiMessage("Tạo bình luận")
     public ResponseEntity<CommentResponseDTO> create(@Validated @RequestBody CreateCommentDTO dto)
             throws IdInvalidException {
-        Long userId = SecurityUtil.extractUserId();
-        return ResponseEntity.ok(commentService.create(dto, userId));
+        Long employeeId = SecurityUtil.extractEmployeeId();
+        return ResponseEntity.ok(commentService.create(dto, employeeId));
     }
 
     @PutMapping("/{id}")
     @ApiMessage("Cập nhật bình luận")
     public ResponseEntity<CommentResponseDTO> update(@PathVariable Long id,
             @Validated @RequestBody UpdateCommentDTO dto) throws IdInvalidException {
-        Long userId = SecurityUtil.extractUserId();
-        return ResponseEntity.ok(commentService.update(id, dto, userId));
+        Long employeeId = SecurityUtil.extractEmployeeId();
+        return ResponseEntity.ok(commentService.update(id, dto, employeeId));
     }
 
     @DeleteMapping("/{id}")

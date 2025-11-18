@@ -1,0 +1,911 @@
+{
+	"info": {
+		"_postman_id": "workflow-service-api-v2",
+		"name": "Workflow Service API v2",
+		"description": "Collection đầy đủ các API cho Workflow Service (Refactored Version)\n\n## Quy trình nghiệp vụ:\n1. Tạo yêu cầu tuyển dụng (REQ-123) với department_id và level_id\n2. Hệ thống tự động tìm workflow phù hợp\n3. Khởi tạo bước đầu tiên và tìm người duyệt\n4. Người duyệt approve/reject\n5. Hệ thống tự động chuyển sang bước tiếp theo\n6. Hoàn thành khi bước cuối được approve",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "workflowId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "approvalTrackingId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Workflows",
+			"item": [
+				{
+					"name": "Get All Workflows",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/workflows?type=RECRUITMENT&isActive=true&keyword=&page=1&limit=10&sortBy=id&sortOrder=desc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"workflows"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "RECRUITMENT",
+									"description": "RECRUITMENT, EXPENSE, LEAVE, PURCHASE, GENERAL",
+									"disabled": false
+								},
+								{
+									"key": "isActive",
+									"value": "true",
+									"disabled": false
+								},
+								{
+									"key": "keyword",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "sortBy",
+									"value": "id"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc"
+								}
+							]
+						},
+						"description": "Lấy danh sách workflow với bộ lọc, phân trang và sắp xếp"
+					},
+					"response": []
+				},
+				{
+					"name": "Find Matching Workflow",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"workflowId\", jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/workflows/match?departmentId=1&levelId=3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"workflows",
+								"match"
+							],
+							"query": [
+								{
+									"key": "departmentId",
+									"value": "1",
+									"description": "ID của phòng ban (ví dụ: IT = 1)"
+								},
+								{
+									"key": "levelId",
+									"value": "3",
+									"description": "ID của cấp bậc (ví dụ: Senior = 3)"
+								}
+							]
+						},
+						"description": "Tìm workflow phù hợp dựa trên department_id và level_id. Hệ thống sẽ tìm workflow có apply_conditions khớp với {department_id: 1, level_id: 3}"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Workflow By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/workflows/{{workflowId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"workflows",
+								"{{workflowId}}"
+							]
+						},
+						"description": "Lấy thông tin chi tiết của một workflow theo ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Workflow",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"workflowId\", jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Luồng duyệt IT Senior\",\n    \"description\": \"Luồng phê duyệt cho phòng ban IT, cấp bậc Senior\",\n    \"type\": \"RECRUITMENT\",\n    \"applyConditions\": \"{\\\"department_id\\\": 1, \\\"level_id\\\": 3}\",\n    \"steps\": [\n        {\n            \"stepOrder\": 1,\n            \"stepName\": \"Trưởng phòng IT duyệt\",\n            \"approverPositionId\": 10\n        },\n        {\n            \"stepOrder\": 2,\n            \"stepName\": \"Giám đốc Tài chính duyệt\",\n            \"approverPositionId\": 11\n        },\n        {\n            \"stepOrder\": 3,\n            \"stepName\": \"CEO duyệt\",\n            \"approverPositionId\": 12\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/workflows",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"workflows"
+							]
+						},
+						"description": "Tạo mới workflow với các bước phê duyệt. applyConditions là JSON string chứa điều kiện matching (ví dụ: {\"department_id\": 1, \"level_id\": 3})"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Workflow",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Luồng duyệt IT Senior (Updated)\",\n    \"description\": \"Luồng phê duyệt cho phòng ban IT, cấp bậc Senior - Đã cập nhật\",\n    \"type\": \"RECRUITMENT\",\n    \"applyConditions\": \"{\\\"department_id\\\": 1, \\\"level_id\\\": 3}\",\n    \"isActive\": true,\n    \"steps\": [\n        {\n            \"stepOrder\": 1,\n            \"stepName\": \"Trưởng phòng IT duyệt\",\n            \"approverPositionId\": 10\n        },\n        {\n            \"stepOrder\": 2,\n            \"stepName\": \"Giám đốc Tài chính duyệt\",\n            \"approverPositionId\": 11\n        },\n        {\n            \"stepOrder\": 3,\n            \"stepName\": \"CEO duyệt\",\n            \"approverPositionId\": 12\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/workflows/{{workflowId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"workflows",
+								"{{workflowId}}"
+							]
+						},
+						"description": "Cập nhật thông tin workflow. Lưu ý: Khi cập nhật steps, tất cả steps cũ sẽ bị xóa và thay thế bằng steps mới"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Workflow",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/workflows/{{workflowId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"workflows",
+								"{{workflowId}}"
+							]
+						},
+						"description": "Xóa workflow (soft delete - set isActive = false)"
+					},
+					"response": []
+				}
+			],
+			"description": "Quản lý workflows - các mẫu luồng phê duyệt"
+		},
+		{
+			"name": "Approval Trackings",
+			"item": [
+				{
+					"name": "Get All Approval Trackings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings?requestId=&status=PENDING&assignedUserId=&page=1&limit=10&sortBy=id&sortOrder=desc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings"
+							],
+							"query": [
+								{
+									"key": "requestId",
+									"value": "",
+									"description": "ID của yêu cầu (ví dụ: recruitment_request.id)",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "PENDING",
+									"description": "PENDING, APPROVED, REJECTED, CANCELLED",
+									"disabled": false
+								},
+								{
+									"key": "assignedUserId",
+									"value": "",
+									"description": "ID của user được gán phê duyệt",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "sortBy",
+									"value": "id"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc"
+								}
+							]
+						},
+						"description": "Lấy danh sách approval tracking với bộ lọc, phân trang và sắp xếp"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Approval Tracking By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/{{approvalTrackingId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"{{approvalTrackingId}}"
+							]
+						},
+						"description": "Lấy thông tin chi tiết của một approval tracking theo ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Pending Approvals For User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/pending/15",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"pending",
+								"15"
+							]
+						},
+						"description": "Lấy danh sách các approval tracking đang chờ phê duyệt được gán cho một user cụ thể. User này sẽ thấy các yêu cầu cần phê duyệt trong dashboard của mình."
+					},
+					"response": []
+				},
+				{
+					"name": "Initialize Approval Tracking",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"approvalTrackingId\", jsonData.id);",
+									"    console.log(\"Approval Tracking ID:\", jsonData.id);",
+									"    console.log(\"Assigned User ID:\", jsonData.assignedUserId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"requestId\": 123,\n    \"departmentId\": 1,\n    \"levelId\": 3\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/initialize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"initialize"
+							]
+						},
+						"description": "**Bước 1-4: Khởi tạo approval tracking**\n\nAPI này sẽ:\n1. Tự động tìm workflow phù hợp dựa trên departmentId và levelId\n2. Lấy bước đầu tiên của workflow (step_order = 1)\n3. Tìm người duyệt dựa trên approver_position_id (gọi user-service)\n4. Tạo ApprovalTracking với status = PENDING\n\n**Request:**\n- requestId: ID của yêu cầu (ví dụ: recruitment_request.id = 123)\n- departmentId: ID của phòng ban (ví dụ: IT = 1)\n- levelId: ID của cấp bậc (ví dụ: Senior = 3)\n\n**Response:**\n- id: ID của approval tracking\n- requestId: ID của yêu cầu\n- stepId: ID của workflow step hiện tại\n- status: PENDING\n- assignedUserId: ID của user được gán để phê duyệt"
+					},
+					"response": []
+				},
+				{
+					"name": "Approve Request",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    console.log(\"Status:\", jsonData.status);",
+									"    console.log(\"Action User ID:\", jsonData.actionUserId);",
+									"    console.log(\"Action At:\", jsonData.actionAt);",
+									"    ",
+									"    // Nếu approve thành công và có bước tiếp theo, sẽ tự động tạo approval tracking mới",
+									"    if (jsonData.status === 'APPROVED') {",
+									"        console.log(\"Đã approve thành công. Hệ thống sẽ tự động chuyển sang bước tiếp theo.\");",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"approved\": true,\n    \"approvalNotes\": \"Đồng ý với yêu cầu tuyển dụng này\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/{{approvalTrackingId}}/approve",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"{{approvalTrackingId}}",
+								"approve"
+							]
+						},
+						"description": "**Bước 5: Phê duyệt yêu cầu**\n\nAPI này sẽ:\n1. Kiểm tra quyền (chỉ assignedUserId mới được approve)\n2. Cập nhật status = APPROVED\n3. Lưu actionUserId và actionAt\n4. **Tự động chuyển sang bước tiếp theo** (nếu có)\n   - Tìm bước tiếp theo (step_order + 1)\n   - Tìm người duyệt cho bước tiếp theo\n   - Tạo ApprovalTracking mới với status = PENDING\n\n**Request:**\n- approved: true = approve, false = reject\n- approvalNotes: Ghi chú (optional)\n\n**Response:**\n- status: APPROVED hoặc REJECTED\n- actionUserId: ID của user thực hiện hành động\n- actionAt: Thời gian thực hiện"
+					},
+					"response": []
+				},
+				{
+					"name": "Reject Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"approved\": false,\n    \"approvalNotes\": \"Yêu cầu không phù hợp với ngân sách hiện tại\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/{{approvalTrackingId}}/approve",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"{{approvalTrackingId}}",
+								"approve"
+							]
+						},
+						"description": "**Từ chối yêu cầu**\n\nKhi reject:\n- status = REJECTED\n- Không tạo bước tiếp theo\n- Workflow dừng lại tại đây"
+					},
+					"response": []
+				}
+			],
+			"description": "Quản lý approval trackings - theo dõi quá trình phê duyệt"
+		},
+		{
+			"name": "Examples - Complete Flow",
+			"item": [
+				{
+					"name": "1. Create Workflow for IT Senior",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Luồng duyệt IT Senior\",\n    \"description\": \"Luồng phê duyệt cho phòng ban IT, cấp bậc Senior\",\n    \"type\": \"RECRUITMENT\",\n    \"applyConditions\": \"{\\\"department_id\\\": 1, \\\"level_id\\\": 3}\",\n    \"steps\": [\n        {\n            \"stepOrder\": 1,\n            \"stepName\": \"Trưởng phòng IT duyệt\",\n            \"approverPositionId\": 10\n        },\n        {\n            \"stepOrder\": 2,\n            \"stepName\": \"Giám đốc Tài chính duyệt\",\n            \"approverPositionId\": 11\n        },\n        {\n            \"stepOrder\": 3,\n            \"stepName\": \"CEO duyệt\",\n            \"approverPositionId\": 12\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/workflows",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"workflows"
+							]
+						},
+						"description": "Tạo workflow mẫu cho IT Senior với 3 bước phê duyệt"
+					},
+					"response": []
+				},
+				{
+					"name": "2. Find Matching Workflow",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/workflows/match?departmentId=1&levelId=3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"workflows",
+								"match"
+							],
+							"query": [
+								{
+									"key": "departmentId",
+									"value": "1"
+								},
+								{
+									"key": "levelId",
+									"value": "3"
+								}
+							]
+						},
+						"description": "Tìm workflow phù hợp với department_id=1 và level_id=3"
+					},
+					"response": []
+				},
+				{
+					"name": "3. Initialize Approval (REQ-123)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"requestId\": 123,\n    \"departmentId\": 1,\n    \"levelId\": 3\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/initialize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"initialize"
+							]
+						},
+						"description": "Khởi tạo approval tracking cho REQ-123. Hệ thống sẽ tự động:\n- Tìm workflow phù hợp\n- Tạo bước đầu tiên\n- Tìm người duyệt (user_id = 15 - nguyenv.a)"
+					},
+					"response": []
+				},
+				{
+					"name": "4. Get Pending Approvals for User 15",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/pending/15",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"pending",
+								"15"
+							]
+						},
+						"description": "User 15 (nguyenv.a) xem các yêu cầu đang chờ phê duyệt"
+					},
+					"response": []
+				},
+				{
+					"name": "5. Approve Step 1 (User 15)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"approved\": true,\n    \"approvalNotes\": \"Đồng ý với yêu cầu tuyển dụng\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/{{approvalTrackingId}}/approve",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"{{approvalTrackingId}}",
+								"approve"
+							]
+						},
+						"description": "User 15 approve bước 1. Hệ thống tự động tạo bước 2 cho User 20 (FINANCE_DIRECTOR)"
+					},
+					"response": []
+				},
+				{
+					"name": "6. Get Pending Approvals for User 20",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/pending/20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"pending",
+								"20"
+							]
+						},
+						"description": "User 20 (FINANCE_DIRECTOR) xem các yêu cầu đang chờ phê duyệt"
+					},
+					"response": []
+				},
+				{
+					"name": "7. Approve Step 2 (User 20)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"approved\": true,\n    \"approvalNotes\": \"Đồng ý với ngân sách\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/{{approvalTrackingId}}/approve",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"{{approvalTrackingId}}",
+								"approve"
+							]
+						},
+						"description": "User 20 approve bước 2. Hệ thống tự động tạo bước 3 cho CEO"
+					},
+					"response": []
+				},
+				{
+					"name": "8. Approve Step 3 (CEO) - Complete",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"approved\": true,\n    \"approvalNotes\": \"Phê duyệt cuối cùng\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/workflow-service/approval-trackings/{{approvalTrackingId}}/approve",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"workflow-service",
+								"approval-trackings",
+								"{{approvalTrackingId}}",
+								"approve"
+							]
+						},
+						"description": "CEO approve bước cuối. Workflow hoàn thành. Recruitment Request status = APPROVED"
+					},
+					"response": []
+				}
+			],
+			"description": "Ví dụ quy trình hoàn chỉnh từ đầu đến cuối"
+		}
+	]
+}

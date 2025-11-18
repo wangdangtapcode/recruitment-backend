@@ -62,8 +62,8 @@ public class RecruitmentRequest {
 
     @Column(columnDefinition = "TEXT")
     private String approvalNotes;
-    private Long approvedId; // CEO Id
-    private Long requesterId; // user request Id
+    private Long approvedId; // CEO Employee Id (lưu employeeId)
+    private Long requesterId; // Employee request Id (lưu employeeId)
     private LocalDateTime approvedAt;
     private boolean isActive;
 

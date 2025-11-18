@@ -24,7 +24,8 @@ public class ScheduleParticipant {
     private String responseStatus; // [cite: 70, 71] (e.g., "ACCEPTED", "DECLINED", "PENDING")
 
     @Column(name = "participant_id")
-    private Long participantId; // ID của User hoặc Candidate
+    private Long participantId; // ID của Employee (khi participantType = "USER") hoặc Candidate (khi
+                                // participantType = "CANDIDATE")
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id")

@@ -37,8 +37,8 @@ public class ScheduleRequest {
 
     private Integer reminderTime; // minutes before start
 
-    private Long createdById;
+    private Long createdById; // Employee Id (người tạo lịch hẹn)
 
     private Long candidateId;
-    private List<Long> userIds;
+    private List<Long> employeeIds; // Danh sách Employee Ids tham gia (khi participantType = "USER")
 }

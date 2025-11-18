@@ -28,7 +28,7 @@ public class CreateRecruitmentRequestDTO {
     @NotNull
     private Long jobCategoryId;
     @NotNull
-    private Long requesterId;
+    private Long requesterId; // Employee Id
     @NotNull
     private Long departmentId;
 

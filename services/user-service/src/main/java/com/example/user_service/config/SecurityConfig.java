@@ -62,13 +62,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
             CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
+
+        String[] whiteList = {
+                "/api/v1/user-service/auth/**",
+                "/api/v1/user-service/departments/public/**"
+        };
         http
                 .csrf(c -> c.disable())
                 .authorizeHttpRequests(
                         authz -> authz
-                                .requestMatchers("/", "/api/v1/user-service/auth/login",
-                                        "/api/v1/user-service/auth/refresh",
-                                        "/api/v1/user-service/departments/public/**")
+                                .requestMatchers(whiteList)
                                 .permitAll()
                                 // .requestMatchers("/", "/api/v1/login", "api/v1/users").permitAll()
                                 .anyRequest().authenticated())

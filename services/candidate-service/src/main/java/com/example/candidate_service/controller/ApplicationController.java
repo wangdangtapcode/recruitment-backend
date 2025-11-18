@@ -59,7 +59,7 @@ public class ApplicationController {
     @ApiMessage("Tạo đơn ứng tuyển")
     public ResponseEntity<ApplicationResponseDTO> createApplication(@Validated @ModelAttribute CreateApplicationDTO dto)
             throws IOException, IdInvalidException {
-        dto.setCreatedBy(SecurityUtil.extractUserId());
+        dto.setCreatedBy(SecurityUtil.extractEmployeeId());
         return ResponseEntity.ok(applicationService.createApplication(dto));
     }
 
@@ -79,7 +79,7 @@ public class ApplicationController {
             @RequestParam String status,
             @RequestParam(required = false) String feedback) throws IdInvalidException {
         return ResponseEntity
-                .ok(applicationService.updateApplicationStatus(id, status, feedback, SecurityUtil.extractUserId()));
+                .ok(applicationService.updateApplicationStatus(id, status, feedback, SecurityUtil.extractEmployeeId()));
     }
 
     @PutMapping("/{id}")
@@ -87,7 +87,7 @@ public class ApplicationController {
     public ResponseEntity<ApplicationResponseDTO> updateApplication(
             @PathVariable Long id,
             @Validated @ModelAttribute UpdateApplicationDTO dto) throws IdInvalidException, IOException {
-        dto.setUpdatedBy(SecurityUtil.extractUserId());
+        dto.setUpdatedBy(SecurityUtil.extractEmployeeId());
         return ResponseEntity.ok(applicationService.updateApplication(id, dto));
     }
 

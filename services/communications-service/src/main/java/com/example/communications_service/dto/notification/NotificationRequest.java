@@ -24,11 +24,7 @@ public class NotificationRequest {
     @NotBlank(message = "Message is required")
     private String message;
 
-    private String priority = "NORMAL"; // "LOW", "NORMAL", "HIGH", "URGENT"
-
     private Long templateId;
 
     private Map<String, Object> variables;
 }
-
-

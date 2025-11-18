@@ -68,11 +68,11 @@ public class ScheduleService {
             candidate.setSchedule(savedSchedule);
             savedSchedule.getParticipants().add(candidate);
         }
-        if (request.getUserIds() != null) {
-            for (Long uid : request.getUserIds()) {
+        if (request.getEmployeeIds() != null) {
+            for (Long employeeId : request.getEmployeeIds()) {
                 ScheduleParticipant userP = new ScheduleParticipant();
                 userP.setParticipantType("USER");
-                userP.setParticipantId(uid);
+                userP.setParticipantId(employeeId); // Lưu employeeId
                 userP.setResponseStatus("PENDING");
                 userP.setSchedule(savedSchedule);
                 savedSchedule.getParticipants().add(userP);
@@ -110,11 +110,11 @@ public class ScheduleService {
             candidate.setSchedule(schedule);
             schedule.getParticipants().add(candidate);
         }
-        if (request.getUserIds() != null) {
-            for (Long uid : request.getUserIds()) {
+        if (request.getEmployeeIds() != null) {
+            for (Long employeeId : request.getEmployeeIds()) {
                 ScheduleParticipant userP = new ScheduleParticipant();
                 userP.setParticipantType("USER");
-                userP.setParticipantId(uid);
+                userP.setParticipantId(employeeId); // Lưu employeeId
                 userP.setResponseStatus("PENDING");
                 userP.setSchedule(schedule);
                 schedule.getParticipants().add(userP);
@@ -173,12 +173,12 @@ public class ScheduleService {
 
     public ScheduleDetailDTO getScheduleWithParticipantNames(Long id, String token) {
         Schedule schedule = getScheduleById(id);
-        Set<Long> userIds = new java.util.HashSet<>();
+        Set<Long> employeeIds = new java.util.HashSet<>();
         Set<Long> candidateIds = new java.util.HashSet<>();
         if (schedule.getParticipants() != null) {
             for (var p : schedule.getParticipants()) {
                 if ("USER".equalsIgnoreCase(p.getParticipantType())) {
-                    userIds.add(p.getParticipantId());
+                    employeeIds.add(p.getParticipantId()); // participantId lưu employeeId khi type = "USER"
                 } else if ("CANDIDATE".equalsIgnoreCase(p.getParticipantType())) {
                     candidateIds.add(p.getParticipantId());
                 }
@@ -186,8 +186,8 @@ public class ScheduleService {
         }
         Map<Long, String> userMap = new HashMap<>();
         Map<Long, String> candidateMap = new HashMap<>();
-        if (!userIds.isEmpty()) {
-            var res = userService.getUserNames(new java.util.ArrayList<>(userIds), token);
+        if (!employeeIds.isEmpty()) {
+            var res = userService.getEmployeeNames(new java.util.ArrayList<>(employeeIds), token);
             if (res.getStatusCode().is2xxSuccessful() && res.getBody() != null) {
                 JsonNode map = res.getBody();
                 map.fields().forEachRemaining(e -> userMap.put(Long.valueOf(e.getKey()), e.getValue().asText()));
@@ -322,15 +322,15 @@ public class ScheduleService {
                             && participantType.equalsIgnoreCase(p.getParticipantType())))
                     .toList();
         }
-        // Batch user/candidate names resolve
-        Set<Long> allUserIds = new java.util.HashSet<>();
+        // Batch employee/candidate names resolve
+        Set<Long> allEmployeeIds = new java.util.HashSet<>();
         Set<Long> allCandidateIds = new java.util.HashSet<>();
         for (Schedule s : schedules) {
             if (s.getParticipants() == null)
                 continue;
             for (var p : s.getParticipants()) {
                 if ("USER".equalsIgnoreCase(p.getParticipantType())) {
-                    allUserIds.add(p.getParticipantId());
+                    allEmployeeIds.add(p.getParticipantId()); // participantId lưu employeeId khi type = "USER"
                 } else if ("CANDIDATE".equalsIgnoreCase(p.getParticipantType())) {
                     allCandidateIds.add(p.getParticipantId());
                 }
@@ -338,8 +338,8 @@ public class ScheduleService {
         }
         Map<Long, String> userMap = new HashMap<>();
         Map<Long, String> candidateMap = new HashMap<>();
-        if (!allUserIds.isEmpty()) {
-            var res = userService.getUserNames(new java.util.ArrayList<>(allUserIds), token);
+        if (!allEmployeeIds.isEmpty()) {
+            var res = userService.getEmployeeNames(new java.util.ArrayList<>(allEmployeeIds), token);
             if (res.getStatusCode().is2xxSuccessful() && res.getBody() != null) {
                 JsonNode map = res.getBody();
                 map.fields().forEachRemaining(e -> userMap.put(Long.valueOf(e.getKey()), e.getValue().asText()));

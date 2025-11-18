@@ -28,14 +28,14 @@ public class ScheduleController {
 
     @PostMapping
     public ResponseEntity<Schedule> createSchedule(@Valid @RequestBody ScheduleRequest request) {
-        request.setCreatedById(SecurityUtil.extractUserId());
+        request.setCreatedById(SecurityUtil.extractEmployeeId());
         Schedule schedule = scheduleService.createSchedule(request);
         return ResponseEntity.ok(schedule);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Schedule> updateSchedule(@PathVariable Long id, @Valid @RequestBody ScheduleRequest request) {
-        request.setCreatedById(SecurityUtil.extractUserId());
+        request.setCreatedById(SecurityUtil.extractEmployeeId());
         Schedule schedule = scheduleService.updateSchedule(id, request);
         return ResponseEntity.ok(schedule);
     }

@@ -21,7 +21,7 @@ public class DepartmentService {
 
     public Department getById(Long id) {
         return departmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Department không tồn tại"));
+                .orElse(null);
     }
 
     public PaginationDTO getAll(Pageable pageable) {

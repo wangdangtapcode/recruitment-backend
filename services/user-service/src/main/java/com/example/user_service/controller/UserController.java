@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,9 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.user_service.dto.PaginationDTO;
 import com.example.user_service.dto.user.CreateUserDTO;
+import com.example.user_service.dto.user.UpdateUserDTO;
 import com.example.user_service.exception.IdInvalidException;
 import com.example.user_service.model.User;
 import com.example.user_service.service.UserService;
+import com.example.user_service.utils.annotation.ApiMessage;
 
 @RestController
 @RequestMapping("/api/v1/user-service/users")
@@ -37,6 +40,7 @@ public class UserController {
 
     // Unified GET endpoint for all users with filtering, pagination, and sorting
     @GetMapping
+    @ApiMessage("Lấy danh sách tất cả người dùng")
     public ResponseEntity<PaginationDTO> findAll(
             @RequestParam(name = "departmentId", required = false) Long departmentId,
             @RequestParam(name = "role", required = false) String role,
@@ -65,14 +69,21 @@ public class UserController {
     }
 
     @PostMapping
+    @ApiMessage("Tạo mới người dùng")
     public ResponseEntity<User> create(@RequestBody CreateUserDTO u) {
         String hashPassword = this.passwordEncoder.encode(u.getPassword());
         u.setPassword(hashPassword);
         User user = this.userService.create(u);
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
-
+    @PutMapping("/{id}")
+    @ApiMessage("Cập nhật người dùng")
+    public ResponseEntity<User> update(@PathVariable Long id, @RequestBody UpdateUserDTO updateUserDTO) {
+        User user = this.userService.update(id, updateUserDTO);
+        return ResponseEntity.ok(user);
+    }
     @DeleteMapping("/{id}")
+    @ApiMessage("Xóa người dùng")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (id >= 100) {
             throw new IdInvalidException("Id khong vuot qua 100");
@@ -82,11 +93,14 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @ApiMessage("Lấy người dùng theo ID")
     public ResponseEntity<User> findById(@PathVariable Long id) {
         User user = this.userService.getById(id);
         return ResponseEntity.ok(user);
     }
+
     @GetMapping(params = "ids")
+    @ApiMessage("Lấy danh sách người dùng theo IDs")
     public ResponseEntity<List<User>> findByIds(@RequestParam("ids") String ids) {
         List<Long> userIds = List.of(ids.split(","))
                 .stream()

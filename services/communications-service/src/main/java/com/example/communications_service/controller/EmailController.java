@@ -16,7 +16,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/communications-service/emails")
-@CrossOrigin(origins = "*")
 public class EmailController {
 
     private final EmailService emailService;

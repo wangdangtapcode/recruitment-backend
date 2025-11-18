@@ -58,13 +58,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
             CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
-        http
-                .csrf(c -> c.disable())
+        String[] whiteList = {
+                "/api/v1/communications-service/**"
+        };
+        http.csrf(c -> c.disable())
                 .cors(c -> c.disable())
                 .authorizeHttpRequests(
                         authz -> authz
-                                .requestMatchers("/api/v1/upload/**").permitAll()
-                                .requestMatchers("/api/v1/candidate-service/public/**").permitAll()
+                                .requestMatchers(whiteList).permitAll()
                                 .anyRequest().authenticated())
                 // .anyRequest().permitAll())
                 .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults())

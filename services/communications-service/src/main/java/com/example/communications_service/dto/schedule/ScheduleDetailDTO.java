@@ -25,7 +25,7 @@ public class ScheduleDetailDTO {
     private String timezone;
     private Integer reminderTime;
     private Long roomId;
-    private Long createdById;
+    private Long createdById; // Employee Id (người tạo lịch hẹn)
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

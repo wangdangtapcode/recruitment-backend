@@ -22,7 +22,7 @@ public class Comment {
     @JsonIgnore
     private Application application;
 
-    private Long userId;
+    private Long employeeId; // Người tạo bình luận
 
     @Column(columnDefinition = "TEXT")
     private String content;

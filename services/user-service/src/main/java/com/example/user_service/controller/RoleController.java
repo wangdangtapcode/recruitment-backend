@@ -1,7 +1,6 @@
 package com.example.user_service.controller;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.user_service.dto.PaginationDTO;
 import com.example.user_service.dto.role.CreateRoleDTO;
+import com.example.user_service.exception.CustomException;
+import com.example.user_service.exception.IdInvalidException;
 import com.example.user_service.model.Role;
 import com.example.user_service.service.RoleService;
 import com.example.user_service.utils.annotation.ApiMessage;
@@ -56,7 +57,11 @@ public class RoleController {
 
     @PostMapping
     @ApiMessage("Tạo mới vai trò")
-    public ResponseEntity<Role> create(@RequestBody CreateRoleDTO createRoleDTO) {
+    public ResponseEntity<Role> create(@RequestBody CreateRoleDTO createRoleDTO) throws IdInvalidException {
+
+        if (roleService.existsByName(createRoleDTO.getName())) {
+            throw new IdInvalidException("Tên vai trò đã tồn tại");
+        }
         return ResponseEntity.ok(roleService.create(createRoleDTO));
     }
 
@@ -69,7 +74,33 @@ public class RoleController {
     @DeleteMapping("/{id}")
     @ApiMessage("Xóa vai trò")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
+
+        if (this.roleService.getById(id) == null) {
+            throw new IdInvalidException("Vai trò  với id " + id + " không tồn tại");
+        }
         roleService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}")
+    @ApiMessage("Lấy vai trò theo ID")
+    public ResponseEntity<Role> findById(@PathVariable Long id) {
+        Role role = this.roleService.getById(id);
+        if (role == null) {
+            throw new CustomException("Vai trò với id " + id + " không tồn tại");
+        }
+        return ResponseEntity.ok(role);
+    }
+
+    @GetMapping(params = "ids")
+    @ApiMessage("Lấy danh sách nhân viên theo IDs")
+    public ResponseEntity<List<Role>> findByIds(@RequestParam("ids") String ids) {
+        List<Long> roleIds = List.of(ids.split(","))
+                .stream()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
+                .toList();
+        return ResponseEntity.ok(this.roleService.getByIds(roleIds));
     }
 }

@@ -35,15 +35,15 @@ public class CommentService {
         ensureApplicationExists(applicationId);
         List<Comment> comments = commentRepository.findByApplication_Id(applicationId);
 
-        // Batch fetch user names
-        Set<Long> userIds = comments.stream()
-                .map(Comment::getUserId)
+        // Batch fetch employee names
+        Set<Long> employeeIds = comments.stream()
+                .map(Comment::getEmployeeId)
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
 
         JsonNode idToName = null;
-        if (!userIds.isEmpty()) {
-            idToName = userService.getUserNames(userIds.stream().toList(), token).getBody();
+        if (!employeeIds.isEmpty()) {
+            idToName = userService.getEmployeeNames(employeeIds.stream().toList(), token).getBody();
         }
 
         final JsonNode finalIdToName = idToName;
@@ -59,19 +59,19 @@ public class CommentService {
     }
 
     @Transactional
-    public CommentResponseDTO create(CreateCommentDTO dto, Long userId) throws IdInvalidException {
+    public CommentResponseDTO create(CreateCommentDTO dto, Long employeeId) throws IdInvalidException {
         Application application = applicationRepository.findById(dto.getApplicationId())
                 .orElseThrow(() -> new IdInvalidException("Đơn ứng tuyển không tồn tại"));
         Comment c = new Comment();
         c.setApplication(application);
-        c.setUserId(userId);
+        c.setEmployeeId(employeeId);
         c.setContent(dto.getContent());
         Comment saved = commentRepository.save(c);
         return toResponse(saved, null);
     }
 
     @Transactional
-    public CommentResponseDTO update(Long id, UpdateCommentDTO dto, Long userId) throws IdInvalidException {
+    public CommentResponseDTO update(Long id, UpdateCommentDTO dto, Long employeeId) throws IdInvalidException {
         Comment c = commentRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("Bình luận không tồn tại"));
         if (dto.getContent() != null) {
@@ -98,13 +98,13 @@ public class CommentService {
     private CommentResponseDTO toResponse(Comment c, JsonNode idToName) {
         CommentResponseDTO d = new CommentResponseDTO();
         d.setId(c.getId());
-        d.setUserId(c.getUserId());
+        d.setEmployeeId(c.getEmployeeId());
         d.setContent(c.getContent());
         d.setCreatedAt(c.getCreatedAt());
-        if (idToName != null && c.getUserId() != null) {
-            JsonNode nameNode = idToName.get(String.valueOf(c.getUserId()));
+        if (idToName != null && c.getEmployeeId() != null) {
+            JsonNode nameNode = idToName.get(String.valueOf(c.getEmployeeId()));
             if (nameNode != null) {
-                d.setUserName(nameNode.asText());
+                d.setEmployeeName(nameNode.asText());
             }
         }
         return d;

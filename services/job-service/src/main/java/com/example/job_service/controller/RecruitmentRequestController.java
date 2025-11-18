@@ -31,7 +31,7 @@ public class RecruitmentRequestController {
     @PostMapping
     @ApiMessage("Tạo yêu cầu tuyển dụng")
     public ResponseEntity<RecruitmentRequest> create(@Validated @RequestBody CreateRecruitmentRequestDTO dto) {
-        
+
         return ResponseEntity.ok(recruitmentRequestService.create(dto));
     }
 
@@ -39,7 +39,9 @@ public class RecruitmentRequestController {
     @ApiMessage("Duyệt yêu cầu tuyển dụng")
     public ResponseEntity<RecruitmentRequest> approve(@PathVariable Long id,
             @Validated @RequestBody ApproveRecruitmentRequestDTO dto) throws IdInvalidException {
-        return ResponseEntity.ok(recruitmentRequestService.approve(id, dto));
+
+        Long approvedId = SecurityUtil.extractEmployeeId();
+        return ResponseEntity.ok(recruitmentRequestService.approve(id, dto, approvedId));
     }
 
     @GetMapping("/department/{departmentId}")
