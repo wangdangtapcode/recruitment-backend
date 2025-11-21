@@ -27,9 +27,52 @@ public class ApprovalTracking {
     @Column(name = "step_id", nullable = false)
     private Long stepId;
 
+    /**
+     * Bước workflow hiện tại của request (để track tuần tự)
+     * Có thể khác step_id nếu đang ở bước khác
+     */
+    @Column(name = "current_step_id")
+    private Long currentStepId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ApprovalStatus status = ApprovalStatus.PENDING;
+
+    /**
+     * Loại hành động: APPROVE, REJECT, RETURN, CANCEL
+     */
+    @Column(name = "action_type", length = 20)
+    private String actionType;
+
+    /**
+     * Bước được trả về (khi actionType = 'RETURN')
+     */
+    @Column(name = "returned_to_step_id")
+    private Long returnedToStepId;
+
+    /**
+     * Thời điểm bị trả về
+     */
+    @Column(name = "returned_at")
+    private OffsetDateTime returnedAt;
+
+    /**
+     * Bước hủy request (khi actionType = 'CANCEL')
+     */
+    @Column(name = "cancelled_by_step_id")
+    private Long cancelledByStepId;
+
+    /**
+     * User hủy request
+     */
+    @Column(name = "cancelled_by_user_id")
+    private Long cancelledByUserId;
+
+    /**
+     * Thời điểm hủy
+     */
+    @Column(name = "cancelled_at")
+    private OffsetDateTime cancelledAt;
 
     // User được gán để phê duyệt (tìm từ User_Positions dựa trên
     // approver_position_id)

@@ -52,7 +52,7 @@ public class JobPositionController {
     public ResponseEntity<PaginationDTO> getAll(
             @RequestParam(name = "departmentId", required = false) Long departmentId,
             @RequestParam(name = "status", required = false) JobPositionStatus status,
-            @RequestParam(name = "categoryId", required = false) Long categoryId,
+            // @RequestParam(name = "categoryId", required = false) Long categoryId,
             @RequestParam(name = "published", required = false) Boolean published,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
@@ -79,7 +79,7 @@ public class JobPositionController {
         }
 
         return ResponseEntity.ok(jobPositionService.findAllWithFilters(
-                departmentId, status, categoryId, published, keyword, pageable, token));
+                departmentId, status, published, keyword, pageable, token));
     }
 
     @GetMapping("/status")
@@ -97,7 +97,7 @@ public class JobPositionController {
     @ApiMessage("Lấy danh sách vị trí tuyển dụng đã xuất bản (phân trang)")
     public ResponseEntity<PaginationDTO> getPublishedPaged(
             @RequestParam(name = "departmentId", required = false) Long departmentId,
-            @RequestParam(name = "categoryId", required = false) Long categoryId,
+            // @RequestParam(name = "categoryId", required = false) Long categoryId,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
@@ -122,7 +122,6 @@ public class JobPositionController {
                 jobPositionService.findAllWithFilters(
                         departmentId,
                         JobPositionStatus.PUBLISHED,
-                        categoryId,
                         true,
                         keyword,
                         pageable,

@@ -4,6 +4,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpEntity;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -145,6 +147,53 @@ public class UserService {
             // Nếu không tìm thấy hoặc lỗi, trả về null (có thể là email bên ngoài)
             return null;
         }
+    }
+
+    public List<Long> getEmployeeIdsByFilters(Long departmentId, Long positionId, String authToken) {
+        try {
+            UriComponentsBuilder builder = UriComponentsBuilder
+                    .fromUriString(userServiceUrl + "/api/v1/user-service/employees")
+                    .queryParam("page", 1)
+                    .queryParam("limit", 1000);
+
+            if (departmentId != null) {
+                builder.queryParam("departmentId", departmentId);
+            }
+            if (positionId != null) {
+                builder.queryParam("positionId", positionId);
+            }
+
+            String url = builder.toUriString();
+            System.out.println("url: " + url);
+            HttpHeaders headers = new HttpHeaders();
+            if (authToken != null && !authToken.isEmpty()) {
+                headers.set("Authorization", "Bearer " + authToken);
+            }
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    String.class);
+            System.out.println("response: " + response.getBody());
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode data = root.path("data").path("result");
+            System.out.println("data: " + data);
+            List<Long> result = new ArrayList<>();
+            if (data != null && data.isArray()) {
+                data.forEach(node -> {
+                    if (node.has("id")) {
+                        result.add(node.get("id").asLong());
+                    }
+                });
+            }
+            return result;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    public List<Long> getAllEmployeeIds(String authToken) {
+        return getEmployeeIdsByFilters(null, null, authToken);
     }
 
 }

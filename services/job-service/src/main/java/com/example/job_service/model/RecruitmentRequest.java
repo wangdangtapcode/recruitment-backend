@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.example.job_service.utils.enums.RecruitmentRequestStatus;
@@ -21,7 +20,7 @@ public class RecruitmentRequest {
     private Long id;
 
     private String title;
-    private int numberOfPositions;
+    private int quantity;
     private String priorityLevel;
 
     @Column(columnDefinition = "TEXT")
@@ -64,12 +63,36 @@ public class RecruitmentRequest {
     private String approvalNotes;
     private Long approvedId; // CEO Employee Id (lưu employeeId)
     private Long requesterId; // Employee request Id (lưu employeeId)
+
+    /**
+     * Người chịu trách nhiệm chính (Submitter/Owner)
+     * Thường là giống requesterId, nhưng có thể khác nếu thư ký nhập hộ sếp
+     */
+    @Column(name = "owner_user_id")
+    private Long ownerUserId;
+
+    /**
+     * Ngày gửi đi (khác ngày tạo nháp)
+     * NULL nếu chưa submit (status = DRAFT)
+     */
+    @Column(name = "submitted_at")
+    private LocalDateTime submittedAt;
+
+    /**
+     * Bước workflow hiện tại
+     * NULL nếu chưa submit hoặc đã kết thúc
+     */
+    @Column(name = "current_step_id")
+    private Long currentStepId;
+
+    private Long workflowId;
+
     private LocalDateTime approvedAt;
     private boolean isActive;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "job_category_id", nullable = false)
-    private JobCategory jobCategory;
+    // @ManyToOne(fetch = FetchType.EAGER)
+    // @JoinColumn(name = "job_category_id", nullable = false)
+    // private JobCategory jobCategory;
 
     private Long departmentId;
 }

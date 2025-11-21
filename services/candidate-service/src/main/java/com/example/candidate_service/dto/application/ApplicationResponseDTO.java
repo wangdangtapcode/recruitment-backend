@@ -26,6 +26,8 @@ public class ApplicationResponseDTO {
     private String fullName;
     private String email;
     private String phone;
+    private Long createdBy; // Employee ID (người tạo đơn ứng tuyển)
+    private Long updatedBy; // Employee ID (người cập nhật đơn ứng tuyển)
 
     public static ApplicationResponseDTO fromEntity(com.example.candidate_service.model.Application application) {
         ApplicationResponseDTO dto = new ApplicationResponseDTO();
@@ -38,6 +40,8 @@ public class ApplicationResponseDTO {
         dto.setFeedback(application.getFeedback());
         dto.setNotes(application.getNotes());
         dto.setJobPositionId(application.getJobPositionId());
+        dto.setCreatedBy(application.getCreatedBy());
+        dto.setUpdatedBy(application.getUpdatedBy());
         dto.setCandidateId(application.getCandidate() != null ? application.getCandidate().getId() : null);
         if (application.getCandidate() != null) {
             dto.setFullName(application.getCandidate().getFullName());

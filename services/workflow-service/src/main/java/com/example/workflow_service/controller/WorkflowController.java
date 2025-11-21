@@ -29,6 +29,7 @@ public class WorkflowController {
             @RequestParam(name = "type", required = false) WorkflowType type,
             @RequestParam(name = "isActive", required = false) Boolean isActive,
             @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "departmentId", required = false) Long departmentId,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
             @RequestParam(name = "sortBy", defaultValue = "id", required = false) String sortBy,
@@ -44,7 +45,7 @@ public class WorkflowController {
         Sort sort = Sort.by(direction, sortBy);
         Pageable pageable = PageRequest.of(page - 1, limit, sort);
 
-        return ResponseEntity.ok(workflowService.getAll(type, isActive, keyword, pageable));
+        return ResponseEntity.ok(workflowService.getAll(type, isActive, keyword, departmentId, pageable));
     }
 
     @GetMapping("/match")

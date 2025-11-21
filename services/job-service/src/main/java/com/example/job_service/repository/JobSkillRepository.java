@@ -9,17 +9,15 @@ import org.springframework.stereotype.Repository;
 
 import com.example.job_service.model.JobSkill;
 
-import java.util.List;
-
 @Repository
 public interface JobSkillRepository extends JpaRepository<JobSkill, Long> {
-    Page<JobSkill> findByIsActiveTrue(Pageable pageable);
+        Page<JobSkill> findByIsActiveTrue(Pageable pageable);
 
-    @Query("SELECT js FROM JobSkill js WHERE " +
-            "(:isActive IS NULL OR js.isActive = :isActive) AND " +
-            "(:keyword IS NULL OR LOWER(js.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(js.description) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<JobSkill> findByFilters(@Param("isActive") Boolean isActive,
-            @Param("keyword") String keyword,
-            Pageable pageable);
+        @Query("SELECT js FROM JobSkill js WHERE " +
+                        "(:isActive IS NULL OR js.isActive = :isActive) AND " +
+                        "(:keyword IS NULL OR LOWER(js.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                        "LOWER(js.description) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+        Page<JobSkill> findByFilters(@Param("isActive") Boolean isActive,
+                        @Param("keyword") String keyword,
+                        Pageable pageable);
 }

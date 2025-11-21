@@ -3,6 +3,9 @@ package com.example.communications_service.controller;
 import com.example.communications_service.dto.notification.NotificationRequest;
 import com.example.communications_service.model.Notification;
 import com.example.communications_service.service.NotificationService;
+import com.example.communications_service.utils.SecurityUtil;
+import com.example.communications_service.utils.annotation.ApiMessage;
+
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,57 +30,26 @@ public class NotificationController {
     public ResponseEntity<Notification> createNotification(@Valid @RequestBody NotificationRequest request) {
         Notification notification = notificationService.createNotification(
                 request.getRecipientId(),
-                request.getRecipientType(),
-                request.getChannel(),
                 request.getTitle(),
                 request.getMessage());
-
-        // Send notification immediately
-        notificationService.sendNotification(notification);
-
-        return ResponseEntity.ok(notification);
-    }
-
-    @PostMapping("/template")
-    public ResponseEntity<Notification> createNotificationFromTemplate(
-            @Valid @RequestBody NotificationRequest request) {
-        Notification notification = notificationService.createNotificationFromTemplate(
-                request.getRecipientId(),
-                request.getRecipientType(),
-                request.getChannel(),
-                request.getTemplateId(),
-                request.getVariables());
-
-        // Send notification immediately
-        notificationService.sendNotification(notification);
-
         return ResponseEntity.ok(notification);
     }
 
     @PostMapping("/bulk")
-    public ResponseEntity<String> sendBulkNotifications(@Valid @RequestBody List<NotificationRequest> requests) {
-        for (NotificationRequest request : requests) {
-            Notification notification = notificationService.createNotification(
-                    request.getRecipientId(),
-                    request.getRecipientType(),
-                    request.getChannel(),
-                    request.getTitle(),
-                    request.getMessage());
-            notificationService.sendNotification(notification);
-        }
-
-        return ResponseEntity.ok("Bulk notifications sent successfully");
+    public ResponseEntity<String> createBulkNotifications(@Valid @RequestBody List<NotificationRequest> requests) {
+        requests.forEach(req -> notificationService.createNotification(
+                req.getRecipientId(),
+                req.getTitle(),
+                req.getMessage()));
+        return ResponseEntity.ok("Notifications created successfully");
     }
 
     // Unified GET endpoint for all notifications with filtering, pagination, and
     // sorting
     @GetMapping
+    @ApiMessage("Lấy danh sách thông báo")
     public ResponseEntity<com.example.communications_service.dto.PaginationDTO> getAllNotifications(
-            @RequestParam(name = "recipientId", required = false) Long recipientId,
-            @RequestParam(name = "recipientType", required = false) String recipientType,
-            @RequestParam(name = "channel", required = false) String channel,
             @RequestParam(name = "status", required = false) String status,
-            @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
             @RequestParam(name = "sortBy", defaultValue = "id", required = false) String sortBy,
@@ -88,7 +60,7 @@ public class NotificationController {
             page = 1;
         if (limit < 1 || limit > 100)
             limit = 10;
-
+        Long recipientId = SecurityUtil.extractEmployeeId();
         // Create sort object
         Sort.Direction direction = sortOrder.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
         Sort sort = Sort.by(direction, sortBy);
@@ -97,14 +69,13 @@ public class NotificationController {
         Pageable pageable = PageRequest.of(page - 1, limit, sort);
 
         return ResponseEntity.ok(notificationService.getAllNotificationsWithFilters(
-                recipientId, recipientType, channel, status, keyword, pageable));
+                recipientId, status, pageable));
     }
 
-    @GetMapping("/recipient/{recipientId}/{recipientType}")
+    @GetMapping("/recipient/{recipientId}")
     public ResponseEntity<List<Notification>> getNotificationsByRecipient(
-            @PathVariable Long recipientId,
-            @PathVariable String recipientType) {
-        List<Notification> notifications = notificationService.getNotificationsByRecipient(recipientId, recipientType);
+            @PathVariable Long recipientId) {
+        List<Notification> notifications = notificationService.getNotificationsByRecipient(recipientId);
         return ResponseEntity.ok(notifications);
     }
 
@@ -114,11 +85,9 @@ public class NotificationController {
         return ResponseEntity.ok("Notification marked as read");
     }
 
-    @GetMapping("/stats/{recipientId}/{recipientType}")
+    @GetMapping("/stats/{recipientId}")
     public ResponseEntity<Map<String, Object>> getNotificationStats(
-            @PathVariable Long recipientId,
-            @PathVariable String recipientType) {
-        // This would typically return statistics like unread count, etc.
-        return ResponseEntity.ok(Map.of("message", "Stats endpoint - to be implemented"));
+            @PathVariable Long recipientId) {
+        return ResponseEntity.ok(notificationService.getNotificationStats(recipientId));
     }
 }

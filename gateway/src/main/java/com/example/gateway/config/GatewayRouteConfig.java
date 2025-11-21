@@ -28,6 +28,9 @@ public class GatewayRouteConfig {
                 // Workflow Service Routes
                 .route("workflow-service", r -> r.path("/api/v1/workflow-service/**")
                         .uri("http://localhost:8086"))
+                // Upload Service Routes
+                .route("upload-service", r -> r.path("/api/v1/upload/**")
+                        .uri("http://localhost:8087"))
                 .build();
     }
 }

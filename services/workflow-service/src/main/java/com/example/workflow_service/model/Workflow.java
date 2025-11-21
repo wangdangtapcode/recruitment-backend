@@ -29,6 +29,7 @@ public class Workflow {
     private String description;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private WorkflowType type;
 
     @Column(name = "apply_conditions", columnDefinition = "JSON")

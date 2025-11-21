@@ -2,6 +2,7 @@ package com.example.communications_service.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,17 +25,7 @@ public class Notification {
     private String message;
 
     @Column(name = "recipient_id")
-    private Long recipientId; 
-
-    // Có thể thêm loại người nhận để phân biệt
-    @Column(name = "recipient_type")
-    private String recipientType; // "USER" hoặc "CANDIDATE"
-
-    @Column(name = "notification_type")
-    private String notificationType; // "EMAIL", "SMS", "IN_APP", "PUSH"
-
-    @Column(name = "channel")
-    private String channel; // "EMAIL", "SMS", "ZALO", "IN_APP"
+    private Long recipientId;
 
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
@@ -62,11 +53,6 @@ public class Notification {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-
-    // Liên kết với mẫu đã tạo ra thông báo này
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "template_id")
-    private NotificationTemplate template;
 
     @PrePersist
     public void prePersist() {

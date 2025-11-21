@@ -4,6 +4,7 @@ import com.example.workflow_service.dto.PaginationDTO;
 import com.example.workflow_service.dto.approval.ApprovalTrackingResponseDTO;
 import com.example.workflow_service.dto.approval.ApproveStepDTO;
 import com.example.workflow_service.dto.approval.CreateApprovalTrackingDTO;
+import com.example.workflow_service.dto.approval.RequestWorkflowInfoDTO;
 import com.example.workflow_service.service.ApprovalTrackingService;
 import com.example.workflow_service.utils.annotation.ApiMessage;
 import com.example.workflow_service.utils.enums.ApprovalStatus;
@@ -77,4 +78,13 @@ public class ApprovalTrackingController {
             @Valid @RequestBody ApproveStepDTO dto) {
         return ResponseEntity.ok(approvalTrackingService.approve(id, dto));
     }
+
+    @GetMapping("/by-request/{requestId}")
+    @ApiMessage("Lấy thông tin workflow và approval tracking theo requestId")
+    public ResponseEntity<RequestWorkflowInfoDTO> getWorkflowInfoByRequestId(
+            @PathVariable Long requestId,
+            @RequestParam(name = "workflowId", required = false) Long workflowId) {
+        return ResponseEntity.ok(approvalTrackingService.getWorkflowInfoByRequestId(requestId, workflowId));
+    }
+
 }

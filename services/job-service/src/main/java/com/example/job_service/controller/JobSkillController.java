@@ -1,8 +1,5 @@
 package com.example.job_service.controller;
 
-import java.util.List;
-import java.util.Optional;
-
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -13,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.job_service.dto.PaginationDTO;
-import com.example.job_service.model.JobSkill;
 import com.example.job_service.service.JobSkillService;
 import com.example.job_service.utils.annotation.ApiMessage;
 

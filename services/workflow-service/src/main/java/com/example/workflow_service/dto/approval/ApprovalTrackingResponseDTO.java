@@ -22,6 +22,8 @@ public class ApprovalTrackingResponseDTO {
 
     private Long actionUserId;
 
+    private String actionUserName;
+
     private OffsetDateTime actionAt;
 
     private String notes;

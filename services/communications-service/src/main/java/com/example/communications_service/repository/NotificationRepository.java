@@ -14,24 +14,25 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-        List<Notification> findByRecipientIdAndRecipientType(Long recipientId, String recipientType);
+        List<Notification> findByRecipientId(Long recipientId);
 
-        List<Notification> findByRecipientIdAndRecipientTypeAndIsRead(Long recipientId, String recipientType,
-                        boolean isRead);
+        List<Notification> findByRecipientIdAndIsRead(Long recipientId, boolean isRead);
 
-        List<Notification> findByChannelAndDeliveryStatus(String channel, String deliveryStatus);
+        List<Notification> findByDeliveryStatus(String deliveryStatus);
 
         List<Notification> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
 
-        @Query("SELECT n FROM Notification n WHERE n.recipientId = :recipientId AND n.recipientType = :recipientType ORDER BY n.createdAt DESC")
-        List<Notification> findRecentNotificationsByRecipient(@Param("recipientId") Long recipientId,
-                        @Param("recipientType") String recipientType);
+        @Query("SELECT n FROM Notification n WHERE n.recipientId = :recipientId ORDER BY n.createdAt DESC")
+        List<Notification> findRecentNotificationsByRecipient(@Param("recipientId") Long recipientId);
 
-        @Query("SELECT COUNT(n) FROM Notification n WHERE n.recipientId = :recipientId AND n.recipientType = :recipientType AND n.isRead = false")
-        Long countUnreadNotifications(@Param("recipientId") Long recipientId,
-                        @Param("recipientType") String recipientType);
+        @Query("SELECT COUNT(n) FROM Notification n WHERE n.recipientId = :recipientId AND n.isRead = false")
+        Long countUnreadNotifications(@Param("recipientId") Long recipientId);
 
-        Page<Notification> findByRecipientIdAndRecipientType(Long recipientId, String recipientType, Pageable pageable);
+        Long countByRecipientIdAndIsReadFalse(Long recipientId);
 
-        Page<Notification> findByChannel(String channel, Pageable pageable);
+        Long countByIsReadFalse();
+
+        Page<Notification> findByRecipientId(Long recipientId, Pageable pageable);
+
+        Page<Notification> findByDeliveryStatus(String deliveryStatus, Pageable pageable);
 }

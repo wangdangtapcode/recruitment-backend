@@ -11,8 +11,12 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.job_service.dto.PaginationDTO;
 import com.example.job_service.dto.recruitment.ApproveRecruitmentRequestDTO;
+import com.example.job_service.dto.recruitment.CancelRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.CreateRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.RecruitmentRequestWithUserDTO;
+import com.example.job_service.dto.recruitment.RejectRecruitmentRequestDTO;
+import com.example.job_service.dto.recruitment.ReturnRecruitmentRequestDTO;
+import com.example.job_service.dto.recruitment.WithdrawRecruitmentRequestDTO;
 import com.example.job_service.exception.IdInvalidException;
 import com.example.job_service.model.RecruitmentRequest;
 import com.example.job_service.service.RecruitmentRequestService;
@@ -31,17 +35,72 @@ public class RecruitmentRequestController {
     @PostMapping
     @ApiMessage("Tạo yêu cầu tuyển dụng")
     public ResponseEntity<RecruitmentRequest> create(@Validated @RequestBody CreateRecruitmentRequestDTO dto) {
-
+        Long requesterId = SecurityUtil.extractEmployeeId();
+        dto.setRequesterId(requesterId);
         return ResponseEntity.ok(recruitmentRequestService.create(dto));
     }
 
-    @PostMapping("/{id}/approve")
-    @ApiMessage("Duyệt yêu cầu tuyển dụng")
-    public ResponseEntity<RecruitmentRequest> approve(@PathVariable Long id,
-            @Validated @RequestBody ApproveRecruitmentRequestDTO dto) throws IdInvalidException {
+    @PostMapping("/submit/{id}")
+    @ApiMessage("Submit yêu cầu tuyển dụng")
+    public ResponseEntity<RecruitmentRequest> submit(@PathVariable Long id) throws IdInvalidException {
+        Long actorId = SecurityUtil.extractEmployeeId();
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        if (token == null) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+        return ResponseEntity.ok(recruitmentRequestService.submit(id, actorId, token));
+    }
 
-        Long approvedId = SecurityUtil.extractEmployeeId();
-        return ResponseEntity.ok(recruitmentRequestService.approve(id, dto, approvedId));
+    @PostMapping("approve/{id}")
+    @ApiMessage("Phê duyệt bước hiện tại của yêu cầu tuyển dụng")
+    public ResponseEntity<RecruitmentRequest> approveStep(
+            @PathVariable Long id,
+            @Validated @RequestBody ApproveRecruitmentRequestDTO dto) throws IdInvalidException {
+        Long actorId = SecurityUtil.extractEmployeeId();
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        if (token == null) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+        return ResponseEntity.ok(recruitmentRequestService.approveStep(id, dto, actorId, token));
+    }
+
+    @PostMapping("reject/{id}")
+    @ApiMessage("Từ chối bước hiện tại của yêu cầu tuyển dụng")
+    public ResponseEntity<RecruitmentRequest> rejectStep(
+            @PathVariable Long id,
+            @Validated @RequestBody RejectRecruitmentRequestDTO dto) throws IdInvalidException {
+        Long actorId = SecurityUtil.extractEmployeeId();
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        if (token == null) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+        return ResponseEntity.ok(recruitmentRequestService.rejectStep(id, dto, actorId, token));
+    }
+
+    @PostMapping("/return/{id}")
+    @ApiMessage("Trả lại yêu cầu tuyển dụng")
+    public ResponseEntity<RecruitmentRequest> returnRequest(
+            @PathVariable Long id,
+            @Validated @RequestBody ReturnRecruitmentRequestDTO dto) throws IdInvalidException {
+        Long actorId = SecurityUtil.extractEmployeeId();
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        if (token == null) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+        return ResponseEntity.ok(recruitmentRequestService.returnRequest(id, dto, actorId, token));
+    }
+
+    @PostMapping("/cancel/{id}")
+    @ApiMessage("Hủy yêu cầu tuyển dụng")
+    public ResponseEntity<RecruitmentRequest> cancelRequest(
+            @PathVariable Long id,
+            @Validated @RequestBody CancelRecruitmentRequestDTO dto) throws IdInvalidException {
+        Long actorId = SecurityUtil.extractEmployeeId();
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        if (token == null) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+        return ResponseEntity.ok(recruitmentRequestService.cancel(id, dto, actorId, token));
     }
 
     @GetMapping("/department/{departmentId}")
@@ -123,11 +182,17 @@ public class RecruitmentRequestController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/reject")
-    @ApiMessage("Từ chối yêu cầu tuyển dụng")
-    public ResponseEntity<RecruitmentRequest> reject(@PathVariable Long id,
-            @RequestBody String reason) throws IdInvalidException {
-        return ResponseEntity.ok(recruitmentRequestService.reject(id, reason));
+    @PostMapping("/{id}/actions/withdraw")
+    @ApiMessage("Rút lại yêu cầu tuyển dụng (chỉ submitter/owner mới có thể rút)")
+    public ResponseEntity<RecruitmentRequest> withdrawRequest(
+            @PathVariable Long id,
+            @Validated @RequestBody WithdrawRecruitmentRequestDTO dto) throws IdInvalidException {
+        Long actorId = SecurityUtil.extractEmployeeId();
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        if (token == null) {
+            throw new RuntimeException("Token không hợp lệ");
+        }
+        return ResponseEntity.ok(recruitmentRequestService.withdraw(id, dto, actorId, token));
     }
 
 }

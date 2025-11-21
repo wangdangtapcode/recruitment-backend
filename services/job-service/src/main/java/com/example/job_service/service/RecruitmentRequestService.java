@@ -14,10 +14,16 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.job_service.dto.Meta;
 import com.example.job_service.dto.PaginationDTO;
 import com.example.job_service.dto.recruitment.ApproveRecruitmentRequestDTO;
+import com.example.job_service.dto.recruitment.CancelRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.CreateRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.RecruitmentRequestWithUserDTO;
+import com.example.job_service.dto.recruitment.RejectRecruitmentRequestDTO;
+import com.example.job_service.dto.recruitment.ReturnRecruitmentRequestDTO;
+import com.example.job_service.dto.recruitment.WithdrawRecruitmentRequestDTO;
 import com.example.job_service.exception.IdInvalidException;
 import com.example.job_service.exception.UserServiceException;
+import com.example.job_service.messaging.RecruitmentWorkflowEvent;
+import com.example.job_service.messaging.RecruitmentWorkflowProducer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.example.job_service.model.JobCategory;
 import com.example.job_service.model.RecruitmentRequest;
@@ -29,20 +35,27 @@ public class RecruitmentRequestService {
     private final RecruitmentRequestRepository recruitmentRequestRepository;
     private final JobCategoryService jobCategoryService;
     private final UserService userService;
+    private final RecruitmentWorkflowProducer workflowProducer;
+    private final WorkflowServiceClient workflowServiceClient;
 
     public RecruitmentRequestService(RecruitmentRequestRepository recruitmentRequestRepository,
-            JobCategoryService jobCategoryService, UserService userService) {
+            JobCategoryService jobCategoryService,
+            UserService userService,
+            RecruitmentWorkflowProducer workflowProducer,
+            WorkflowServiceClient workflowServiceClient) {
         this.recruitmentRequestRepository = recruitmentRequestRepository;
         this.jobCategoryService = jobCategoryService;
         this.userService = userService;
+        this.workflowProducer = workflowProducer;
+        this.workflowServiceClient = workflowServiceClient;
     }
 
     @Transactional
     public RecruitmentRequest create(CreateRecruitmentRequestDTO dto) {
-        JobCategory category = jobCategoryService.findById(dto.getJobCategoryId());
+        // JobCategory category = jobCategoryService.findById(dto.getJobCategoryId());
         RecruitmentRequest rr = new RecruitmentRequest();
         rr.setTitle(dto.getTitle());
-        rr.setNumberOfPositions(dto.getNumberOfPositions());
+        rr.setQuantity(dto.getQuantity());
         rr.setPriorityLevel(dto.getPriorityLevel());
         rr.setReason(dto.getReason());
         rr.setDescription(dto.getDescription());
@@ -57,23 +70,56 @@ public class RecruitmentRequestService {
 
         rr.setLocation(dto.getLocation());
         rr.setExceedBudget(dto.isExceedBudget());
-        rr.setStatus(RecruitmentRequestStatus.PENDING);
+        rr.setStatus(RecruitmentRequestStatus.DRAFT);
         rr.setRequesterId(dto.getRequesterId());
-        rr.setJobCategory(category);
+        rr.setOwnerUserId(dto.getRequesterId());
+        rr.setWorkflowId(dto.getWorkflowId());
+        // rr.setJobCategory(category);
         rr.setDepartmentId(dto.getDepartmentId());
         rr.setActive(true);
         return recruitmentRequestRepository.save(rr);
     }
 
     @Transactional
-    public RecruitmentRequest approve(Long id, ApproveRecruitmentRequestDTO dto, Long approvedId)
+    public RecruitmentRequest approveStep(Long id, ApproveRecruitmentRequestDTO dto, Long actorId, String token)
             throws IdInvalidException {
-        RecruitmentRequest rr = this.findById(id);
-        rr.setStatus(RecruitmentRequestStatus.APPROVED);
-        rr.setApprovedId(approvedId); // Lưu employeeId
-        rr.setApprovalNotes(dto.getApprovalNotes());
-        rr.setApprovedAt(LocalDateTime.now());
-        return recruitmentRequestRepository.save(rr);
+        RecruitmentRequest request = this.findById(id);
+        if (request.getStatus() != RecruitmentRequestStatus.SUBMITTED
+                && request.getStatus() != RecruitmentRequestStatus.PENDING) {
+            throw new IllegalStateException("Chỉ có thể phê duyệt yêu cầu ở trạng thái SUBMITTED hoặc PENDING");
+        }
+
+        // Lưu currentStepId trước khi xử lý
+        Long currentStepId = request.getCurrentStepId();
+
+        // Approve: Vẫn giữ SUBMITTED/PENDING, workflow-service sẽ xử lý chuyển bước
+        // Chỉ khi workflow-service xác nhận đã hết bước thì mới chuyển sang APPROVED
+        request.setApprovalNotes(dto.getApprovalNotes());
+        RecruitmentRequest saved = recruitmentRequestRepository.save(request);
+        publishWorkflowEvent("STEP_APPROVED", saved, actorId, dto.getApprovalNotes(), null, currentStepId, null, token);
+        return saved;
+    }
+
+    @Transactional
+    public RecruitmentRequest rejectStep(Long id, RejectRecruitmentRequestDTO dto, Long actorId, String token)
+            throws IdInvalidException {
+        RecruitmentRequest request = this.findById(id);
+        if (request.getStatus() != RecruitmentRequestStatus.SUBMITTED
+                && request.getStatus() != RecruitmentRequestStatus.PENDING) {
+            throw new IllegalStateException("Chỉ có thể từ chối yêu cầu ở trạng thái SUBMITTED hoặc PENDING");
+        }
+
+        // Lưu currentStepId trước khi xử lý
+        Long currentStepId = request.getCurrentStepId();
+
+        // Reject: Từ chối ở bước này, kết thúc luồng
+        request.setStatus(RecruitmentRequestStatus.REJECTED);
+        request.setApprovalNotes(dto.getReason());
+        request.setApprovedAt(LocalDateTime.now());
+        request.setCurrentStepId(null); // Không còn bước nào
+        RecruitmentRequest saved = recruitmentRequestRepository.save(request);
+        publishWorkflowEvent("STEP_REJECTED", saved, actorId, null, dto.getReason(), currentStepId, null, token);
+        return saved;
     }
 
     public RecruitmentRequest findById(Long id) throws IdInvalidException {
@@ -162,6 +208,20 @@ public class RecruitmentRequestService {
                 throw new UserServiceException(departmentResponse);
             }
         }
+
+        // Lấy thông tin workflow nếu có workflowId
+        dto.setWorkflowId(request.getWorkflowId());
+        dto.setSubmittedAt(request.getSubmittedAt());
+        dto.setOwnerUserId(request.getOwnerUserId());
+
+        // Luôn gọi để lấy workflow info (có thể có tracking ngay cả khi chưa có
+        // workflowId trong request)
+        JsonNode workflowInfo = workflowServiceClient.getWorkflowInfoByRequestId(
+                request.getId(), request.getWorkflowId(), token);
+        if (workflowInfo != null) {
+            dto.setWorkflowInfo(workflowInfo);
+        }
+
         return dto;
     }
 
@@ -241,10 +301,10 @@ public class RecruitmentRequestService {
     @Transactional
     public RecruitmentRequest update(Long id, CreateRecruitmentRequestDTO dto) throws IdInvalidException {
         RecruitmentRequest rr = this.findById(id);
-        JobCategory category = jobCategoryService.findById(dto.getJobCategoryId());
+        // JobCategory category = jobCategoryService.findById(dto.getJobCategoryId());
 
         rr.setTitle(dto.getTitle());
-        rr.setNumberOfPositions(dto.getNumberOfPositions());
+        rr.setQuantity(dto.getQuantity());
         rr.setPriorityLevel(dto.getPriorityLevel());
         rr.setReason(dto.getReason());
         rr.setDescription(dto.getDescription());
@@ -259,7 +319,7 @@ public class RecruitmentRequestService {
 
         rr.setLocation(dto.getLocation());
         rr.setExceedBudget(dto.isExceedBudget());
-        rr.setJobCategory(category);
+        // rr.setJobCategory(category);
         rr.setDepartmentId(dto.getDepartmentId());
 
         return recruitmentRequestRepository.save(rr);
@@ -274,12 +334,126 @@ public class RecruitmentRequestService {
     }
 
     @Transactional
-    public RecruitmentRequest reject(Long id, String reason) throws IdInvalidException {
-        RecruitmentRequest rr = this.findById(id);
-        rr.setStatus(RecruitmentRequestStatus.REJECTED);
-        rr.setApprovalNotes(reason);
-        rr.setApprovedAt(LocalDateTime.now());
-        return recruitmentRequestRepository.save(rr);
+    public RecruitmentRequest submit(Long id, Long actorId, String token) throws IdInvalidException {
+        RecruitmentRequest request = this.findById(id);
+        if (request.getStatus() != RecruitmentRequestStatus.DRAFT
+                && request.getStatus() != RecruitmentRequestStatus.RETURNED) {
+            throw new IllegalStateException("Chỉ có thể submit khi yêu cầu ở trạng thái DRAFT hoặc RETURNED");
+        }
+        // request.setStatus(RecruitmentRequestStatus.SUBMITTED);
+        request.setStatus(RecruitmentRequestStatus.PENDING);
+
+        request.setSubmittedAt(LocalDateTime.now());
+        if (request.getOwnerUserId() == null) {
+            request.setOwnerUserId(actorId);
+        }
+
+        // Nếu submit lại sau return, workflow-service sẽ xử lý tạo tracking từ
+        // returnedToStepId
+        // Nếu là submit lần đầu, workflow-service sẽ tạo tracking từ bước đầu tiên
+
+        RecruitmentRequest saved = recruitmentRequestRepository.save(request);
+
+        publishWorkflowEvent("REQUEST_SUBMITTED", saved, actorId, null, null, null, null, token);
+        return saved;
+    }
+
+    @Transactional
+    public RecruitmentRequest returnRequest(Long id, ReturnRecruitmentRequestDTO dto, Long actorId, String token)
+            throws IdInvalidException {
+        RecruitmentRequest request = this.findById(id);
+        if (request.getStatus() != RecruitmentRequestStatus.SUBMITTED
+                && request.getStatus() != RecruitmentRequestStatus.PENDING) {
+            throw new IllegalStateException("Chỉ có thể trả về yêu cầu đang SUBMITTED hoặc PENDING");
+        }
+
+        // Lưu currentStepId trước khi return
+        Long currentStepId = request.getCurrentStepId();
+
+        request.setStatus(RecruitmentRequestStatus.RETURNED);
+        request.setApprovalNotes(dto.getReason());
+        // Giữ nguyên currentStepId để workflow-service biết đang ở bước nào
+        RecruitmentRequest saved = recruitmentRequestRepository.save(request);
+        publishWorkflowEvent("REQUEST_RETURNED", saved, actorId, null, dto.getReason(), currentStepId,
+                dto.getReturnedToStepId(), token);
+        return saved;
+    }
+
+    @Transactional
+    public RecruitmentRequest cancel(Long id, CancelRecruitmentRequestDTO dto, Long actorId, String token)
+            throws IdInvalidException {
+        RecruitmentRequest request = this.findById(id);
+        if (request.getStatus() == RecruitmentRequestStatus.CANCELLED) {
+            return request;
+        }
+
+        // Cancel có thể thực hiện ở bất kỳ trạng thái nào (trừ đã
+        // APPROVED/REJECTED/CANCELLED)
+        if (request.getStatus() == RecruitmentRequestStatus.APPROVED
+                || request.getStatus() == RecruitmentRequestStatus.REJECTED) {
+            throw new IllegalStateException("Không thể hủy yêu cầu đã được APPROVED hoặc REJECTED");
+        }
+
+        Long currentStepId = request.getCurrentStepId();
+        request.setStatus(RecruitmentRequestStatus.CANCELLED);
+        request.setApprovalNotes(dto.getReason());
+        request.setCurrentStepId(null);
+        RecruitmentRequest saved = recruitmentRequestRepository.save(request);
+        publishWorkflowEvent("REQUEST_CANCELLED", saved, actorId, null, dto.getReason(), currentStepId, null, token);
+        return saved;
+    }
+
+    @Transactional
+    public RecruitmentRequest withdraw(Long id, WithdrawRecruitmentRequestDTO dto, Long actorId, String token)
+            throws IdInvalidException {
+        RecruitmentRequest request = this.findById(id);
+
+        // Chỉ có thể withdraw khi đang SUBMITTED hoặc PENDING
+        if (request.getStatus() != RecruitmentRequestStatus.SUBMITTED
+                && request.getStatus() != RecruitmentRequestStatus.PENDING) {
+            throw new IllegalStateException("Chỉ có thể rút lại yêu cầu đang SUBMITTED hoặc PENDING");
+        }
+
+        // Chỉ submitter/owner mới có thể withdraw
+        if (!request.getOwnerUserId().equals(actorId) && !request.getRequesterId().equals(actorId)) {
+            throw new IllegalStateException("Chỉ submitter hoặc owner mới có thể rút lại yêu cầu");
+        }
+
+        Long currentStepId = request.getCurrentStepId();
+        request.setStatus(RecruitmentRequestStatus.WITHDRAWN);
+        request.setApprovalNotes(dto.getReason());
+        request.setCurrentStepId(null);
+        RecruitmentRequest saved = recruitmentRequestRepository.save(request);
+
+        publishWorkflowEvent("REQUEST_WITHDRAWN", saved, actorId, null, dto.getReason(), currentStepId, null, token);
+        return saved;
+    }
+
+    private void publishWorkflowEvent(String eventType,
+            RecruitmentRequest request,
+            Long actorId,
+            String notes,
+            String reason,
+            Long currentStepId,
+            Long returnedToStepId,
+            String authToken) {
+        RecruitmentWorkflowEvent event = RecruitmentWorkflowEvent.builder()
+                .eventType(eventType)
+                .requestId(request.getId())
+                .workflowId(request.getWorkflowId())
+                .currentStepId(currentStepId != null ? currentStepId : request.getCurrentStepId())
+                .actorUserId(actorId)
+                .notes(notes)
+                .reason(reason)
+                .requestStatus(request.getStatus().name())
+                .ownerUserId(request.getOwnerUserId())
+                .requesterId(request.getRequesterId())
+                .departmentId(request.getDepartmentId())
+                .occurredAt(LocalDateTime.now())
+                .returnedToStepId(returnedToStepId)
+                .build();
+        event.setAuthToken(authToken);
+        workflowProducer.publishEvent(event);
     }
 
 }

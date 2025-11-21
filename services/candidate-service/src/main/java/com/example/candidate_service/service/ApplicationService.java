@@ -261,7 +261,7 @@ public class ApplicationService {
                 .orElseThrow(() -> new IdInvalidException("Đơn ứng tuyển không tồn tại"));
 
         // Cập nhật trạng thái application
-        application.setStatus(ApplicationStatus.APPROVED);
+        application.setStatus(ApplicationStatus.INTERVIEW);
         application.setFeedback(feedback);
 
         // Cập nhật trạng thái candidate thành "SHORTLISTED"

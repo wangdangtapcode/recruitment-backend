@@ -113,4 +113,72 @@ public class CandidateService {
             return ResponseEntity.internalServerError().body(errorNode);
         }
     }
+
+    /**
+     * Tìm candidate theo email và lấy application gần nhất để xác định nhân viên
+     * phụ trách
+     * 
+     * @param email Email của candidate
+     * @return employeeId (nhân viên phụ trách) hoặc null nếu không tìm thấy
+     */
+    public Long getEmployeeIdFromCandidateEmail(String email) {
+        try {
+            // Tìm candidate bằng keyword search (email)
+            String candidateUrl = candidateServiceUrl + "/api/v1/candidate-service/candidates?keyword="
+                    + java.net.URLEncoder.encode(email, java.nio.charset.StandardCharsets.UTF_8)
+                    + "&page=1&limit=1";
+            HttpHeaders headers = new HttpHeaders();
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> candidateResponse = restTemplate.exchange(
+                    candidateUrl, HttpMethod.GET, entity, String.class);
+
+            JsonNode candidateRoot = objectMapper.readTree(candidateResponse.getBody());
+            JsonNode candidateData = candidateRoot.path("data").path("result");
+
+            if (candidateData == null || !candidateData.isArray() || candidateData.size() == 0) {
+                return null;
+            }
+
+            // Tìm candidate có email khớp chính xác
+            Long candidateId = null;
+            for (JsonNode candidate : candidateData) {
+                if (candidate.has("email") && email.equalsIgnoreCase(candidate.get("email").asText())) {
+                    candidateId = candidate.get("id").asLong();
+                    break;
+                }
+            }
+
+            if (candidateId == null) {
+                return null;
+            }
+
+            // Lấy application gần nhất của candidate này (sắp xếp theo id desc để lấy mới
+            // nhất)
+            String applicationUrl = candidateServiceUrl + "/api/v1/candidate-service/applications?candidateId="
+                    + candidateId + "&page=1&limit=1&sortBy=id&sortOrder=desc";
+
+            ResponseEntity<String> applicationResponse = restTemplate.exchange(
+                    applicationUrl, HttpMethod.GET, entity, String.class);
+
+            JsonNode applicationRoot = objectMapper.readTree(applicationResponse.getBody());
+            JsonNode applicationData = applicationRoot.path("data").path("result");
+
+            if (applicationData != null && applicationData.isArray() && applicationData.size() > 0) {
+                JsonNode firstApp = applicationData.get(0);
+                // Ưu tiên updatedBy (người cập nhật gần nhất), nếu không có thì dùng createdBy
+                if (firstApp.has("updatedBy") && !firstApp.get("updatedBy").isNull()) {
+                    return firstApp.get("updatedBy").asLong();
+                }
+                if (firstApp.has("createdBy") && !firstApp.get("createdBy").isNull()) {
+                    return firstApp.get("createdBy").asLong();
+                }
+            }
+
+            return null;
+        } catch (Exception e) {
+            // Nếu không tìm thấy hoặc lỗi, trả về null
+            return null;
+        }
+    }
 }

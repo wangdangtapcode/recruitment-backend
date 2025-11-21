@@ -13,7 +13,7 @@ public class CreateRecruitmentRequestDTO {
     @NotNull
     private String title;
     @NotNull
-    private Integer numberOfPositions;
+    private Integer quantity;
     private String priorityLevel;
     private String reason;
     private String description;
@@ -25,12 +25,16 @@ public class CreateRecruitmentRequestDTO {
     private String location;
     private boolean isExceedBudget;
 
-    @NotNull
-    private Long jobCategoryId;
-    @NotNull
+    // @NotNull
+    // private Long jobCategoryId;
     private Long requesterId; // Employee Id
     @NotNull
     private Long departmentId;
+
+    /**
+     * Người tạo có thể chọn workflow cụ thể hoặc để hệ thống tự chọn.
+     */
+    private Long workflowId;
 
     /**
      * Validation: Nếu vượt quỹ thì phải có salary

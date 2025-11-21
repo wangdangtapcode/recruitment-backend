@@ -22,6 +22,7 @@ public class GmailInboxService {
     private final MailMessageRepository mailRepo;
     private final MailAttachmentRepository attachmentRepo;
     private final UserService userService;
+    private final CandidateService candidateService;
 
     @Value("${spring.mail.username}")
     private String gmailUsername;
@@ -30,11 +31,13 @@ public class GmailInboxService {
     private String gmailPassword;
 
     public GmailInboxService(MailMessageRepository mailRepo,
-                             MailAttachmentRepository attachmentRepo,
-                             UserService userService) {
+            MailAttachmentRepository attachmentRepo,
+            UserService userService,
+            CandidateService candidateService) {
         this.mailRepo = mailRepo;
         this.attachmentRepo = attachmentRepo;
         this.userService = userService;
+        this.candidateService = candidateService;
     }
 
     /**
@@ -57,7 +60,7 @@ public class GmailInboxService {
 
             // Lấy các email chưa đọc
             Message[] messages = inbox.getMessages();
-            
+
             // Đọc từ mới nhất đến cũ nhất
             for (int i = messages.length - 1; i >= 0; i--) {
                 Message message = messages[i];
@@ -65,8 +68,8 @@ public class GmailInboxService {
                     saveEmailFromGmail(message);
                 } catch (Exception e) {
                     // Log lỗi nhưng tiếp tục xử lý email tiếp theo
-                    System.err.println("Lỗi khi lưu email (Message-ID: " + 
-                        (message.getMessageNumber()) + "): " + e.getMessage());
+                    System.err.println("Lỗi khi lưu email (Message-ID: " +
+                            (message.getMessageNumber()) + "): " + e.getMessage());
                     // Không in stack trace đầy đủ để tránh log quá dài
                     if (e.getCause() != null) {
                         System.err.println("  Nguyên nhân: " + e.getCause().getMessage());
@@ -84,7 +87,8 @@ public class GmailInboxService {
 
     /**
      * Lưu một email từ Gmail vào database
-     * Sử dụng REQUIRES_NEW để mỗi email có transaction riêng, tránh lỗi khi có exception
+     * Sử dụng REQUIRES_NEW để mỗi email có transaction riêng, tránh lỗi khi có
+     * exception
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     private void saveEmailFromGmail(Message message) throws Exception {
@@ -95,13 +99,13 @@ public class GmailInboxService {
         }
 
         MailMessage mailMessage = new MailMessage();
-        
+
         // Lấy thông tin người gửi
         Address[] fromAddresses = message.getFrom();
         if (fromAddresses != null && fromAddresses.length > 0) {
             String fromEmail = ((InternetAddress) fromAddresses[0]).getAddress();
             mailMessage.setFromEmail(fromEmail);
-            
+
             // Tìm userId từ email (nếu là nhân viên)
             Long fromUserId = userService.getUserIdByEmail(fromEmail);
             mailMessage.setFromUserId(fromUserId);
@@ -112,11 +116,48 @@ public class GmailInboxService {
         if (toAddresses != null && toAddresses.length > 0) {
             String toEmail = ((InternetAddress) toAddresses[0]).getAddress();
             mailMessage.setToEmail(toEmail);
-            
+
             // Tìm userId từ email (nếu là nhân viên)
             Long toUserId = userService.getUserIdByEmail(toEmail);
+
+            // Nếu không tìm thấy nhân viên và email là từ ứng viên (reply hoặc email mới)
+            // thì cần xác định nhân viên phụ trách dựa vào email người gửi
+            if (toUserId == null) {
+                // Kiểm tra xem email có phải là reply không
+                String[] inReplyTo = message.getHeader("In-Reply-To");
+                String[] references = message.getHeader("References");
+
+                if ((inReplyTo != null && inReplyTo.length > 0) ||
+                        (references != null && references.length > 0)) {
+                    // Nếu là reply, tìm email gốc và lấy fromUserId (nhân viên) làm toUserId
+                    String originalMessageId = inReplyTo != null && inReplyTo.length > 0
+                            ? inReplyTo[0]
+                            : (references != null && references.length > 0 ? references[0].split("\\s+")[0] : null);
+
+                    if (originalMessageId != null) {
+                        MailMessage originalMail = mailRepo.findByGmailMessageId(originalMessageId);
+                        if (originalMail != null && originalMail.getFromUserId() != null) {
+                            toUserId = originalMail.getFromUserId();
+                        }
+                    }
+                }
+
+                // Nếu vẫn chưa có toUserId và email người gửi là ứng viên
+                // Tìm nhân viên phụ trách từ application của ứng viên
+                if (toUserId == null && fromAddresses != null && fromAddresses.length > 0) {
+                    String fromEmail = ((InternetAddress) fromAddresses[0]).getAddress();
+                    // Kiểm tra xem người gửi có phải là nhân viên không
+                    Long fromUserId = userService.getUserIdByEmail(fromEmail);
+                    if (fromUserId == null) {
+                        // Người gửi không phải nhân viên, có thể là ứng viên
+                        // Tìm nhân viên phụ trách từ application của ứng viên này
+                        toUserId = candidateService.getEmployeeIdFromCandidateEmail(fromEmail);
+                    }
+                }
+            }
+
             mailMessage.setToUserId(toUserId);
-            
+
             if (toUserId != null) {
                 mailMessage.setToType("USER");
             } else {
@@ -134,7 +175,7 @@ public class GmailInboxService {
 
         // Lưu attachments
         List<MailAttachment> attachments = extractAttachments(message, mailMessage);
-        
+
         // Thread ID (sử dụng In-Reply-To hoặc References nếu có)
         String threadId = getThreadId(message);
         mailMessage.setThreadId(threadId != null ? threadId : UUID.randomUUID().toString());
@@ -146,14 +187,14 @@ public class GmailInboxService {
         Date sentDate = message.getSentDate();
         if (sentDate != null) {
             mailMessage.setCreatedAt(LocalDateTime.ofInstant(
-                sentDate.toInstant(), ZoneId.systemDefault()));
+                    sentDate.toInstant(), ZoneId.systemDefault()));
         } else {
             mailMessage.setCreatedAt(LocalDateTime.now());
         }
 
         // Lưu vào database
         MailMessage saved = mailRepo.save(mailMessage);
-        
+
         // Lưu attachments sau khi mail đã được lưu
         for (MailAttachment attachment : attachments) {
             attachment.setMailMessage(saved);
@@ -166,16 +207,16 @@ public class GmailInboxService {
      */
     private String extractContent(Message message) throws Exception {
         Object content = message.getContent();
-        
+
         if (content instanceof String) {
             return (String) content;
         } else if (content instanceof MimeMultipart) {
             MimeMultipart multipart = (MimeMultipart) content;
             StringBuilder textContent = new StringBuilder();
-            
+
             for (int i = 0; i < multipart.getCount(); i++) {
                 BodyPart bodyPart = multipart.getBodyPart(i);
-                
+
                 if (bodyPart.isMimeType("text/plain")) {
                     textContent.append((String) bodyPart.getContent());
                 } else if (bodyPart.isMimeType("text/html")) {
@@ -183,10 +224,10 @@ public class GmailInboxService {
                     textContent.append((String) bodyPart.getContent());
                 }
             }
-            
+
             return textContent.toString();
         }
-        
+
         return "";
     }
 
@@ -196,22 +237,22 @@ public class GmailInboxService {
     private List<MailAttachment> extractAttachments(Message message, MailMessage mailMessage) throws Exception {
         List<MailAttachment> attachments = new ArrayList<>();
         Object content = message.getContent();
-        
+
         if (content instanceof MimeMultipart) {
             MimeMultipart multipart = (MimeMultipart) content;
-            
+
             for (int i = 0; i < multipart.getCount(); i++) {
                 BodyPart bodyPart = multipart.getBodyPart(i);
-                
+
                 if (Part.ATTACHMENT.equalsIgnoreCase(bodyPart.getDisposition()) ||
-                    bodyPart.getFileName() != null) {
-                    
+                        bodyPart.getFileName() != null) {
+
                     String fileName = bodyPart.getFileName();
                     if (fileName != null) {
                         MailAttachment attachment = new MailAttachment();
                         attachment.setFileName(fileName);
                         attachment.setContentType(bodyPart.getContentType());
-                        
+
                         // Lưu attachment vào Cloudinary hoặc lưu trực tiếp
                         // Ở đây tạm thời chỉ lưu thông tin, file sẽ được lưu sau
                         attachment.setFileSize((long) bodyPart.getSize());
@@ -220,7 +261,7 @@ public class GmailInboxService {
                 }
             }
         }
-        
+
         return attachments;
     }
 
@@ -247,7 +288,7 @@ public class GmailInboxService {
                 return originalMail.getThreadId();
             }
         }
-        
+
         String[] references = message.getHeader("References");
         if (references != null && references.length > 0) {
             String firstRef = references[0].split("\\s+")[0];
@@ -256,8 +297,7 @@ public class GmailInboxService {
                 return originalMail.getThreadId();
             }
         }
-        
+
         return null;
     }
 }
-

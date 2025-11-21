@@ -80,9 +80,11 @@ public class WorkflowService {
             WorkflowType type,
             Boolean isActive,
             String keyword,
+            Long departmentId,
             Pageable pageable) {
+        String typeString = type != null ? type.name() : null;
         Page<Workflow> workflowPage = workflowRepository.findByFilters(
-                type, isActive, keyword, pageable);
+                typeString, isActive, keyword, departmentId, pageable);
 
         List<Workflow> workflows = workflowPage.getContent();
 

@@ -13,12 +13,13 @@ import lombok.Data;
 public class RecruitmentRequestWithUserDTO {
     private Long id;
     private String title;
-    private Integer numberOfPositions;
+    private Integer quantity;
     private String priorityLevel;
     private String reason;
     private String description;
     private String requirements;
     private BigDecimal salaryMin;
+    private String benefits;
     private BigDecimal salaryMax;
     private String currency;
     private String location;
@@ -32,20 +33,27 @@ public class RecruitmentRequestWithUserDTO {
     private LocalDateTime approvedAt;
     private Long departmentId;
     private JsonNode department;
-    private String jobCategoryName;
+    // private String jobCategoryName;
     private boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private Long ownerUserId;
+    private LocalDateTime submittedAt;
+    // Thông tin workflow
+    private Long workflowId;
+    private JsonNode workflowInfo; // Thông tin workflow và approval tracking
+
     public static RecruitmentRequestWithUserDTO fromEntity(RecruitmentRequest entity) {
         RecruitmentRequestWithUserDTO dto = new RecruitmentRequestWithUserDTO();
         dto.setId(entity.getId());
         dto.setTitle(entity.getTitle());
-        dto.setNumberOfPositions(entity.getNumberOfPositions());
+        dto.setQuantity(entity.getQuantity());
         dto.setPriorityLevel(entity.getPriorityLevel());
         dto.setReason(entity.getReason());
         dto.setDescription(entity.getDescription());
         dto.setRequirements(entity.getRequirements());
-
+        dto.setBenefits(entity.getBenefits());
         // Chỉ set salary khi vượt quỹ
         if (entity.isExceedBudget()) {
             dto.setSalaryMin(entity.getSalaryMin());
@@ -61,7 +69,8 @@ public class RecruitmentRequestWithUserDTO {
         dto.setApprovalNotes(entity.getApprovalNotes());
         dto.setApprovedAt(entity.getApprovedAt());
         dto.setDepartmentId(entity.getDepartmentId());
-        dto.setJobCategoryName(entity.getJobCategory() != null ? entity.getJobCategory().getName() : null);
+        // dto.setJobCategoryName(entity.getJobCategory() != null ?
+        // entity.getJobCategory().getName() : null);
         dto.setActive(entity.isActive());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());

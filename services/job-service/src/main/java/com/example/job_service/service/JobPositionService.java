@@ -143,9 +143,9 @@ public class JobPositionService {
         return jobPositionRepository.findByDepartmentIdAndStatus(departmentId, status);
     }
 
-    public PaginationDTO findAllWithFilters(Long departmentId, JobPositionStatus status, Long categoryId,
+    public PaginationDTO findAllWithFilters(Long departmentId, JobPositionStatus status,
             Boolean published, String keyword, Pageable pageable, String token) {
-        Page<JobPosition> pageJobPosition = jobPositionRepository.findByFilters(departmentId, status, categoryId,
+        Page<JobPosition> pageJobPosition = jobPositionRepository.findByFilters(departmentId, status,
                 published, keyword, pageable);
 
         // Get unique department IDs
@@ -181,7 +181,7 @@ public class JobPositionService {
 
     public PaginationDTO findAllWithFiltersSimplified(Long departmentId, JobPositionStatus status, Long categoryId,
             Boolean published, String keyword, Pageable pageable, String token) {
-        Page<JobPosition> pageJobPosition = jobPositionRepository.findByFilters(departmentId, status, categoryId,
+        Page<JobPosition> pageJobPosition = jobPositionRepository.findByFilters(departmentId, status,
                 published, keyword, pageable);
 
         // Get unique department IDs

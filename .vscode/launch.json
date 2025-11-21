@@ -2,6 +2,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "UploadServiceApplication",
+            "request": "launch",
+            "mainClass": "com.example.upload_service.UploadServiceApplication",
+            "projectName": ""
+        },
+        {
+            "type": "java",
             "name": "CommunicationsServiceApplication",
             "request": "launch",
             "mainClass": "com.example.communications_service.CommunicationsServiceApplication",
