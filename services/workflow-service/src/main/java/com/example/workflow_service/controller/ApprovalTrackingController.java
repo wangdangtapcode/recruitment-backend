@@ -31,7 +31,7 @@ public class ApprovalTrackingController {
     public ResponseEntity<PaginationDTO> getAll(
             @RequestParam(name = "requestId", required = false) Long requestId,
             @RequestParam(name = "status", required = false) ApprovalStatus status,
-            @RequestParam(name = "assignedUserId", required = false) Long assignedUserId,
+            @RequestParam(name = "approverPositionId", required = false) Long approverPositionId,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
             @RequestParam(name = "sortBy", defaultValue = "id", required = false) String sortBy,
@@ -48,7 +48,7 @@ public class ApprovalTrackingController {
         Pageable pageable = PageRequest.of(page - 1, limit, sort);
 
         return ResponseEntity.ok(approvalTrackingService.getAll(
-                requestId, status, assignedUserId, pageable));
+                requestId, status, approverPositionId, pageable));
     }
 
     @GetMapping("/{id}")

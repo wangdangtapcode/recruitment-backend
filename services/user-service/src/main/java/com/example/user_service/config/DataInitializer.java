@@ -159,48 +159,38 @@ public class DataInitializer implements CommandLineRunner {
 
                 // =====================================================================================
                 // 2.1 TẠO QUYỀN (PERMISSIONS) THEO QUY ƯỚC <service>:<resource>:<action>
-                // Cho các controller trong user-service, job-service, candidate-service,
-                // communications-service
+                // Format mới: chỉ có 2 action: "read" và "manage"
+                // GET → "read", POST/PUT/PATCH/DELETE và các endpoint đặc biệt → "manage"
                 // =====================================================================================
                 List<String> permissionNames = Arrays.asList(
                                 // user-service permissions
-                                "user-service:permissions:read", "user-service:permissions:create",
-                                "user-service:permissions:update", "user-service:permissions:delete",
-                                "user-service:roles:read", "user-service:roles:create", "user-service:roles:update",
-                                "user-service:roles:delete",
-                                "user-service:departments:read", "user-service:departments:create",
-                                "user-service:departments:update", "user-service:departments:delete",
-                                "user-service:employees:read", "user-service:employees:create",
-                                "user-service:employees:update", "user-service:employees:delete",
-                                "user-service:positions:read", "user-service:positions:create",
-                                "user-service:positions:update", "user-service:positions:delete",
-                                "user-service:users:read", "user-service:users:create", "user-service:users:update",
-                                "user-service:users:delete",
+                                "user-service:permissions:read", "user-service:permissions:manage",
+                                "user-service:roles:read", "user-service:roles:manage",
+                                "user-service:departments:read", "user-service:departments:manage",
+                                "user-service:employees:read", "user-service:employees:manage",
+                                "user-service:positions:read", "user-service:positions:manage",
+                                "user-service:users:read", "user-service:users:manage",
                                 // job-service permissions
-                                "job-service:job-positions:read", "job-service:job-positions:create",
-                                "job-service:job-positions:update", "job-service:job-positions:delete",
-                                "job-service:job-positions:publish", "job-service:job-positions:close",
-                                "job-service:job-positions:reopen",
-                                "job-service:recruitment-requests:read", "job-service:recruitment-requests:create",
-                                "job-service:recruitment-requests:update", "job-service:recruitment-requests:delete",
-                                "job-service:recruitment-requests:approve", "job-service:recruitment-requests:reject",
-                                "job-service:job-skills:read",
-                                "job-service:job-categories:read",
+                                "job-service:job-positions:read", "job-service:job-positions:manage",
+                                "job-service:recruitment-requests:read", "job-service:recruitment-requests:manage",
+                                "job-service:job-skills:read", "job-service:job-skills:manage",
+                                "job-service:job-categories:read", "job-service:job-categories:manage",
                                 // candidate-service permissions
-                                "candidate-service:applications:read", "candidate-service:applications:create",
-                                "candidate-service:applications:update", "candidate-service:applications:delete",
-                                "candidate-service:applications:status", "candidate-service:applications:accept",
-                                "candidate-service:applications:reject",
-                                "candidate-service:candidates:read", "candidate-service:candidates:create",
-                                "candidate-service:candidates:update", "candidate-service:candidates:delete",
-                                "candidate-service:candidates:change-stage",
-                                "candidate-service:comments:read", "candidate-service:comments:create",
-                                "candidate-service:comments:update", "candidate-service:comments:delete",
+                                "candidate-service:applications:read", "candidate-service:applications:manage",
+                                "candidate-service:candidates:read", "candidate-service:candidates:manage",
+                                "candidate-service:comments:read", "candidate-service:comments:manage",
                                 // communications-service permissions
-                                "communications-service:schedules:read", "communications-service:schedules:create",
-                                "communications-service:schedules:update", "communications-service:schedules:delete",
-                                "communications-service:schedules:update-status",
-                                "communications-service:schedules:calendar");
+                                "communications-service:schedules:read", "communications-service:schedules:manage",
+                                "communications-service:notifications:read",
+                                "communications-service:notifications:manage",
+                                // workflow-service permissions
+                                "workflow-service:workflows:read", "workflow-service:workflows:manage",
+                                "workflow-service:approval-trackings:read",
+                                "workflow-service:approval-trackings:manage",
+                                // notification-service permissions
+                                "notification-service:notifications:read", "notification-service:notifications:manage",
+                                // email-service permissions
+                                "email-service:emails:read", "email-service:emails:manage");
 
                 List<Permission> savedPermissions = permissionRepository
                                 .saveAll(permissionNames.stream().map(name -> {
@@ -221,74 +211,109 @@ public class DataInitializer implements CommandLineRunner {
                 };
 
                 // Gán quyền cho từng vai trò
+                // ADMIN: Tất cả quyền (read + manage)
                 adminRole.setPermissions(new ArrayList<>(savedPermissions));
 
+                // CEO: Đọc tất cả, manage một số quan trọng
                 ceoRole.setPermissions(new ArrayList<>(List.of(
+                                // user-service - đọc tất cả
+                                requirePermission.apply("user-service:permissions:read"),
+                                requirePermission.apply("user-service:roles:read"),
                                 requirePermission.apply("user-service:departments:read"),
                                 requirePermission.apply("user-service:employees:read"),
                                 requirePermission.apply("user-service:positions:read"),
                                 requirePermission.apply("user-service:users:read"),
+                                // job-service - đọc tất cả, manage vị trí và yêu cầu tuyển dụng
                                 requirePermission.apply("job-service:job-positions:read"),
-                                requirePermission.apply("job-service:job-positions:publish"),
-                                requirePermission.apply("job-service:job-positions:close"),
-                                requirePermission.apply("job-service:job-positions:reopen"),
+                                requirePermission.apply("job-service:job-positions:manage"),
                                 requirePermission.apply("job-service:recruitment-requests:read"),
-                                requirePermission.apply("job-service:recruitment-requests:approve"),
-                                requirePermission.apply("job-service:recruitment-requests:reject"),
+                                requirePermission.apply("job-service:recruitment-requests:manage"),
+                                requirePermission.apply("job-service:job-skills:read"),
+                                requirePermission.apply("job-service:job-categories:read"),
+                                // candidate-service - đọc tất cả, manage applications
                                 requirePermission.apply("candidate-service:applications:read"),
-                                requirePermission.apply("candidate-service:applications:accept"),
-                                requirePermission.apply("candidate-service:applications:reject"),
+                                requirePermission.apply("candidate-service:applications:manage"),
                                 requirePermission.apply("candidate-service:candidates:read"),
                                 requirePermission.apply("candidate-service:comments:read"),
+                                // communications-service - đọc và quản lý lịch
                                 requirePermission.apply("communications-service:schedules:read"),
-                                requirePermission.apply("communications-service:schedules:update-status"),
-                                requirePermission.apply("communications-service:schedules:calendar"))));
+                                requirePermission.apply("communications-service:schedules:manage"),
+                                requirePermission.apply("communications-service:notifications:read"),
+                                // workflow-service - đọc và phê duyệt
+                                requirePermission.apply("workflow-service:workflows:read"),
+                                requirePermission.apply("workflow-service:approval-trackings:read"),
+                                requirePermission.apply("workflow-service:approval-trackings:manage"),
+                                // notification-service - đọc
+                                requirePermission.apply("notification-service:notifications:read"),
+                                // email-service - đọc
+                                requirePermission.apply("email-service:emails:read"))));
 
+                // MANAGER: Đọc nhiều, manage các resources liên quan đến công việc của họ
                 managerRole.setPermissions(new ArrayList<>(List.of(
+                                // user-service - đọc, manage employees
                                 requirePermission.apply("user-service:departments:read"),
                                 requirePermission.apply("user-service:employees:read"),
-                                requirePermission.apply("user-service:employees:create"),
-                                requirePermission.apply("user-service:employees:update"),
+                                requirePermission.apply("user-service:employees:manage"),
                                 requirePermission.apply("user-service:positions:read"),
                                 requirePermission.apply("user-service:users:read"),
+                                // job-service - đọc và manage tất cả
                                 requirePermission.apply("job-service:job-positions:read"),
-                                requirePermission.apply("job-service:job-positions:create"),
-                                requirePermission.apply("job-service:job-positions:update"),
+                                requirePermission.apply("job-service:job-positions:manage"),
                                 requirePermission.apply("job-service:recruitment-requests:read"),
-                                requirePermission.apply("job-service:recruitment-requests:create"),
-                                requirePermission.apply("job-service:recruitment-requests:update"),
+                                requirePermission.apply("job-service:recruitment-requests:manage"),
                                 requirePermission.apply("job-service:job-skills:read"),
                                 requirePermission.apply("job-service:job-categories:read"),
+                                // candidate-service - đọc và manage tất cả
                                 requirePermission.apply("candidate-service:applications:read"),
-                                requirePermission.apply("candidate-service:applications:create"),
-                                requirePermission.apply("candidate-service:applications:update"),
-                                requirePermission.apply("candidate-service:applications:status"),
+                                requirePermission.apply("candidate-service:applications:manage"),
                                 requirePermission.apply("candidate-service:candidates:read"),
-                                requirePermission.apply("candidate-service:candidates:create"),
-                                requirePermission.apply("candidate-service:candidates:update"),
-                                requirePermission.apply("candidate-service:candidates:change-stage"),
+                                requirePermission.apply("candidate-service:candidates:manage"),
                                 requirePermission.apply("candidate-service:comments:read"),
-                                requirePermission.apply("candidate-service:comments:create"),
-                                requirePermission.apply("candidate-service:comments:update"),
+                                requirePermission.apply("candidate-service:comments:manage"),
+                                // communications-service - đọc và manage lịch
                                 requirePermission.apply("communications-service:schedules:read"),
-                                requirePermission.apply("communications-service:schedules:create"),
-                                requirePermission.apply("communications-service:schedules:update"))));
+                                requirePermission.apply("communications-service:schedules:manage"),
+                                requirePermission.apply("communications-service:notifications:read"),
+                                requirePermission.apply("communications-service:notifications:manage"),
+                                // workflow-service - đọc và manage
+                                requirePermission.apply("workflow-service:workflows:read"),
+                                requirePermission.apply("workflow-service:workflows:manage"),
+                                requirePermission.apply("workflow-service:approval-trackings:read"),
+                                requirePermission.apply("workflow-service:approval-trackings:manage"),
+                                // notification-service - đọc và manage
+                                requirePermission.apply("notification-service:notifications:read"),
+                                requirePermission.apply("notification-service:notifications:manage"),
+                                // email-service - đọc
+                                requirePermission.apply("email-service:emails:read"))));
 
+                // STAFF: Chỉ read
                 staffRole.setPermissions(new ArrayList<>(List.of(
+                                // user-service - chỉ đọc
                                 requirePermission.apply("user-service:departments:read"),
                                 requirePermission.apply("user-service:employees:read"),
                                 requirePermission.apply("user-service:positions:read"),
+                                requirePermission.apply("user-service:users:read"),
+                                // job-service - chỉ đọc
                                 requirePermission.apply("job-service:job-positions:read"),
+                                requirePermission.apply("job-service:recruitment-requests:read"),
                                 requirePermission.apply("job-service:job-skills:read"),
                                 requirePermission.apply("job-service:job-categories:read"),
-                                requirePermission.apply("job-service:recruitment-requests:read"),
-                                requirePermission.apply("candidate-service:applications:create"),
+                                // candidate-service - đọc và manage applications của mình
                                 requirePermission.apply("candidate-service:applications:read"),
-                                requirePermission.apply("candidate-service:applications:update"),
+                                requirePermission.apply("candidate-service:applications:manage"),
                                 requirePermission.apply("candidate-service:candidates:read"),
-                                requirePermission.apply("candidate-service:comments:create"),
                                 requirePermission.apply("candidate-service:comments:read"),
-                                requirePermission.apply("communications-service:schedules:read"))));
+                                requirePermission.apply("candidate-service:comments:manage"),
+                                // communications-service - chỉ đọc
+                                requirePermission.apply("communications-service:schedules:read"),
+                                requirePermission.apply("communications-service:notifications:read"),
+                                // workflow-service - chỉ đọc
+                                requirePermission.apply("workflow-service:workflows:read"),
+                                requirePermission.apply("workflow-service:approval-trackings:read"),
+                                // notification-service - chỉ đọc
+                                requirePermission.apply("notification-service:notifications:read"),
+                                // email-service - chỉ đọc
+                                requirePermission.apply("email-service:emails:read"))));
 
                 roleRepository.saveAll(Arrays.asList(adminRole, ceoRole, managerRole, staffRole));
                 logger.info("Đã gán quyền cho các vai trò.");
@@ -314,11 +339,43 @@ public class DataInitializer implements CommandLineRunner {
                                 salesDepartment, managerPosition, true);
 
                 // Kỹ thuật
+                Employee salesStaffEmployee = buildEmployee("Phan Thị Hồng", "hong.phan@company.com", "0933111222",
+                                salesDepartment, staffPosition, true);
+
+                // Kỹ thuật
                 Employee techManagerEmployee = buildEmployee("Bùi Đức Huy", "huy.bui@company.com", "0945678901",
                                 techDepartment, managerPosition, true);
 
-                List<Employee> employees = Arrays.asList(ceoEmployee, adminEmployee, hrManagerEmployee,
-                                hrStaff1Employee, salesManagerEmployee, techManagerEmployee);
+                Employee techStaffEmployee = buildEmployee("Ngô Đình Phúc", "phuc.ngo@company.com", "0945123123",
+                                techDepartment, staffPosition, true);
+
+                // Marketing
+                Employee marketingManagerEmployee = buildEmployee("Đặng Minh Thư", "thu.dang@company.com",
+                                "0956234567", marketingDepartment, managerPosition, true);
+
+                Employee marketingStaffEmployee = buildEmployee("Hoàng Thu Hà", "ha.hoang@company.com", "0956345678",
+                                marketingDepartment, staffPosition, true);
+
+                // Kế toán
+                Employee accountingManagerEmployee = buildEmployee("Vũ Hồng Sơn", "son.vu@company.com",
+                                "0967456789", accountingDepartment, managerPosition, true);
+
+                Employee accountingStaffEmployee = buildEmployee("Đỗ Ngọc Ánh", "anh.do@company.com", "0967567890",
+                                accountingDepartment, staffPosition, true);
+
+                List<Employee> employees = Arrays.asList(
+                                ceoEmployee,
+                                adminEmployee,
+                                hrManagerEmployee,
+                                hrStaff1Employee,
+                                salesManagerEmployee,
+                                salesStaffEmployee,
+                                techManagerEmployee,
+                                techStaffEmployee,
+                                marketingManagerEmployee,
+                                marketingStaffEmployee,
+                                accountingManagerEmployee,
+                                accountingStaffEmployee);
 
                 employeeRepository.saveAll(employees);
                 logger.info("Đã tạo " + employeeRepository.count() + " nhân viên.");
@@ -330,8 +387,20 @@ public class DataInitializer implements CommandLineRunner {
                 hrStaff1Employee = employeeRepository.findById(hrStaff1Employee.getId()).orElse(hrStaff1Employee);
                 salesManagerEmployee = employeeRepository.findById(salesManagerEmployee.getId())
                                 .orElse(salesManagerEmployee);
+                salesStaffEmployee = employeeRepository.findById(salesStaffEmployee.getId())
+                                .orElse(salesStaffEmployee);
                 techManagerEmployee = employeeRepository.findById(techManagerEmployee.getId())
                                 .orElse(techManagerEmployee);
+                techStaffEmployee = employeeRepository.findById(techStaffEmployee.getId())
+                                .orElse(techStaffEmployee);
+                marketingManagerEmployee = employeeRepository.findById(marketingManagerEmployee.getId())
+                                .orElse(marketingManagerEmployee);
+                marketingStaffEmployee = employeeRepository.findById(marketingStaffEmployee.getId())
+                                .orElse(marketingStaffEmployee);
+                accountingManagerEmployee = employeeRepository.findById(accountingManagerEmployee.getId())
+                                .orElse(accountingManagerEmployee);
+                accountingStaffEmployee = employeeRepository.findById(accountingStaffEmployee.getId())
+                                .orElse(accountingStaffEmployee);
 
                 // =====================================================================================
                 // 4. TẠO NGƯỜI DÙNG (USERS) - TẠO SAU VÀ LINK VỚI EMPLOYEE ĐÃ TỒN TẠI
@@ -343,10 +412,34 @@ public class DataInitializer implements CommandLineRunner {
                 User hrStaff1 = buildUser("Lê Văn Cường", "cuong.le@company.com", staffRole, hrStaff1Employee, true);
                 User salesManager = buildUser("Võ Minh Long", "long.vo@company.com", managerRole, salesManagerEmployee,
                                 true);
+                User salesStaff = buildUser("Phan Thị Hồng", "hong.phan@company.com", staffRole,
+                                salesStaffEmployee, true);
                 User techManager = buildUser("Bùi Đức Huy", "huy.bui@company.com", managerRole, techManagerEmployee,
                                 true);
+                User techStaff = buildUser("Ngô Đình Phúc", "phuc.ngo@company.com", staffRole, techStaffEmployee,
+                                true);
+                User marketingManager = buildUser("Đặng Minh Thư", "thu.dang@company.com", managerRole,
+                                marketingManagerEmployee, true);
+                User marketingStaff = buildUser("Hoàng Thu Hà", "ha.hoang@company.com", staffRole,
+                                marketingStaffEmployee, true);
+                User accountingManager = buildUser("Vũ Hồng Sơn", "son.vu@company.com", managerRole,
+                                accountingManagerEmployee, true);
+                User accountingStaff = buildUser("Đỗ Ngọc Ánh", "anh.do@company.com", staffRole,
+                                accountingStaffEmployee, true);
 
-                List<User> users = Arrays.asList(ceo, admin, hrManager, hrStaff1, salesManager, techManager);
+                List<User> users = Arrays.asList(
+                                ceo,
+                                admin,
+                                hrManager,
+                                hrStaff1,
+                                salesManager,
+                                salesStaff,
+                                techManager,
+                                techStaff,
+                                marketingManager,
+                                marketingStaff,
+                                accountingManager,
+                                accountingStaff);
 
                 userRepository.saveAll(users);
                 logger.info("Đã tạo " + userRepository.count() + " người dùng.");

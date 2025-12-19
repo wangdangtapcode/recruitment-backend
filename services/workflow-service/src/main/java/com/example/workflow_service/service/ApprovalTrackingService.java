@@ -92,28 +92,41 @@ public class ApprovalTrackingService {
                     "Không tìm thấy người dùng nào giữ vị trí position_id: " + firstStep.getApproverPositionId());
         }
 
+        // Tìm actionUserId dựa trên levelId và departmentId
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        Long actionUserId = userService.findUserByPositionIdAndDepartmentId(dto.getLevelId(), dto.getDepartmentId(),
+                token);
+
         // Tạo ApprovalTracking
         ApprovalTracking tracking = new ApprovalTracking();
         tracking.setRequestId(dto.getRequestId());
         tracking.setStepId(firstStep.getId());
         tracking.setStatus(ApprovalStatus.PENDING);
-        tracking.setAssignedUserId(assignedUserId);
-        tracking.setActionUserId(null);
+        tracking.setApproverPositionId(assignedUserId);
+        tracking.setActionUserId(actionUserId); // Lưu actionUserId ngay khi tạo
         tracking.setActionAt(null);
 
         tracking = approvalTrackingRepository.save(tracking);
 
         notifyNextApprovers(dto.getDepartmentId(), firstStep, dto.getRequestId(), null);
 
-        // Lấy user name nếu có actionUserId
+        // Lấy user name nếu có actionUserId (đã được lưu vào DB)
         Map<Long, String> userNamesMap = null;
         if (tracking.getActionUserId() != null) {
-            String token = SecurityUtil.getCurrentUserJWT().orElse(null);
             userNamesMap = userService.getUserNamesByIds(
                     List.of(tracking.getActionUserId()),
                     token);
         }
-        return toResponseDTO(tracking, null, userNamesMap);
+
+        // Lấy position name nếu có assignedUserId
+        Map<Long, String> positionNamesByUserIdMap = null;
+        if (tracking.getApproverPositionId() != null) {
+            positionNamesByUserIdMap = userService.getPositionNamesByIds(
+                    List.of(tracking.getApproverPositionId()),
+                    token);
+        }
+
+        return toResponseDTO(tracking, null, userNamesMap, positionNamesByUserIdMap);
     }
 
     /**
@@ -126,7 +139,7 @@ public class ApprovalTrackingService {
 
         // Kiểm tra quyền
         Long currentUserId = SecurityUtil.extractEmployeeId();
-        if (!tracking.getAssignedUserId().equals(currentUserId)) {
+        if (!tracking.getApproverPositionId().equals(currentUserId)) {
             throw new CustomException("Bạn không có quyền phê duyệt bước này");
         }
 
@@ -154,15 +167,25 @@ public class ApprovalTrackingService {
             approvalTrackingRepository.save(tracking);
         }
 
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+
         // Lấy user name nếu có actionUserId
         Map<Long, String> userNamesMap = null;
         if (tracking.getActionUserId() != null) {
-            String token = SecurityUtil.getCurrentUserJWT().orElse(null);
             userNamesMap = userService.getUserNamesByIds(
                     List.of(tracking.getActionUserId()),
                     token);
         }
-        return toResponseDTO(tracking, null, userNamesMap);
+
+        // Lấy position name nếu có assignedUserId
+        Map<Long, String> positionNamesByUserIdMap = null;
+        if (tracking.getApproverPositionId() != null) {
+            positionNamesByUserIdMap = userService.getPositionNamesByIds(
+                    List.of(tracking.getApproverPositionId()),
+                    token);
+        }
+
+        return toResponseDTO(tracking, null, userNamesMap, positionNamesByUserIdMap);
     }
 
     /**
@@ -203,31 +226,47 @@ public class ApprovalTrackingService {
         ApprovalTracking tracking = approvalTrackingRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("Không tìm thấy approval tracking với ID: " + id));
 
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+
         // Lấy user name nếu có actionUserId
         Map<Long, String> userNamesMap = null;
         if (tracking.getActionUserId() != null) {
-            String token = SecurityUtil.getCurrentUserJWT().orElse(null);
             userNamesMap = userService.getUserNamesByIds(
                     List.of(tracking.getActionUserId()),
                     token);
         }
-        return toResponseDTO(tracking, null, userNamesMap);
+
+        // Lấy position name nếu có assignedUserId
+        Map<Long, String> positionNamesByUserIdMap = null;
+        if (tracking.getApproverPositionId() != null) {
+            positionNamesByUserIdMap = userService.getPositionNamesByIds(
+                    List.of(tracking.getApproverPositionId()),
+                    token);
+        }
+
+        return toResponseDTO(tracking, null, userNamesMap, positionNamesByUserIdMap);
     }
 
     @Transactional(readOnly = true)
     public PaginationDTO getAll(
             Long requestId,
             ApprovalStatus status,
-            Long assignedUserId,
+            Long approverPositionId,
             Pageable pageable) {
         Page<ApprovalTracking> trackingPage = approvalTrackingRepository.findByFilters(
-                requestId, status, assignedUserId, pageable);
+                requestId, status, approverPositionId, pageable);
 
         List<ApprovalTracking> trackings = trackingPage.getContent();
 
-        // Thu thập tất cả user IDs từ trackings
-        Set<Long> allUserIds = trackings.stream()
+        // Thu thập tất cả user IDs từ trackings (actionUserId)
+        Set<Long> allActionUserIds = trackings.stream()
                 .map(ApprovalTracking::getActionUserId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        // Thu thập tất cả assigned user IDs từ trackings
+        Set<Long> allAssignedUserIds = trackings.stream()
+                .map(ApprovalTracking::getApproverPositionId)
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
 
@@ -235,11 +274,16 @@ public class ApprovalTrackingService {
         String token = SecurityUtil.getCurrentUserJWT().orElse(null);
         // Gọi user-service một lần để lấy tất cả user names
         Map<Long, String> userNamesMap = userService.getUserNamesByIds(
-                allUserIds.stream().collect(Collectors.toList()),
+                allActionUserIds.stream().collect(Collectors.toList()),
+                token);
+
+        // Gọi user-service một lần để lấy tất cả position names từ assigned user IDs
+        Map<Long, String> positionNamesByUserIdMap = userService.getPositionNamesByIds(
+                allAssignedUserIds.stream().collect(Collectors.toList()),
                 token);
 
         List<ApprovalTrackingResponseDTO> content = trackings.stream()
-                .map(tracking -> toResponseDTO(tracking, null, userNamesMap))
+                .map(tracking -> toResponseDTO(tracking, null, userNamesMap, positionNamesByUserIdMap))
                 .collect(Collectors.toList());
 
         PaginationDTO paginationDTO = new PaginationDTO();
@@ -257,11 +301,17 @@ public class ApprovalTrackingService {
     @Transactional(readOnly = true)
     public List<ApprovalTrackingResponseDTO> getPendingApprovalsForUser(Long userId) {
         List<ApprovalTracking> trackings = approvalTrackingRepository
-                .findByAssignedUserIdAndStatus(userId, ApprovalStatus.PENDING);
+                .findByApproverPositionIdAndStatus(userId, ApprovalStatus.PENDING);
 
-        // Thu thập tất cả user IDs từ trackings
-        Set<Long> allUserIds = trackings.stream()
+        // Thu thập tất cả user IDs từ trackings (actionUserId)
+        Set<Long> allActionUserIds = trackings.stream()
                 .map(ApprovalTracking::getActionUserId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        // Thu thập tất cả assigned user IDs từ trackings
+        Set<Long> allAssignedUserIds = trackings.stream()
+                .map(ApprovalTracking::getApproverPositionId)
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
 
@@ -269,11 +319,16 @@ public class ApprovalTrackingService {
         String token = SecurityUtil.getCurrentUserJWT().orElse(null);
         // Gọi user-service một lần để lấy tất cả user names
         Map<Long, String> userNamesMap = userService.getUserNamesByIds(
-                allUserIds.stream().collect(Collectors.toList()),
+                allActionUserIds.stream().collect(Collectors.toList()),
+                token);
+
+        // Gọi user-service một lần để lấy tất cả position names từ assigned user IDs
+        Map<Long, String> positionNamesByUserIdMap = userService.getPositionNamesByIds(
+                allAssignedUserIds.stream().collect(Collectors.toList()),
                 token);
 
         return trackings.stream()
-                .map(tracking -> toResponseDTO(tracking, null, userNamesMap))
+                .map(tracking -> toResponseDTO(tracking, null, userNamesMap, positionNamesByUserIdMap))
                 .collect(Collectors.toList());
     }
 
@@ -314,21 +369,31 @@ public class ApprovalTrackingService {
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
 
-        // Thu thập tất cả user IDs từ trackings
-        Set<Long> allUserIds = trackings.stream()
+        // Thu thập tất cả user IDs từ trackings (actionUserId)
+        Set<Long> allActionUserIds = trackings.stream()
                 .map(ApprovalTracking::getActionUserId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        // Thu thập tất cả assigned user IDs từ trackings
+        Set<Long> allAssignedUserIds = trackings.stream()
+                .map(ApprovalTracking::getApproverPositionId)
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
 
         // Lấy token từ SecurityContext
         String token = SecurityUtil.getCurrentUserJWT().orElse(null);
-        // Gọi user-service một lần để lấy tất cả position names
+        // Gọi user-service một lần để lấy tất cả position names (từ positionIds)
         Map<Long, String> positionNamesMap = userService.getPositionNamesByIds(
                 allPositionIds.stream().collect(Collectors.toList()),
                 token);
         // Gọi user-service một lần để lấy tất cả user names
         Map<Long, String> userNamesMap = userService.getUserNamesByIds(
-                allUserIds.stream().collect(Collectors.toList()),
+                allActionUserIds.stream().collect(Collectors.toList()),
+                token);
+        // Gọi user-service một lần để lấy tất cả position names từ assigned user IDs
+        Map<Long, String> positionNamesByUserIdMap = userService.getPositionNamesByIds(
+                allAssignedUserIds.stream().collect(Collectors.toList()),
                 token);
 
         RequestWorkflowInfoDTO result = new RequestWorkflowInfoDTO();
@@ -344,7 +409,7 @@ public class ApprovalTrackingService {
 
         // Convert approval trackings với position names và user names
         List<ApprovalTrackingResponseDTO> trackingDTOs = trackings.stream()
-                .map(tracking -> toResponseDTO(tracking, positionNamesMap, userNamesMap))
+                .map(tracking -> toResponseDTO(tracking, positionNamesMap, userNamesMap, positionNamesByUserIdMap))
                 .collect(Collectors.toList());
         result.setApprovalTrackings(trackingDTOs);
         result.setCurrentStepId(currentStepId);
@@ -415,12 +480,7 @@ public class ApprovalTrackingService {
             case "REQUEST_SUBMITTED":
                 handleRequestSubmitted(event);
                 break;
-            case "STEP_APPROVED":
-                handleStepApproved(event);
-                break;
-            case "STEP_REJECTED":
-                handleStepRejected(event);
-                break;
+
             case "REQUEST_RETURNED":
                 handleRequestReturned(event);
                 break;
@@ -443,17 +503,22 @@ public class ApprovalTrackingService {
     }
 
     private ApprovalTrackingResponseDTO toResponseDTO(ApprovalTracking tracking) {
-        return toResponseDTO(tracking, null, null);
+        return toResponseDTO(tracking, null, null, null);
     }
 
     private ApprovalTrackingResponseDTO toResponseDTO(ApprovalTracking tracking, Map<Long, String> positionNamesMap,
             Map<Long, String> userNamesMap) {
+        return toResponseDTO(tracking, positionNamesMap, userNamesMap, null);
+    }
+
+    private ApprovalTrackingResponseDTO toResponseDTO(ApprovalTracking tracking, Map<Long, String> positionNamesMap,
+            Map<Long, String> userNamesMap, Map<Long, String> positionNamesByUserIdMap) {
         ApprovalTrackingResponseDTO dto = new ApprovalTrackingResponseDTO();
         dto.setId(tracking.getId());
         dto.setRequestId(tracking.getRequestId());
         dto.setStepId(tracking.getStepId());
         dto.setStatus(tracking.getStatus());
-        dto.setAssignedUserId(tracking.getAssignedUserId());
+        dto.setApproverPositionId(tracking.getApproverPositionId());
         dto.setActionUserId(tracking.getActionUserId());
         dto.setActionAt(tracking.getActionAt());
         dto.setNotes(tracking.getNotes());
@@ -464,6 +529,12 @@ public class ApprovalTrackingService {
         if (userNamesMap != null && tracking.getActionUserId() != null) {
             String userName = userNamesMap.get(tracking.getActionUserId());
             dto.setActionUserName(userName);
+        }
+
+        // Set assignedName (positionName) từ map nếu có
+        if (positionNamesByUserIdMap != null && tracking.getApproverPositionId() != null) {
+            String positionName = positionNamesByUserIdMap.get(tracking.getApproverPositionId());
+            dto.setApproverPositionName(positionName);
         }
 
         return dto;
@@ -509,7 +580,7 @@ public class ApprovalTrackingService {
 
     private void handleRequestSubmitted(RecruitmentWorkflowEvent event) {
         if (event.getWorkflowId() == null) {
-            log.warn("REQUEST_SUBMITTED missing workflowId for request {}", event.getRequestId());
+            log.warn("REQUEST_SUBMITTED missing workflowId for request/offer {}", event.getRequestId());
             return;
         }
 
@@ -544,12 +615,14 @@ public class ApprovalTrackingService {
                 .orElse(null);
 
         WorkflowStep targetStep;
+        boolean isResubmitAfterReturn = false;
         if (returnedTracking != null && returnedTracking.getReturnedToStepId() != null) {
             // Submit lại sau return: tạo tracking từ bước được trả về
             targetStep = workflowStepRepository.findById(returnedTracking.getReturnedToStepId())
                     .orElseThrow(() -> new CustomException(
                             "Không tìm thấy bước được trả về: " + returnedTracking.getReturnedToStepId()));
-            log.info("Request {} submit lại từ bước {}", event.getRequestId(), targetStep.getId());
+            isResubmitAfterReturn = true;
+            log.info("Request/Offer {} submit lại từ bước {}", event.getRequestId(), targetStep.getId());
         } else {
             // Submit lần đầu: tạo tracking từ bước đầu tiên
             Workflow workflow = workflowRepository.findById(event.getWorkflowId())
@@ -557,9 +630,23 @@ public class ApprovalTrackingService {
             targetStep = workflowStepRepository
                     .findByWorkflowIdAndStepOrder(workflow.getId(), 1)
                     .orElseThrow(() -> new CustomException("Workflow không có bước đầu tiên"));
+
         }
 
-        createTrackingForStep(event.getRequestId(), targetStep, event.getDepartmentId(), event.getAuthToken());
+        ApprovalTracking newTracking = createTrackingForStep(event.getRequestId(), targetStep, event.getDepartmentId(),
+                event.getAuthToken());
+
+        // Nếu là resubmit sau return, thêm ghi chú đã chỉnh sửa
+        if (isResubmitAfterReturn && newTracking != null) {
+            String existingNotes = newTracking.getNotes();
+            String editedNote = "Đã chỉnh sửa";
+            if (existingNotes != null && !existingNotes.trim().isEmpty()) {
+                newTracking.setNotes(existingNotes + " - " + editedNote);
+            } else {
+                newTracking.setNotes(editedNote);
+            }
+            approvalTrackingRepository.save(newTracking);
+        }
     }
 
     private void handleStepApproved(RecruitmentWorkflowEvent event) {
@@ -574,6 +661,11 @@ public class ApprovalTrackingService {
                     .findByWorkflowIdAndStepOrder(workflow.getId(), currentStep.getStepOrder() + 1)
                     .orElse(null);
 
+            // Thông báo cho requester và owner về việc bước hiện tại đã được phê duyệt
+            notifyRequester(event,
+                    "Yêu cầu #" + event.getRequestId() + " đã được phê duyệt",
+                    "Yêu cầu đã được phê duyệt ở bước " + currentStep.getStepName());
+
             if (nextStep != null) {
                 // Có bước tiếp theo: chuyển sang bước tiếp
                 moveToNextStep(current, event.getDepartmentId(), event.getAuthToken());
@@ -585,7 +677,7 @@ public class ApprovalTrackingService {
 
                 if (remainingPending.isEmpty()) {
                     // Không còn bước nào pending: workflow đã hoàn thành
-                    log.info("Request {} đã hoàn thành tất cả các bước workflow", event.getRequestId());
+                    log.info("Request/Offer {} đã hoàn thành tất cả các bước workflow", event.getRequestId());
                     // Gửi event WORKFLOW_COMPLETED để job-service cập nhật status = APPROVED
                     sendWorkflowCompletedEvent(event);
                 }
@@ -638,9 +730,7 @@ public class ApprovalTrackingService {
 
         // Invalidate tất cả các bước đã qua (từ bước hiện tại trở về sau)
         invalidateFutureSteps(event.getRequestId(), currentTracking.getStepId());
-        boolean isReturned = true;
-        // Tạo tracking mới cho bước được trả về (để submitter/owner chỉnh sửa)
-        createTrackingForReturnedStep(event, returnedToStepId, isReturned);
+        // Không tạo pending mới khi return - sẽ tạo khi submit lại
 
         notifyRequester(event,
                 "Yêu cầu #" + event.getRequestId() + " bị trả về",
@@ -748,12 +838,7 @@ public class ApprovalTrackingService {
         tracking.setCurrentStepId(returnedStep.getId());
         tracking.setStatus(ApprovalStatus.PENDING);
 
-        // Ưu tiên assign cho requester/owner để họ chỉnh sửa, nếu không có thì fallback
-        Long assignedUserId = event.getRequesterId() != null ? event.getRequesterId() : event.getOwnerUserId();
-        if (assignedUserId == null) {
-            assignedUserId = returnedStep.getApproverPositionId(); // fallback theo cấu hình bước
-        }
-        tracking.setAssignedUserId(assignedUserId);
+        tracking.setApproverPositionId(returnedStep.getApproverPositionId());
         tracking.setNotes("Đang đợi cập nhật sau khi trả về");
         approvalTrackingRepository.save(tracking);
         if (!isReturned) {
@@ -784,12 +869,24 @@ public class ApprovalTrackingService {
                 authToken);
     }
 
+    /**
+     * Gửi thông báo cho requester và owner (nếu khác nhau).
+     * Nếu requesterId và ownerUserId trùng nhau thì chỉ gửi 1 thông báo.
+     */
     private void notifyRequester(RecruitmentWorkflowEvent event, String title, String message) {
-        Long target = event.getRequesterId() != null ? event.getRequesterId() : event.getOwnerUserId();
-        if (target == null) {
+        java.util.Set<Long> recipients = new java.util.HashSet<>();
+        if (event.getRequesterId() != null) {
+            recipients.add(event.getRequesterId());
+        }
+        if (event.getOwnerUserId() != null) {
+            recipients.add(event.getOwnerUserId());
+        }
+        if (recipients.isEmpty()) {
             return;
         }
-        notificationProducer.sendNotification(target, title, message, event.getAuthToken());
+        for (Long recipientId : recipients) {
+            notificationProducer.sendNotification(recipientId, title, message, event.getAuthToken());
+        }
     }
 
     private ApprovalTracking markCurrentTracking(RecruitmentWorkflowEvent event,
@@ -817,7 +914,11 @@ public class ApprovalTrackingService {
                 .orElse(null);
     }
 
-    private void createTrackingForStep(Long requestId, WorkflowStep step, Long departmentId, String authToken) {
+    private ApprovalTracking createTrackingForStep(Long requestId, WorkflowStep step, Long departmentId,
+            String authToken) {
+        // Tìm actionUserId dựa trên levelId và departmentId
+        Long actionUserId = userService.findUserByPositionIdAndDepartmentId(step.getApproverPositionId(), departmentId,
+                authToken);
         // Long assignedUserId = findUserByPositionId(step.getApproverPositionId());
         // if (assignedUserId == null) {
         // log.warn("Không tìm thấy user cho vị trí {} khi tạo bước mới cho request {}",
@@ -825,16 +926,17 @@ public class ApprovalTrackingService {
         // requestId);
         // return;
         // }
-        Long assignedUserId = step.getApproverPositionId();
         ApprovalTracking tracking = new ApprovalTracking();
         tracking.setRequestId(requestId);
         tracking.setStepId(step.getId());
         tracking.setCurrentStepId(step.getId());
         tracking.setStatus(ApprovalStatus.PENDING);
-        tracking.setAssignedUserId(assignedUserId);
-        approvalTrackingRepository.save(tracking);
+        tracking.setApproverPositionId(step.getApproverPositionId());
+        tracking.setActionUserId(actionUserId);
+        ApprovalTracking saved = approvalTrackingRepository.save(tracking);
 
         notifyNextApprovers(departmentId, step, requestId, authToken);
+        return saved;
     }
 
     /**
@@ -864,7 +966,7 @@ public class ApprovalTrackingService {
         completedEvent.setAuthToken(originalEvent.getAuthToken());
 
         workflowProducer.publishEvent(completedEvent);
-        log.info("Đã gửi event WORKFLOW_COMPLETED cho request {}", originalEvent.getRequestId());
+        log.info("Đã gửi event WORKFLOW_COMPLETED cho request/offer {}", originalEvent.getRequestId());
 
         notifyRequester(originalEvent,
                 "Yêu cầu #" + originalEvent.getRequestId() + " đã được phê duyệt",

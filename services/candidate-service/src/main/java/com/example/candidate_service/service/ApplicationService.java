@@ -21,6 +21,8 @@ import com.example.candidate_service.repository.ApplicationRepository;
 import com.example.candidate_service.utils.enums.ApplicationStatus;
 import com.example.candidate_service.utils.enums.CandidateStage;
 import com.example.candidate_service.messaging.ApplicationEventsProducer;
+import com.example.candidate_service.messaging.NotificationProducer;
+import com.example.candidate_service.utils.SecurityUtil;
 import com.example.candidate_service.dto.application.ApplicationDetailResponseDTO;
 
 import java.util.ArrayList;
@@ -40,10 +42,14 @@ public class ApplicationService {
     private final JobService jobService;
     private final CommunicationService communicationService;
     private final CommentService commentService;
+    private final ReviewService reviewService;
+    private final NotificationProducer notificationProducer;
+    private final UserService userService;
 
     public ApplicationService(ApplicationRepository applicationRepository, CandidateService candidateService,
             CloudinaryService cloudinaryService, ApplicationEventsProducer applicationEventsProducer,
-            JobService jobService, CommunicationService communicationService, CommentService commentService) {
+            JobService jobService, CommunicationService communicationService, CommentService commentService,
+            ReviewService reviewService, NotificationProducer notificationProducer, UserService userService) {
         this.applicationRepository = applicationRepository;
         this.candidateService = candidateService;
         this.cloudinaryService = cloudinaryService;
@@ -51,9 +57,12 @@ public class ApplicationService {
         this.jobService = jobService;
         this.communicationService = communicationService;
         this.commentService = commentService;
+        this.reviewService = reviewService;
+        this.notificationProducer = notificationProducer;
+        this.userService = userService;
     }
 
-    public PaginationDTO getAllApplicationsWithFilters(Long candidateId, Long jobPositionId, String status,
+    public PaginationDTO getAllApplicationsWithFilters(Long candidateId, Long jobPositionId, ApplicationStatus status,
             Pageable pageable, String token) {
         Page<Application> applications = applicationRepository.findByFilters(jobPositionId, status, candidateId,
                 pageable);
@@ -150,6 +159,38 @@ public class ApplicationService {
         Application saved = applicationRepository.save(application);
         if (saved.getStatus() == ApplicationStatus.SUBMITTED) {
             applicationEventsProducer.publishApplicationSubmitted(saved.getJobPositionId());
+
+            // Thông báo cho HR/Recruiter trong phòng ban của job position
+            // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+            // try {
+            // var jobPositionResponse =
+            // jobService.getJobPositionById(saved.getJobPositionId(), token);
+            // if (jobPositionResponse.getStatusCode().is2xxSuccessful() &&
+            // jobPositionResponse.getBody() != null) {
+            // var jobPosition = jobPositionResponse.getBody();
+            // if (jobPosition.has("departmentId")) {
+            // Long departmentId = jobPosition.get("departmentId").asLong();
+            // String jobTitle = jobPosition.has("title") ?
+            // jobPosition.get("title").asText() : "Vị trí #" + saved.getJobPositionId();
+            // String candidateName = saved.getCandidate() != null ?
+            // saved.getCandidate().getFullName() : "Ứng viên";
+
+            // // Gửi thông báo cho phòng ban (HR/Recruiter)
+            // notificationProducer.sendNotificationToDepartment(
+            // departmentId,
+            // null, // Có thể filter theo positionId nếu cần
+            // "Có đơn ứng tuyển mới",
+            // "Ứng viên '" + candidateName + "' đã nộp đơn ứng tuyển cho vị trí '" +
+            // jobTitle + "'.",
+            // token
+            // );
+            // }
+            // }
+            // } catch (Exception e) {
+            // // Log error nhưng không fail toàn bộ process
+            // System.err.println("Error sending notification for new application: " +
+            // e.getMessage());
+            // }
         }
         return ApplicationResponseDTO.fromEntity(saved);
     }
@@ -251,6 +292,38 @@ public class ApplicationService {
         Application saved = applicationRepository.save(application);
         if (saved.getStatus() == ApplicationStatus.SUBMITTED) {
             applicationEventsProducer.publishApplicationSubmitted(saved.getJobPositionId());
+
+            // Thông báo cho HR/Recruiter trong phòng ban của job position
+            // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+            // try {
+            // var jobPositionResponse =
+            // jobService.getJobPositionById(saved.getJobPositionId(), token);
+            // if (jobPositionResponse.getStatusCode().is2xxSuccessful() &&
+            // jobPositionResponse.getBody() != null) {
+            // var jobPosition = jobPositionResponse.getBody();
+            // if (jobPosition.has("departmentId")) {
+            // Long departmentId = jobPosition.get("departmentId").asLong();
+            // String jobTitle = jobPosition.has("title") ?
+            // jobPosition.get("title").asText() : "Vị trí #" + saved.getJobPositionId();
+            // String candidateName = saved.getCandidate() != null ?
+            // saved.getCandidate().getFullName() : "Ứng viên";
+
+            // // Gửi thông báo cho phòng ban (HR/Recruiter)
+            // notificationProducer.sendNotificationToDepartment(
+            // departmentId,
+            // null, // Có thể filter theo positionId nếu cần
+            // "Có đơn ứng tuyển mới",
+            // "Ứng viên '" + candidateName + "' đã nộp đơn ứng tuyển cho vị trí '" +
+            // jobTitle + "'.",
+            // token
+            // );
+            // }
+            // }
+            // } catch (Exception e) {
+            // // Log error nhưng không fail toàn bộ process
+            // System.err.println("Error sending notification for new application: " +
+            // e.getMessage());
+            // }
         }
         return ApplicationResponseDTO.fromEntity(saved);
     }
@@ -270,6 +343,44 @@ public class ApplicationService {
         candidateService.saveCandidate(candidate);
 
         Application savedApplication = applicationRepository.save(application);
+
+        // Thông báo cho ứng viên (nếu có email và có thể tìm được employeeId từ email)
+        // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        // if (candidate != null && candidate.getEmail() != null) {
+        // try {
+        // Long candidateEmployeeId =
+        // userService.getUserIdByEmail(candidate.getEmail());
+        // if (candidateEmployeeId != null) {
+        // String jobTitle = "vị trí ứng tuyển";
+        // try {
+        // var jobPositionResponse =
+        // jobService.getJobPositionById(savedApplication.getJobPositionId(), token);
+        // if (jobPositionResponse.getStatusCode().is2xxSuccessful() &&
+        // jobPositionResponse.getBody() != null) {
+        // var jobPosition = jobPositionResponse.getBody();
+        // if (jobPosition.has("title")) {
+        // jobTitle = jobPosition.get("title").asText();
+        // }
+        // }
+        // } catch (Exception e) {
+        // // Ignore
+        // }
+
+        // notificationProducer.sendNotification(
+        // candidateEmployeeId,
+        // "Đơn ứng tuyển đã được chấp nhận",
+        // "Đơn ứng tuyển của bạn cho vị trí '" + jobTitle + "' đã được chấp nhận. Bạn
+        // sẽ được mời phỏng vấn.",
+        // token
+        // );
+        // }
+        // } catch (Exception e) {
+        // // Log error nhưng không fail toàn bộ process
+        // System.err.println("Error sending notification for accepted application: " +
+        // e.getMessage());
+        // }
+        // }
+
         return ApplicationResponseDTO.fromEntity(savedApplication);
     }
 
@@ -284,6 +395,47 @@ public class ApplicationService {
         application.setRejectionReason(rejectionReason);
 
         Application savedApplication = applicationRepository.save(application);
+
+        // Thông báo cho ứng viên (nếu có email và có thể tìm được employeeId từ email)
+        // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        // Candidate candidate = savedApplication.getCandidate();
+        // if (candidate != null && candidate.getEmail() != null) {
+        // try {
+        // Long candidateEmployeeId =
+        // userService.getUserIdByEmail(candidate.getEmail());
+        // if (candidateEmployeeId != null) {
+        // String jobTitle = "vị trí ứng tuyển";
+        // try {
+        // var jobPositionResponse =
+        // jobService.getJobPositionById(savedApplication.getJobPositionId(), token);
+        // if (jobPositionResponse.getStatusCode().is2xxSuccessful() &&
+        // jobPositionResponse.getBody() != null) {
+        // var jobPosition = jobPositionResponse.getBody();
+        // if (jobPosition.has("title")) {
+        // jobTitle = jobPosition.get("title").asText();
+        // }
+        // }
+        // } catch (Exception e) {
+        // // Ignore
+        // }
+
+        // String reasonMsg = rejectionReason != null ? " Lý do: " + rejectionReason :
+        // "";
+        // notificationProducer.sendNotification(
+        // candidateEmployeeId,
+        // "Đơn ứng tuyển đã bị từ chối",
+        // "Đơn ứng tuyển của bạn cho vị trí '" + jobTitle + "' đã bị từ chối." +
+        // reasonMsg,
+        // token
+        // );
+        // }
+        // } catch (Exception e) {
+        // // Log error nhưng không fail toàn bộ process
+        // System.err.println("Error sending notification for rejected application: " +
+        // e.getMessage());
+        // }
+        // }
+
         return ApplicationResponseDTO.fromEntity(savedApplication);
     }
 
@@ -307,6 +459,13 @@ public class ApplicationService {
         // Comments
         if (application.getComments() != null) {
             dto.setComments(commentService.getByApplicationId(application.getId(), token));
+        }
+        // Reviews
+        try {
+            dto.setReviews(reviewService.getByApplicationId(application.getId(), token));
+        } catch (Exception e) {
+            // Nếu có lỗi, set empty list
+            dto.setReviews(new ArrayList<>());
         }
         // JobPosition from job service (call by positionId)
         if (application.getJobPositionId() != null) {

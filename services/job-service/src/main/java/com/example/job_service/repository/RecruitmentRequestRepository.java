@@ -30,10 +30,9 @@ public interface RecruitmentRequestRepository extends JpaRepository<RecruitmentR
                         "(:status IS NULL OR rr.status = :status) AND " +
                         "(:createdBy IS NULL OR rr.requesterId = :createdBy) AND " +
                         "(:keyword IS NULL OR LOWER(rr.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-                        "LOWER(rr.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-                        "LOWER(rr.requirements) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+                        "LOWER(rr.reason) LIKE LOWER(CONCAT('%', :keyword, '%')))")
         Page<RecruitmentRequest> findByFilters(@Param("departmentId") Long departmentId,
-                        @Param("status") String status,
+                        @Param("status") RecruitmentRequestStatus status,
                         @Param("createdBy") Long createdBy,
                         @Param("keyword") String keyword,
                         Pageable pageable);

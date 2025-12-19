@@ -21,7 +21,7 @@ public class Application {
     private Long id;
 
     private LocalDate appliedDate;
-
+    @Enumerated(EnumType.STRING)
     private ApplicationStatus status;
     private String priority;
     @Column(columnDefinition = "TEXT")
@@ -47,5 +47,8 @@ public class Application {
     @OneToMany(mappedBy = "application", cascade = CascadeType.ALL)
     @JsonIgnore
     private Set<Comment> comments;
+
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL)
+    private Set<com.example.candidate_service.model.Review> reviews;
 
 }

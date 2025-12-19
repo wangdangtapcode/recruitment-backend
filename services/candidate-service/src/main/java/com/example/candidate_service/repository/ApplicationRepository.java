@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.example.candidate_service.model.Application;
+import com.example.candidate_service.utils.enums.ApplicationStatus;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +25,7 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
         "(:status IS NULL OR a.status = :status) AND " +
         "(:candidateId IS NULL OR a.candidate.id = :candidateId)")
  Page<Application> findByFilters(@Param("jobPositionId") Long jobPositionId,
-                                 @Param("status") String status,
+                                 @Param("status") ApplicationStatus status,
                                  @Param("candidateId") Long candidateId,
                                  Pageable pageable);
 }

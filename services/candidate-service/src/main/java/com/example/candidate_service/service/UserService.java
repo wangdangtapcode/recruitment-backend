@@ -3,17 +3,19 @@ package com.example.candidate_service.service;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.MediaType;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.candidate_service.dto.Response;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -36,29 +38,27 @@ public class UserService {
             String url = userServiceUrl + "/api/v1/user-service/employees/" + employeeId;
 
             HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
             if (token != null && !token.isEmpty()) {
-                headers.set("Authorization", "Bearer " + token);
+                headers.setBearerAuth(token);
             }
 
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<Response<Map<String, Object>>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<Response<Map<String, Object>>>() {
+                    });
 
-            JsonNode root = objectMapper.readTree(response.getBody());
-            JsonNode data = root.get("data");
-            return ResponseEntity.ok(data.get("name"));
-
-        } catch (HttpClientErrorException | HttpServerErrorException ex) {
-            try {
-                JsonNode errorBody = objectMapper.readTree(ex.getResponseBodyAsString());
-                return ResponseEntity.status(ex.getStatusCode()).body(errorBody);
-            } catch (Exception parseEx) {
-                ObjectNode fallback = objectMapper.createObjectNode();
-                fallback.put("statusCode", ex.getStatusCode().value());
-                fallback.put("error", ex.getStatusText());
-                fallback.put("message", "Không thể parse phản hồi lỗi từ User Service");
-                fallback.putNull("data");
-                return ResponseEntity.status(ex.getStatusCode()).body(fallback);
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                Map<String, Object> data = response.getBody().getData();
+                Object name = data.get("name");
+                if (name != null) {
+                    ObjectNode result = objectMapper.createObjectNode();
+                    result.put("name", name.toString());
+                    return ResponseEntity.ok(result);
+                }
             }
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             ObjectNode errorNode = objectMapper.createObjectNode();
             errorNode.put("statusCode", 500);
@@ -75,37 +75,29 @@ public class UserService {
                     + employeeIds.stream().map(String::valueOf).collect(Collectors.joining(","));
 
             HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
             if (token != null && !token.isEmpty()) {
-                headers.set("Authorization", "Bearer " + token);
+                headers.setBearerAuth(token);
             }
 
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<Response<List<Map<String, Object>>>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<Response<List<Map<String, Object>>>>() {
+                    });
 
-            JsonNode root = objectMapper.readTree(response.getBody());
-            JsonNode data = root.get("data"); // expected array of employees
             ObjectNode idToName = objectMapper.createObjectNode();
-            if (data != null && data.isArray()) {
-                for (JsonNode employee : data) {
-                    if (employee.has("id") && employee.has("name")) {
-                        idToName.put(String.valueOf(employee.get("id").asLong()), employee.get("name").asText());
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                List<Map<String, Object>> employees = response.getBody().getData();
+                for (Map<String, Object> employee : employees) {
+                    Object id = employee.get("id");
+                    Object name = employee.get("name");
+                    if (id != null && name != null) {
+                        idToName.put(String.valueOf(id), name.toString());
                     }
                 }
             }
             return ResponseEntity.ok(idToName);
-
-        } catch (HttpClientErrorException | HttpServerErrorException ex) {
-            try {
-                JsonNode errorBody = objectMapper.readTree(ex.getResponseBodyAsString());
-                return ResponseEntity.status(ex.getStatusCode()).body(errorBody);
-            } catch (Exception parseEx) {
-                ObjectNode fallback = objectMapper.createObjectNode();
-                fallback.put("statusCode", ex.getStatusCode().value());
-                fallback.put("error", ex.getStatusText());
-                fallback.put("message", "Không thể parse phản hồi lỗi từ User Service");
-                fallback.putNull("data");
-                return ResponseEntity.status(ex.getStatusCode()).body(fallback);
-            }
         } catch (Exception e) {
             ObjectNode errorNode = objectMapper.createObjectNode();
             errorNode.put("statusCode", 500);
@@ -113,6 +105,41 @@ public class UserService {
             errorNode.put("message", "Không thể kết nối tới User Service: " + e.getMessage());
             errorNode.putNull("data");
             return ResponseEntity.internalServerError().body(errorNode);
+        }
+    }
+
+    /**
+     * Lấy userId (employeeId) từ email
+     * Gọi API user-service để tìm employee theo email
+     */
+    public Long getUserIdByEmail(String email) {
+        try {
+            String url = userServiceUrl + "/api/v1/user-service/users/email/" + email;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<Response<Map<String, Object>>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<Response<Map<String, Object>>>() {
+                    });
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                Map<String, Object> data = response.getBody().getData();
+                Object employeeId = data.get("employeeId");
+                if (employeeId instanceof Number) {
+                    return ((Number) employeeId).longValue();
+                }
+                Object id = data.get("id");
+                if (id instanceof Number) {
+                    return ((Number) id).longValue();
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            // Nếu không tìm thấy hoặc lỗi, trả về null (có thể là email bên ngoài)
+            return null;
         }
     }
 

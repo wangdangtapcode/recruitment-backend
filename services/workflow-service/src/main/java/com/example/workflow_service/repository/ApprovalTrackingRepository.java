@@ -23,8 +23,8 @@ public interface ApprovalTrackingRepository extends JpaRepository<ApprovalTracki
                         Long requestId, Long stepId, ApprovalStatus status);
 
         // Tìm các approval tracking đang PENDING được gán cho một user
-        List<ApprovalTracking> findByAssignedUserIdAndStatus(
-                        Long assignedUserId, ApprovalStatus status);
+        List<ApprovalTracking> findByApproverPositionIdAndStatus(
+                        Long approverPositionId, ApprovalStatus status);
 
         // Tìm approval tracking theo request_id và status
         List<ApprovalTracking> findByRequestIdAndStatus(Long requestId, ApprovalStatus status);
@@ -35,10 +35,10 @@ public interface ApprovalTrackingRepository extends JpaRepository<ApprovalTracki
         @Query("SELECT at FROM ApprovalTracking at WHERE " +
                         "(:requestId IS NULL OR at.requestId = :requestId) AND " +
                         "(:status IS NULL OR at.status = :status) AND " +
-                        "(:assignedUserId IS NULL OR at.assignedUserId = :assignedUserId)")
+                        "(:approverPositionId IS NULL OR at.approverPositionId = :approverPositionId)")
         Page<ApprovalTracking> findByFilters(
                         @Param("requestId") Long requestId,
                         @Param("status") ApprovalStatus status,
-                        @Param("assignedUserId") Long assignedUserId,
+                        @Param("approverPositionId") Long approverPositionId,
                         Pageable pageable);
 }

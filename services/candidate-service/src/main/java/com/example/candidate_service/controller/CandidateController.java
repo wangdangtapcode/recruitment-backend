@@ -41,6 +41,7 @@ public class CandidateController {
     public ResponseEntity<PaginationDTO> getAllCandidates(
             @RequestParam(name = "stage", required = false) CandidateStage stage,
             @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "departmentId", required = false) Long departmentId,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
             @RequestParam(name = "sortBy", defaultValue = "id", required = false) String sortBy,
@@ -55,7 +56,7 @@ public class CandidateController {
         Sort sort = Sort.by(direction, sortBy);
         Pageable pageable = PageRequest.of(page - 1, limit, sort);
 
-        PaginationDTO paginationDTO = candidateService.getAllWithFilters(stage, keyword, pageable);
+        PaginationDTO paginationDTO = candidateService.getAllWithFilters(stage, keyword, departmentId, pageable);
 
         return ResponseEntity.ok(paginationDTO);
     }
@@ -97,6 +98,7 @@ public class CandidateController {
         CandidateDetailResponseDTO saved = candidateService.changeStage(id, stage);
         return ResponseEntity.ok(saved);
     }
+
     @GetMapping(params = "ids")
     public ResponseEntity<List<CandidateDetailResponseDTO>> findByIds(@RequestParam("ids") String ids) {
         List<Long> candidateIds = List.of(ids.split(","))

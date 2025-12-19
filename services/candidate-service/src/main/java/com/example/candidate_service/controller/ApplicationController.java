@@ -18,6 +18,7 @@ import com.example.candidate_service.exception.IdInvalidException;
 import com.example.candidate_service.service.ApplicationService;
 import com.example.candidate_service.utils.SecurityUtil;
 import com.example.candidate_service.utils.annotation.ApiMessage;
+import com.example.candidate_service.utils.enums.ApplicationStatus;
 
 @RestController
 @RequestMapping("/api/v1/candidate-service/applications")
@@ -34,7 +35,7 @@ public class ApplicationController {
     public ResponseEntity<PaginationDTO> getAllApplications(
             @RequestParam(name = "candidateId", required = false) Long candidateId,
             @RequestParam(name = "jobPositionId", required = false) Long jobPositionId,
-            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "status", required = false) ApplicationStatus status,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
             @RequestParam(name = "sortBy", defaultValue = "id", required = false) String sortBy,

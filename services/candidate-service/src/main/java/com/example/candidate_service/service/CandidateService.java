@@ -22,9 +22,11 @@ import com.example.candidate_service.utils.enums.CandidateStage;
 @Service
 public class CandidateService {
     private final CandidateRepository candidateRepository;
+    private final JobService jobService;
 
-    public CandidateService(CandidateRepository candidateRepository) {
+    public CandidateService(CandidateRepository candidateRepository, JobService jobService) {
         this.candidateRepository = candidateRepository;
+        this.jobService = jobService;
     }
 
     public boolean existsByEmail(String email) {
@@ -40,8 +42,27 @@ public class CandidateService {
         return candidateRepository.save(candidate);
     }
 
-    public PaginationDTO getAllWithFilters(CandidateStage stage, String keyword, Pageable pageable) {
-        Page<Candidate> pageData = candidateRepository.findByFilters(stage, keyword, pageable);
+    public PaginationDTO getAllWithFilters(CandidateStage stage, String keyword, Long departmentId, Pageable pageable) {
+        List<Long> jobPositionIds = null;
+        if (departmentId != null) {
+            String token = com.example.candidate_service.utils.SecurityUtil.getCurrentUserJWT().orElse("");
+            jobPositionIds = jobService.getJobPositionIdsByDepartmentId(departmentId, token);
+            System.out.println("jobPositionIds: " + jobPositionIds);
+            // If no job positions found for this department, return empty result
+            if (jobPositionIds.isEmpty()) {
+                PaginationDTO paginationDTO = new PaginationDTO();
+                Meta meta = new Meta();
+                meta.setPage(pageable.getPageNumber() + 1);
+                meta.setPageSize(pageable.getPageSize());
+                meta.setPages(0);
+                meta.setTotal(0);
+                paginationDTO.setMeta(meta);
+                paginationDTO.setResult(List.of());
+                return paginationDTO;
+            }
+        }
+
+        Page<Candidate> pageData = candidateRepository.findByFilters(stage, keyword, jobPositionIds, pageable);
 
         PaginationDTO paginationDTO = new PaginationDTO();
         Meta meta = new Meta();
@@ -123,6 +144,7 @@ public class CandidateService {
         Candidate saved = candidateRepository.save(existing);
         return CandidateDetailResponseDTO.fromEntity(saved);
     }
+
     public List<CandidateDetailResponseDTO> getByIds(List<Long> ids) {
         return candidateRepository.findAllById(ids).stream().map(CandidateDetailResponseDTO::fromEntity).toList();
     }

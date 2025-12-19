@@ -1,19 +1,21 @@
 package com.example.job_service.service;
 
-import java.util.List;
-import java.util.Map;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+
 import com.example.job_service.dto.Meta;
 import com.example.job_service.dto.PaginationDTO;
+import com.example.job_service.dto.SingleResponseDTO;
 import com.example.job_service.dto.jobposition.CreateJobPositionDTO;
 import com.example.job_service.dto.jobposition.GetAllJobPositionDTO;
 import com.example.job_service.dto.jobposition.JobPositionResponseDTO;
 import com.example.job_service.dto.jobposition.UpdateJobPositionDTO;
+import com.example.job_service.utils.TextTruncateUtil;
 import com.example.job_service.exception.IdInvalidException;
 import com.example.job_service.model.JobPosition;
 import com.example.job_service.model.RecruitmentRequest;
@@ -51,16 +53,14 @@ public class JobPositionService {
         if (rr.isExceedBudget()) {
             position.setSalaryMin(dto.getSalaryMin() != null ? dto.getSalaryMin() : rr.getSalaryMin());
             position.setSalaryMax(dto.getSalaryMax() != null ? dto.getSalaryMax() : rr.getSalaryMax());
-            position.setCurrency(dto.getCurrency() != null ? dto.getCurrency() : rr.getCurrency());
         } else {
             // Nếu không vượt quỹ, chỉ sử dụng giá trị từ DTO
             position.setSalaryMin(dto.getSalaryMin());
             position.setSalaryMax(dto.getSalaryMax());
-            position.setCurrency(dto.getCurrency());
         }
         position.setEmploymentType(dto.getEmploymentType());
         position.setExperienceLevel(dto.getExperienceLevel());
-        position.setLocation(dto.getLocation() != null ? dto.getLocation() : rr.getLocation());
+        position.setLocation(dto.getLocation());
         position.setRemote(dto.getIsRemote() != null ? dto.getIsRemote() : false);
         position.setYearsOfExperience(dto.getYearsOfExperience());
 
@@ -89,6 +89,16 @@ public class JobPositionService {
         return dto;
     }
 
+    public SingleResponseDTO<JobPositionResponseDTO> getByIdWithDepartmentNameAndMetadata(Long id, String token)
+            throws IdInvalidException {
+        JobPosition position = this.findById(id);
+        JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
+        Long deptId = position.getRecruitmentRequest().getDepartmentId();
+        String deptName = userService.getDepartmentById(deptId, token).getBody().get("name").asText();
+        dto.setDepartmentName(deptName);
+        return new SingleResponseDTO<>(dto, TextTruncateUtil.getJobPositionCharacterLimits());
+    }
+
     public JobPositionResponseDTO getByIdWithPublished(Long id) throws IdInvalidException {
         JobPosition position = this.findById(id);
         if (position.getStatus() != JobPositionStatus.PUBLISHED) {
@@ -101,17 +111,26 @@ public class JobPositionService {
         return dto;
     }
 
+    public SingleResponseDTO<JobPositionResponseDTO> getByIdWithPublishedAndMetadata(Long id)
+            throws IdInvalidException {
+        JobPosition position = this.findById(id);
+        if (position.getStatus() != JobPositionStatus.PUBLISHED) {
+            throw new IdInvalidException("Vị trí tuyển dụng chưa được xuất bản hoặc không khả dụng");
+        }
+        JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
+        Long deptId = position.getRecruitmentRequest().getDepartmentId();
+        String deptName = userService.getPublicDepartmentById(deptId).getBody().get("name").asText();
+        dto.setDepartmentName(deptName);
+        return new SingleResponseDTO<>(dto, TextTruncateUtil.getJobPositionCharacterLimits());
+    }
+
     public PaginationDTO findAll(Pageable pageable) {
         Page<JobPosition> pageJobPosition = jobPositionRepository.findAll(pageable);
         PaginationDTO rs = new PaginationDTO();
-        Meta mt = new Meta();
-        mt.setPage(pageJobPosition.getNumber() + 1);
-        mt.setPageSize(pageJobPosition.getSize());
-        mt.setPages(pageJobPosition.getTotalPages());
-        mt.setTotal(pageJobPosition.getTotalElements());
+        Meta mt = createMetaWithCharacterLimits(pageJobPosition);
         rs.setMeta(mt);
         rs.setResult(pageJobPosition.getContent().stream()
-                .map(JobPositionResponseDTO::fromEntity)
+                .map(position -> JobPositionResponseDTO.fromEntity(position, true))
                 .toList());
         return rs;
     }
@@ -127,14 +146,10 @@ public class JobPositionService {
     public PaginationDTO findByDepartmentId(Long departmentId, Pageable pageable) {
         Page<JobPosition> pageJobPosition = jobPositionRepository.findByDepartmentId(departmentId, pageable);
         PaginationDTO rs = new PaginationDTO();
-        Meta mt = new Meta();
-        mt.setPage(pageJobPosition.getNumber() + 1);
-        mt.setPageSize(pageJobPosition.getSize());
-        mt.setPages(pageJobPosition.getTotalPages());
-        mt.setTotal(pageJobPosition.getTotalElements());
+        Meta mt = createMetaWithCharacterLimits(pageJobPosition);
         rs.setMeta(mt);
         rs.setResult(pageJobPosition.getContent().stream()
-                .map(JobPositionResponseDTO::fromEntity)
+                .map(position -> JobPositionResponseDTO.fromEntity(position, true))
                 .toList());
         return rs;
     }
@@ -158,17 +173,13 @@ public class JobPositionService {
         Map<Long, String> departmentNames = userService.getDepartmentsByIds(departmentIds, token);
 
         PaginationDTO rs = new PaginationDTO();
-        Meta mt = new Meta();
-        mt.setPage(pageJobPosition.getNumber() + 1);
-        mt.setPageSize(pageJobPosition.getSize());
-        mt.setPages(pageJobPosition.getTotalPages());
-        mt.setTotal(pageJobPosition.getTotalElements());
+        Meta mt = createMetaWithCharacterLimits(pageJobPosition);
         rs.setMeta(mt);
 
         // Convert to JobPositionResponseDTO with department names
         List<JobPositionResponseDTO> result = pageJobPosition.getContent().stream()
                 .map(position -> {
-                    JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
+                    JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position, true);
                     Long deptId = position.getRecruitmentRequest().getDepartmentId();
                     dto.setDepartmentName(departmentNames.getOrDefault(deptId, "Unknown Department"));
                     return dto;
@@ -194,11 +205,7 @@ public class JobPositionService {
         Map<Long, String> departmentNames = userService.getDepartmentsByIds(departmentIds, token);
 
         PaginationDTO rs = new PaginationDTO();
-        Meta mt = new Meta();
-        mt.setPage(pageJobPosition.getNumber() + 1);
-        mt.setPageSize(pageJobPosition.getSize());
-        mt.setPages(pageJobPosition.getTotalPages());
-        mt.setTotal(pageJobPosition.getTotalElements());
+        Meta mt = createMetaWithCharacterLimits(pageJobPosition);
         rs.setMeta(mt);
 
         // Convert to GetAllJobPositionDTO with department names
@@ -242,9 +249,6 @@ public class JobPositionService {
         }
         if (dto.getSalaryMax() != null) {
             position.setSalaryMax(dto.getSalaryMax());
-        }
-        if (dto.getCurrency() != null) {
-            position.setCurrency(dto.getCurrency());
         }
         if (dto.getEmploymentType() != null) {
             position.setEmploymentType(dto.getEmploymentType());
@@ -315,5 +319,21 @@ public class JobPositionService {
         int current = position.getApplicationCount();
         position.setApplicationCount(current + 1);
         jobPositionRepository.save(position);
+    }
+
+    /**
+     * Tạo Meta object với metadata về giới hạn ký tự
+     */
+    private Meta createMetaWithCharacterLimits(Page<JobPosition> pageJobPosition) {
+        Meta mt = new Meta();
+        mt.setPage(pageJobPosition.getNumber() + 1);
+        mt.setPageSize(pageJobPosition.getSize());
+        mt.setPages(pageJobPosition.getTotalPages());
+        mt.setTotal(pageJobPosition.getTotalElements());
+
+        // Thêm metadata về giới hạn ký tự cho Frontend
+        mt.setCharacterLimits(TextTruncateUtil.getJobPositionCharacterLimits());
+
+        return mt;
     }
 }

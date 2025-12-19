@@ -1,15 +1,18 @@
 package com.example.candidate_service.service;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.candidate_service.dto.Response;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -35,26 +38,19 @@ public class CommunicationService {
                     + "/api/v1/communications-service/schedules?participantId=" + candidateId
                     + "&participantType=CANDIDATE&status=SCHEDULED";
             HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
             if (token != null && !token.isEmpty()) {
-                headers.set("Authorization", "Bearer " + token);
+                headers.setBearerAuth(token);
             }
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            JsonNode root = objectMapper.readTree(response.getBody());
-            // Giả định API trả về mảng schedules
-            return ResponseEntity.status(response.getStatusCode()).body(root);
-        } catch (HttpClientErrorException | HttpServerErrorException ex) {
-            try {
-                JsonNode errorBody = objectMapper.readTree(ex.getResponseBodyAsString());
-                return ResponseEntity.status(ex.getStatusCode()).body(errorBody);
-            } catch (Exception parseEx) {
-                ObjectNode fallback = objectMapper.createObjectNode();
-                fallback.put("statusCode", ex.getStatusCode().value());
-                fallback.put("error", ex.getStatusText());
-                fallback.put("message", "Không thể parse phản hồi lỗi từ Communications Service");
-                fallback.putNull("data");
-                return ResponseEntity.status(ex.getStatusCode()).body(fallback);
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<Response<JsonNode>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<Response<JsonNode>>() {
+                    });
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                return ResponseEntity.ok(response.getBody().getData());
             }
+            return ResponseEntity.ok(objectMapper.createArrayNode());
         } catch (Exception e) {
             ObjectNode errorNode = objectMapper.createObjectNode();
             errorNode.put("statusCode", 500);

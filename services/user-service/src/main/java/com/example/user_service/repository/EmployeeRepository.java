@@ -1,5 +1,7 @@
 package com.example.user_service.repository;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,4 +32,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             @Param("status") String status,
             @Param("keyword") String keyword,
             Pageable pageable);
+    @Query("""
+            SELECT DISTINCT e FROM Employee e
+            LEFT JOIN e.department d
+            WHERE d.id IN :departmentIds
+            """)
+    List<Employee> findByDepartmentIds(@Param("departmentIds") List<Long> departmentIds);
 }

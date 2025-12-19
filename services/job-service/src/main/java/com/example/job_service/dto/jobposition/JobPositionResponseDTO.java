@@ -2,9 +2,11 @@ package com.example.job_service.dto.jobposition;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import com.example.job_service.model.JobPosition;
 import com.example.job_service.model.RecruitmentRequest;
+import com.example.job_service.utils.TextTruncateUtil;
 import com.example.job_service.utils.enums.JobPositionStatus;
 
 import lombok.Getter;
@@ -22,7 +24,6 @@ public class JobPositionResponseDTO {
     private String benefits;
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;
-    private String currency;
     private String employmentType;
     private String experienceLevel;
     private String location;
@@ -35,19 +36,26 @@ public class JobPositionResponseDTO {
     private RecruitmentRequest recruitmentRequest;
     private String departmentName; // Tên phòng ban
     private String yearsOfExperience;
+    private LocalDateTime publishedAt;
 
     public static JobPositionResponseDTO fromEntity(JobPosition position) {
+        return fromEntity(position, false);
+    }
+
+    public static JobPositionResponseDTO fromEntity(JobPosition position, boolean truncateText) {
         JobPositionResponseDTO dto = new JobPositionResponseDTO();
         dto.setId(position.getId());
-        dto.setTitle(position.getTitle());
-        dto.setDescription(position.getDescription());
+        dto.setTitle(truncateText ? TextTruncateUtil.truncateTitle(position.getTitle()) : position.getTitle());
+        dto.setDescription(truncateText ? TextTruncateUtil.truncateDescription(position.getDescription())
+                : position.getDescription());
         // dto.setResponsibilities(position.getResponsibilities());
-        dto.setRequirements(position.getRequirements());
+        dto.setRequirements(truncateText ? TextTruncateUtil.truncateRequirements(position.getRequirements())
+                : position.getRequirements());
         // dto.setQualifications(position.getQualifications());
-        dto.setBenefits(position.getBenefits());
+        dto.setBenefits(
+                truncateText ? TextTruncateUtil.truncateBenefits(position.getBenefits()) : position.getBenefits());
         dto.setSalaryMin(position.getSalaryMin());
         dto.setSalaryMax(position.getSalaryMax());
-        dto.setCurrency(position.getCurrency());
         dto.setEmploymentType(position.getEmploymentType());
         dto.setExperienceLevel(position.getExperienceLevel());
         dto.setLocation(position.getLocation());
@@ -61,7 +69,7 @@ public class JobPositionResponseDTO {
         dto.setDepartmentId(position.getRecruitmentRequest().getDepartmentId());
         // Set additional fields for UI display
         dto.setYearsOfExperience(position.getYearsOfExperience());
-
+        dto.setPublishedAt(position.getPublishedAt());
         return dto;
     }
 

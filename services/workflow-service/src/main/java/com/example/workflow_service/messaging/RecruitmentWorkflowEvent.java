@@ -10,6 +10,8 @@ import lombok.Setter;
 public class RecruitmentWorkflowEvent {
 
     private String eventType;
+    // Loại yêu cầu: RECRUITMENT_REQUEST hoặc OFFER (giúp phân biệt ở consumer)
+    private String requestType;
     private Long requestId;
     private Long workflowId;
     private Long currentStepId; // Bước workflow hiện tại đang xử lý

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.example.job_service.model.RecruitmentRequest;
+import com.example.job_service.utils.TextTruncateUtil;
 import com.example.job_service.utils.enums.RecruitmentRequestStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -14,23 +15,17 @@ public class RecruitmentRequestWithUserDTO {
     private Long id;
     private String title;
     private Integer quantity;
-    private String priorityLevel;
     private String reason;
-    private String description;
-    private String requirements;
     private BigDecimal salaryMin;
-    private String benefits;
     private BigDecimal salaryMax;
-    private String currency;
-    private String location;
     private boolean isExceedBudget;
     private RecruitmentRequestStatus status;
     private Long requesterId;
     private JsonNode requester;
-    private Long approvedId;
-    private JsonNode approver;
-    private String approvalNotes;
-    private LocalDateTime approvedAt;
+    // private Long approvedId;
+    // private JsonNode approver;
+    // private String approvalNotes;
+    // private LocalDateTime approvedAt;
     private Long departmentId;
     private JsonNode department;
     // private String jobCategoryName;
@@ -45,29 +40,27 @@ public class RecruitmentRequestWithUserDTO {
     private JsonNode workflowInfo; // Thông tin workflow và approval tracking
 
     public static RecruitmentRequestWithUserDTO fromEntity(RecruitmentRequest entity) {
+        return fromEntity(entity, false);
+    }
+
+    public static RecruitmentRequestWithUserDTO fromEntity(RecruitmentRequest entity, boolean truncateText) {
         RecruitmentRequestWithUserDTO dto = new RecruitmentRequestWithUserDTO();
         dto.setId(entity.getId());
-        dto.setTitle(entity.getTitle());
+        dto.setTitle(truncateText ? TextTruncateUtil.truncateTitle(entity.getTitle()) : entity.getTitle());
         dto.setQuantity(entity.getQuantity());
-        dto.setPriorityLevel(entity.getPriorityLevel());
-        dto.setReason(entity.getReason());
-        dto.setDescription(entity.getDescription());
-        dto.setRequirements(entity.getRequirements());
-        dto.setBenefits(entity.getBenefits());
+        dto.setReason(truncateText ? TextTruncateUtil.truncateReason(entity.getReason()) : entity.getReason());
         // Chỉ set salary khi vượt quỹ
         if (entity.isExceedBudget()) {
             dto.setSalaryMin(entity.getSalaryMin());
             dto.setSalaryMax(entity.getSalaryMax());
-            dto.setCurrency(entity.getCurrency());
         }
 
-        dto.setLocation(entity.getLocation());
         dto.setExceedBudget(entity.isExceedBudget());
         dto.setStatus(entity.getStatus());
         dto.setRequesterId(entity.getRequesterId());
-        dto.setApprovedId(entity.getApprovedId());
-        dto.setApprovalNotes(entity.getApprovalNotes());
-        dto.setApprovedAt(entity.getApprovedAt());
+        // dto.setApprovedId(entity.getApprovedId());
+        // dto.setApprovalNotes(entity.getApprovalNotes());
+        // dto.setApprovedAt(entity.getApprovedAt());
         dto.setDepartmentId(entity.getDepartmentId());
         // dto.setJobCategoryName(entity.getJobCategory() != null ?
         // entity.getJobCategory().getName() : null);

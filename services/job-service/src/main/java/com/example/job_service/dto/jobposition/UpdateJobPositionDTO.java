@@ -17,7 +17,6 @@ public class UpdateJobPositionDTO {
     private String benefits;
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;
-    private String currency;
     private String employmentType;
     private String experienceLevel;
     private String location;

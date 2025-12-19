@@ -18,8 +18,8 @@ public class ApprovalTrackingResponseDTO {
 
     private ApprovalStatus status;
 
-    private Long assignedUserId;
-
+    private Long approverPositionId;
+    private String approverPositionName;
     private Long actionUserId;
 
     private String actionUserName;

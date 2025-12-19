@@ -70,6 +70,13 @@ public class PermissionInterceptor implements HandlerInterceptor {
             // "/api/v1/user-service/departments"
             String service = segments[3]; // user-service
             String resource = segments[4]; // departments
+
+            // Xử lý các endpoint đặc biệt - tất cả đều là "manage"
+            if (hasSpecialAction(segments)) {
+                return service + ":" + resource + ":manage";
+            }
+
+            // Map HTTP method: GET -> "read", các method khác -> "manage"
             String action = mapHttpMethodToAction(httpMethod);
             return service + ":" + resource + ":" + action;
         } catch (Exception e) {
@@ -77,12 +84,62 @@ public class PermissionInterceptor implements HandlerInterceptor {
         }
     }
 
+    private boolean hasSpecialAction(String[] segments) {
+        // Kiểm tra các segment sau resource để tìm action đặc biệt
+        // Ví dụ: /api/v1/candidate-service/applications/{id}/accept
+        // segments: ["", "api", "v1", "candidate-service", "applications", "{id}",
+        // "accept"]
+
+        // Kiểm tra từ segment 5 trở đi (sau resource)
+        for (int i = 5; i < segments.length; i++) {
+            String segment = segments[i];
+
+            // Bỏ qua các segment là path variable hoặc số
+            if (segment.startsWith("{") || segment.matches("\\d+")) {
+                continue;
+            }
+
+            // Các endpoint đặc biệt như approve, publish, close, reject, etc. đều là
+            // "manage"
+            switch (segment) {
+                case "status":
+                case "accept":
+                case "reject":
+                case "publish":
+                case "close":
+                case "reopen":
+                case "stage":
+                case "approve":
+                case "return":
+                case "cancel":
+                case "withdraw":
+                case "submit":
+                case "update-status":
+                case "calendar":
+                case "initialize":
+                case "match":
+                case "upload-avatar":
+                    return true;
+                case "pending":
+                case "by-request":
+                    // pending và by-request là read operations
+                    return false;
+                case "actions":
+                    // Xử lý /actions/withdraw
+                    if (i + 1 < segments.length && "withdraw".equals(segments[i + 1])) {
+                        return true;
+                    }
+                    break;
+            }
+        }
+
+        return false;
+    }
+
     private String mapHttpMethodToAction(String method) {
         return switch (method) {
             case "GET" -> "read";
-            case "POST" -> "create";
-            case "PUT", "PATCH" -> "update";
-            case "DELETE" -> "delete";
+            case "POST", "PUT", "PATCH", "DELETE" -> "manage";
             default -> "unknown";
         };
     }

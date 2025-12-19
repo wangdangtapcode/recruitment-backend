@@ -29,7 +29,7 @@ public class RecruitmentRequestAllWithUserDTO {
         dto.setTitle(entity.getTitle());
         dto.setQuantity(entity.getQuantity());
         dto.setRequesterId(entity.getRequesterId());
-        dto.setApprovedId(entity.getApprovedId());
+        // dto.setApprovedId(entity.getApprovedId());
         dto.setDepartmentId(entity.getDepartmentId());
         dto.setStatus(entity.getStatus());
         dto.setCreatedAt(entity.getCreatedAt());

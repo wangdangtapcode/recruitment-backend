@@ -21,8 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.user_service.dto.PaginationDTO;
 import com.example.user_service.dto.user.CreateUserDTO;
 import com.example.user_service.dto.user.UpdateUserDTO;
+import com.example.user_service.dto.user.UserDTO;
 import com.example.user_service.exception.IdInvalidException;
-import com.example.user_service.model.User;
 import com.example.user_service.service.UserService;
 import com.example.user_service.utils.annotation.ApiMessage;
 
@@ -70,18 +70,20 @@ public class UserController {
 
     @PostMapping
     @ApiMessage("Tạo mới người dùng")
-    public ResponseEntity<User> create(@RequestBody CreateUserDTO u) {
+    public ResponseEntity<UserDTO> create(@RequestBody CreateUserDTO u) {
         String hashPassword = this.passwordEncoder.encode(u.getPassword());
         u.setPassword(hashPassword);
-        User user = this.userService.create(u);
+        UserDTO user = this.userService.create(u);
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
+
     @PutMapping("/{id}")
     @ApiMessage("Cập nhật người dùng")
-    public ResponseEntity<User> update(@PathVariable Long id, @RequestBody UpdateUserDTO updateUserDTO) {
-        User user = this.userService.update(id, updateUserDTO);
+    public ResponseEntity<UserDTO> update(@PathVariable Long id, @RequestBody UpdateUserDTO updateUserDTO) {
+        UserDTO user = this.userService.update(id, updateUserDTO);
         return ResponseEntity.ok(user);
     }
+
     @DeleteMapping("/{id}")
     @ApiMessage("Xóa người dùng")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
@@ -94,14 +96,14 @@ public class UserController {
 
     @GetMapping("/{id}")
     @ApiMessage("Lấy người dùng theo ID")
-    public ResponseEntity<User> findById(@PathVariable Long id) {
-        User user = this.userService.getById(id);
+    public ResponseEntity<UserDTO> findById(@PathVariable Long id) {
+        UserDTO user = this.userService.getByIdAsDTO(id);
         return ResponseEntity.ok(user);
     }
 
     @GetMapping(params = "ids")
     @ApiMessage("Lấy danh sách người dùng theo IDs")
-    public ResponseEntity<List<User>> findByIds(@RequestParam("ids") String ids) {
+    public ResponseEntity<List<UserDTO>> findByIds(@RequestParam("ids") String ids) {
         List<Long> userIds = List.of(ids.split(","))
                 .stream()
                 .map(String::trim)
@@ -109,5 +111,17 @@ public class UserController {
                 .map(Long::valueOf)
                 .toList();
         return ResponseEntity.ok(this.userService.getByIds(userIds));
+    }
+
+    @GetMapping(params = "departmentIds")
+    @ApiMessage("Lấy danh sách người dùng theo departmentIds")
+    public ResponseEntity<List<UserDTO>> findByDepartmentIds(@RequestParam("departmentIds") String departmentIds) {
+        List<Long> departmentIdsList = List.of(departmentIds.split(","))
+                .stream()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
+                .toList();
+        return ResponseEntity.ok(this.userService.getByDepartmentIds(departmentIdsList));
     }
 }

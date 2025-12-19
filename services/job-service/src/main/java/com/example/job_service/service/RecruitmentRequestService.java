@@ -1,9 +1,6 @@
 package com.example.job_service.service;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,8 +8,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import com.example.job_service.dto.Meta;
 import com.example.job_service.dto.PaginationDTO;
+import com.example.job_service.dto.SingleResponseDTO;
+import com.example.job_service.utils.TextTruncateUtil;
 import com.example.job_service.dto.recruitment.ApproveRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.CancelRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.CreateRecruitmentRequestDTO;
@@ -25,7 +28,6 @@ import com.example.job_service.exception.UserServiceException;
 import com.example.job_service.messaging.RecruitmentWorkflowEvent;
 import com.example.job_service.messaging.RecruitmentWorkflowProducer;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.example.job_service.model.JobCategory;
 import com.example.job_service.model.RecruitmentRequest;
 import com.example.job_service.repository.RecruitmentRequestRepository;
 import com.example.job_service.utils.enums.RecruitmentRequestStatus;
@@ -56,19 +58,13 @@ public class RecruitmentRequestService {
         RecruitmentRequest rr = new RecruitmentRequest();
         rr.setTitle(dto.getTitle());
         rr.setQuantity(dto.getQuantity());
-        rr.setPriorityLevel(dto.getPriorityLevel());
         rr.setReason(dto.getReason());
-        rr.setDescription(dto.getDescription());
-        rr.setRequirements(dto.getRequirements());
-        rr.setBenefits(dto.getBenefits());
         // Chỉ set salary khi vượt quỹ
         if (dto.isExceedBudget()) {
             rr.setSalaryMin(dto.getSalaryMin());
             rr.setSalaryMax(dto.getSalaryMax());
-            rr.setCurrency(dto.getCurrency());
         }
 
-        rr.setLocation(dto.getLocation());
         rr.setExceedBudget(dto.isExceedBudget());
         rr.setStatus(RecruitmentRequestStatus.DRAFT);
         rr.setRequesterId(dto.getRequesterId());
@@ -94,9 +90,10 @@ public class RecruitmentRequestService {
 
         // Approve: Vẫn giữ SUBMITTED/PENDING, workflow-service sẽ xử lý chuyển bước
         // Chỉ khi workflow-service xác nhận đã hết bước thì mới chuyển sang APPROVED
-        request.setApprovalNotes(dto.getApprovalNotes());
+        // request.setApprovalNotes(dto.getApprovalNotes());
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
-        publishWorkflowEvent("STEP_APPROVED", saved, actorId, dto.getApprovalNotes(), null, currentStepId, null, token);
+        publishWorkflowEvent("REQUEST_APPROVED", saved, actorId, dto.getApprovalNotes(), null, currentStepId, null,
+                token);
         return saved;
     }
 
@@ -114,11 +111,11 @@ public class RecruitmentRequestService {
 
         // Reject: Từ chối ở bước này, kết thúc luồng
         request.setStatus(RecruitmentRequestStatus.REJECTED);
-        request.setApprovalNotes(dto.getReason());
-        request.setApprovedAt(LocalDateTime.now());
+        // request.setApprovalNotes(dto.getReason());
+        // request.setApprovedAt(LocalDateTime.now());
         request.setCurrentStepId(null); // Không còn bước nào
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
-        publishWorkflowEvent("STEP_REJECTED", saved, actorId, null, dto.getReason(), currentStepId, null, token);
+        publishWorkflowEvent("REQUEST_REJECTED", saved, actorId, null, dto.getReason(), currentStepId, null, token);
         return saved;
     }
 
@@ -154,6 +151,13 @@ public class RecruitmentRequestService {
         return convertToWithUserDTO(request, token);
     }
 
+    public SingleResponseDTO<RecruitmentRequestWithUserDTO> getByIdWithUserAndMetadata(Long id, String token)
+            throws IdInvalidException {
+        RecruitmentRequest request = this.findById(id);
+        RecruitmentRequestWithUserDTO dto = convertToWithUserDTO(request, token);
+        return new SingleResponseDTO<>(dto, TextTruncateUtil.getRecruitmentRequestCharacterLimits());
+    }
+
     public PaginationDTO getAllByDepartmentIdWithUser(Long departmentId, String token, Pageable pageable) {
         Page<RecruitmentRequest> requests = recruitmentRequestRepository.findByDepartmentIdAndIsActiveTrue(departmentId,
                 pageable);
@@ -169,14 +173,28 @@ public class RecruitmentRequestService {
     public PaginationDTO getAllWithFilters(Long departmentId, String status, Long createdBy, String keyword,
             String token,
             Pageable pageable) {
-        Page<RecruitmentRequest> requests = recruitmentRequestRepository.findByFilters(departmentId, status, createdBy,
+        RecruitmentRequestStatus statusEnum = null;
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                statusEnum = RecruitmentRequestStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Invalid status, will be ignored (statusEnum remains null)
+            }
+        }
+        Page<RecruitmentRequest> requests = recruitmentRequestRepository.findByFilters(departmentId, statusEnum,
+                createdBy,
                 keyword,
                 pageable);
         return convertToWithUserDTOList(requests, token);
     }
 
     private RecruitmentRequestWithUserDTO convertToWithUserDTO(RecruitmentRequest request, String token) {
-        RecruitmentRequestWithUserDTO dto = RecruitmentRequestWithUserDTO.fromEntity(request);
+        return convertToWithUserDTO(request, token, false);
+    }
+
+    private RecruitmentRequestWithUserDTO convertToWithUserDTO(RecruitmentRequest request, String token,
+            boolean truncateText) {
+        RecruitmentRequestWithUserDTO dto = RecruitmentRequestWithUserDTO.fromEntity(request, truncateText);
 
         if (request.getRequesterId() != null) {
             // Lấy thông tin employee (requesterId lưu employeeId)
@@ -189,15 +207,16 @@ public class RecruitmentRequestService {
             }
         }
 
-        if (request.getApprovedId() != null) {
-            // Lấy thông tin employee (approvedId lưu employeeId)
-            ResponseEntity<JsonNode> approverResponse = userService.getEmployeeById(request.getApprovedId(), token);
-            if (approverResponse.getStatusCode().is2xxSuccessful()) {
-                dto.setApprover(approverResponse.getBody());
-            } else {
-                throw new UserServiceException(approverResponse);
-            }
-        }
+        // if (request.getApprovedId() != null) {
+        // // Lấy thông tin employee (approvedId lưu employeeId)
+        // ResponseEntity<JsonNode> approverResponse =
+        // userService.getEmployeeById(request.getApprovedId(), token);
+        // if (approverResponse.getStatusCode().is2xxSuccessful()) {
+        // dto.setApprover(approverResponse.getBody());
+        // } else {
+        // throw new UserServiceException(approverResponse);
+        // }
+        // }
 
         if (request.getDepartmentId() != null) {
             ResponseEntity<JsonNode> departmentResponse = userService.getDepartmentById(request.getDepartmentId(),
@@ -228,22 +247,14 @@ public class RecruitmentRequestService {
     private PaginationDTO convertToWithUserDTOList(Page<RecruitmentRequest> requests,
             String token) {
         PaginationDTO rs = new PaginationDTO();
-        Meta mt = new Meta();
-        mt.setPage(requests.getNumber() + 1);
-        mt.setPageSize(requests.getSize());
-        mt.setPages(requests.getTotalPages());
-        mt.setTotal(requests.getTotalElements());
+        Meta mt = createMetaWithCharacterLimits(requests);
         rs.setMeta(mt);
 
         // Lấy tất cả employee IDs cần thiết (requesterId và approvedId lưu employeeId)
         List<Long> employeeIds = requests.getContent().stream()
                 .flatMap(request -> {
-                    if (request.getRequesterId() != null && request.getApprovedId() != null) {
-                        return List.of(request.getRequesterId(), request.getApprovedId()).stream();
-                    } else if (request.getRequesterId() != null) {
+                    if (request.getRequesterId() != null) {
                         return List.of(request.getRequesterId()).stream();
-                    } else if (request.getApprovedId() != null) {
-                        return List.of(request.getApprovedId()).stream();
                     }
                     return List.<Long>of().stream();
                 })
@@ -276,17 +287,17 @@ public class RecruitmentRequestService {
         // Convert từng request sử dụng cached data
         rs.setResult(requests.getContent().stream()
                 .map(request -> {
-                    RecruitmentRequestWithUserDTO dto = RecruitmentRequestWithUserDTO.fromEntity(request);
+                    RecruitmentRequestWithUserDTO dto = convertToWithUserDTO(request, token, true);
 
                     // Set requester info (requesterId lưu employeeId)
                     if (request.getRequesterId() != null) {
                         dto.setRequester(employeeMap.get(request.getRequesterId()));
                     }
 
-                    // Set approver info (approvedId lưu employeeId)
-                    if (request.getApprovedId() != null) {
-                        dto.setApprover(employeeMap.get(request.getApprovedId()));
-                    }
+                    // // Set approver info (approvedId lưu employeeId)
+                    // if (request.getApprovedId() != null) {
+                    // dto.setApprover(employeeMap.get(request.getApprovedId()));
+                    // }
 
                     // Set department info
                     if (request.getDepartmentId() != null) {
@@ -305,19 +316,14 @@ public class RecruitmentRequestService {
 
         rr.setTitle(dto.getTitle());
         rr.setQuantity(dto.getQuantity());
-        rr.setPriorityLevel(dto.getPriorityLevel());
         rr.setReason(dto.getReason());
-        rr.setDescription(dto.getDescription());
-        rr.setRequirements(dto.getRequirements());
 
         // Chỉ set salary khi vượt quỹ
         if (dto.isExceedBudget()) {
             rr.setSalaryMin(dto.getSalaryMin());
             rr.setSalaryMax(dto.getSalaryMax());
-            rr.setCurrency(dto.getCurrency());
         }
 
-        rr.setLocation(dto.getLocation());
         rr.setExceedBudget(dto.isExceedBudget());
         // rr.setJobCategory(category);
         rr.setDepartmentId(dto.getDepartmentId());
@@ -371,7 +377,7 @@ public class RecruitmentRequestService {
         Long currentStepId = request.getCurrentStepId();
 
         request.setStatus(RecruitmentRequestStatus.RETURNED);
-        request.setApprovalNotes(dto.getReason());
+        // request.setApprovalNotes(dto.getReason());
         // Giữ nguyên currentStepId để workflow-service biết đang ở bước nào
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
         publishWorkflowEvent("REQUEST_RETURNED", saved, actorId, null, dto.getReason(), currentStepId,
@@ -396,7 +402,7 @@ public class RecruitmentRequestService {
 
         Long currentStepId = request.getCurrentStepId();
         request.setStatus(RecruitmentRequestStatus.CANCELLED);
-        request.setApprovalNotes(dto.getReason());
+        // request.setApprovalNotes(dto.getReason());
         request.setCurrentStepId(null);
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
         publishWorkflowEvent("REQUEST_CANCELLED", saved, actorId, null, dto.getReason(), currentStepId, null, token);
@@ -421,7 +427,7 @@ public class RecruitmentRequestService {
 
         Long currentStepId = request.getCurrentStepId();
         request.setStatus(RecruitmentRequestStatus.WITHDRAWN);
-        request.setApprovalNotes(dto.getReason());
+        // request.setApprovalNotes(dto.getReason());
         request.setCurrentStepId(null);
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
 
@@ -439,6 +445,7 @@ public class RecruitmentRequestService {
             String authToken) {
         RecruitmentWorkflowEvent event = RecruitmentWorkflowEvent.builder()
                 .eventType(eventType)
+                .requestType("RECRUITMENT_REQUEST")
                 .requestId(request.getId())
                 .workflowId(request.getWorkflowId())
                 .currentStepId(currentStepId != null ? currentStepId : request.getCurrentStepId())
@@ -454,6 +461,22 @@ public class RecruitmentRequestService {
                 .build();
         event.setAuthToken(authToken);
         workflowProducer.publishEvent(event);
+    }
+
+    /**
+     * Tạo Meta object với metadata về giới hạn ký tự
+     */
+    private Meta createMetaWithCharacterLimits(Page<RecruitmentRequest> pageRequests) {
+        Meta mt = new Meta();
+        mt.setPage(pageRequests.getNumber() + 1);
+        mt.setPageSize(pageRequests.getSize());
+        mt.setPages(pageRequests.getTotalPages());
+        mt.setTotal(pageRequests.getTotalElements());
+
+        // Thêm metadata về giới hạn ký tự cho Frontend
+        mt.setCharacterLimits(TextTruncateUtil.getRecruitmentRequestCharacterLimits());
+
+        return mt;
     }
 
 }

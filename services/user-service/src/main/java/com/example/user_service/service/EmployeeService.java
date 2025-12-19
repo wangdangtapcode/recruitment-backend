@@ -145,6 +145,10 @@ public class EmployeeService {
         return this.employeeRepository.findAllById(ids);
     }
 
+    public List<Employee> getByDepartmentIds(List<Long> departmentIds) {
+        return this.employeeRepository.findByDepartmentIds(departmentIds);
+    }
+
     public String uploadAvatar(MultipartFile file) {
         return this.cloudinaryService.uploadFile(file);
     }

@@ -21,11 +21,10 @@ public class WorkflowStep {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workflow_id", nullable = false)
     private Workflow workflow;
-
+    @Column(name = "step_name", nullable = false)
+    private String stepName;
     @Column(name = "step_order", nullable = false)
     private Integer stepOrder;
-
-    private String stepName;
 
     // Vị trí cần phê duyệt (kết nối với RBAC - User_Positions)
     @Column(name = "approver_position_id", nullable = false)

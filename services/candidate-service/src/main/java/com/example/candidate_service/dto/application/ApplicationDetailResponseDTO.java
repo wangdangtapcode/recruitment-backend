@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.example.candidate_service.dto.comment.CommentResponseDTO;
+import com.example.candidate_service.dto.review.ReviewResponseDTO;
 import com.example.candidate_service.utils.enums.ApplicationStatus;
 
 import lombok.Getter;
@@ -23,6 +24,7 @@ public class ApplicationDetailResponseDTO {
     private String resumeUrl;
     private String feedback;
     private String notes;
+    private List<ReviewResponseDTO> reviews;
     private List<CommentResponseDTO> comments;
     private Object jobPosition; // hoặc Map tuỳ theo kết quả trả về từ job-service
     private List<Object> upcomingSchedules; // từ communications-service

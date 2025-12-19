@@ -109,7 +109,17 @@ public class EmployeeController {
                 .toList();
         return ResponseEntity.ok(this.employeeService.getByIds(employeeIds));
     }
-
+    @GetMapping(params = "departmentIds")
+    @ApiMessage("Lấy danh sách nhân viên theo departmentIds")
+    public ResponseEntity<List<Employee>> findByDepartmentIds(@RequestParam("departmentIds") String departmentIds) {
+        List<Long> departmentIdsList = List.of(departmentIds.split(","))
+                .stream()
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
+                .toList();
+        return ResponseEntity.ok(this.employeeService.getByDepartmentIds(departmentIdsList));
+    }
 
     @PostMapping("/upload-avatar")
     @ApiMessage("Tải lên ảnh đại diện")

@@ -18,8 +18,14 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
 
     boolean existsByEmail(String email);
 
-    @Query("SELECT c FROM Candidate c WHERE (:stage IS NULL OR c.stage = :stage) AND (:keyword IS NULL OR LOWER(c.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    @Query("SELECT DISTINCT c FROM Candidate c " +
+            "LEFT JOIN c.applications a " +
+            "WHERE (:stage IS NULL OR c.stage = :stage) " +
+            "AND (:keyword IS NULL OR LOWER(c.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))) "
+            +
+            "AND (:jobPositionIds IS NULL OR :jobPositionIds IS NULL OR a.jobPositionId IN :jobPositionIds)")
     Page<Candidate> findByFilters(@Param("stage") CandidateStage stage,
             @Param("keyword") String keyword,
+            @Param("jobPositionIds") java.util.List<Long> jobPositionIds,
             Pageable pageable);
 }

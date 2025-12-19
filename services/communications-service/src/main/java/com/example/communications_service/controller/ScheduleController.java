@@ -3,6 +3,7 @@ package com.example.communications_service.controller;
 import com.example.communications_service.dto.PaginationDTO;
 import com.example.communications_service.dto.schedule.ScheduleDetailDTO;
 import com.example.communications_service.dto.schedule.ScheduleRequest;
+import com.example.communications_service.dto.schedule.AvailableParticipantDTO;
 import com.example.communications_service.model.Schedule;
 import com.example.communications_service.service.ScheduleService;
 import com.example.communications_service.utils.SecurityUtil;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -106,5 +108,16 @@ public class ScheduleController {
                 "startDate", startDate,
                 "endDate", endDate,
                 "total", schedules.size()));
+    }
+
+    @GetMapping("/available-participants")
+    public ResponseEntity<List<AvailableParticipantDTO>> getAvailableParticipants(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
+            @RequestParam(name = "excludeScheduleId", required = false) Long excludeScheduleId) {
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        List<AvailableParticipantDTO> availableParticipants = scheduleService.getAvailableParticipants(
+                startTime, endTime, excludeScheduleId, token);
+        return ResponseEntity.ok(availableParticipants);
     }
 }

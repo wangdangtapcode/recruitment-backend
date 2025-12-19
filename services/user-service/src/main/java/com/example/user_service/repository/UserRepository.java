@@ -1,5 +1,6 @@
 package com.example.user_service.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -38,4 +39,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         @Param("isActive") Boolean isActive,
                         @Param("keyword") String keyword,
                         Pageable pageable);
+
+        @Query("""
+                        SELECT DISTINCT u FROM User u
+                        LEFT JOIN u.employee e
+                        LEFT JOIN e.department d
+                        WHERE d.id IN :departmentIds
+                        """)
+        List<User> findByDepartmentIds(@Param("departmentIds") List<Long> departmentIds);
 }

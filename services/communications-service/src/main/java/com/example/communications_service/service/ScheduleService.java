@@ -5,9 +5,13 @@ import com.example.communications_service.dto.PaginationDTO;
 import com.example.communications_service.dto.schedule.ScheduleRequest;
 import com.example.communications_service.dto.schedule.ScheduleDetailDTO;
 import com.example.communications_service.dto.schedule.ScheduleParticipantDTO;
+import com.example.communications_service.dto.schedule.AvailableParticipantDTO;
+import com.example.communications_service.messaging.NotificationProducer;
 import com.example.communications_service.model.Schedule;
 import com.example.communications_service.model.ScheduleParticipant;
 import com.example.communications_service.repository.ScheduleRepository;
+import com.example.communications_service.repository.ScheduleParticipantRepository;
+import com.example.communications_service.utils.SecurityUtil;
 import com.example.communications_service.utils.enums.MeetingType;
 
 import org.springframework.data.domain.Page;
@@ -32,14 +36,21 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleParticipantRepository scheduleParticipantRepository;
     private final UserService userService;
     private final CandidateService candidateService;
+    private final NotificationProducer notificationProducer;
 
-    public ScheduleService(ScheduleRepository scheduleRepository, UserService userService,
-            CandidateService candidateService) {
+    public ScheduleService(ScheduleRepository scheduleRepository,
+            ScheduleParticipantRepository scheduleParticipantRepository,
+            UserService userService,
+            CandidateService candidateService,
+            NotificationProducer notificationProducer) {
         this.scheduleRepository = scheduleRepository;
+        this.scheduleParticipantRepository = scheduleParticipantRepository;
         this.userService = userService;
         this.candidateService = candidateService;
+        this.notificationProducer = notificationProducer;
     }
 
     public Schedule createSchedule(ScheduleRequest request) {
@@ -78,7 +89,33 @@ public class ScheduleService {
                 savedSchedule.getParticipants().add(userP);
             }
         }
-        return scheduleRepository.save(savedSchedule);
+        Schedule saved = scheduleRepository.save(savedSchedule);
+        
+        // Thông báo cho tất cả người tham gia
+        // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        // List<Long> participantIds = new java.util.ArrayList<>();
+        // if (request.getEmployeeIds() != null) {
+        //     participantIds.addAll(request.getEmployeeIds());
+        // }
+        
+        // if (!participantIds.isEmpty()) {
+        //     String scheduleInfo = saved.getTitle() != null ? saved.getTitle() : "Lịch hẹn";
+        //     if (saved.getStartTime() != null) {
+        //         scheduleInfo += " vào " + saved.getStartTime();
+        //     }
+        //     if (saved.getLocation() != null) {
+        //         scheduleInfo += " tại " + saved.getLocation();
+        //     }
+            
+        //     notificationProducer.sendNotificationToMultiple(
+        //         participantIds,
+        //         "Bạn có lịch hẹn mới",
+        //         "Bạn đã được mời tham gia: " + scheduleInfo + ".",
+        //         token
+        //     );
+        // }
+        
+        return saved;
     }
 
     public Schedule updateSchedule(Long id, ScheduleRequest request) {
@@ -121,7 +158,33 @@ public class ScheduleService {
             }
         }
 
-        return scheduleRepository.save(schedule);
+        Schedule saved = scheduleRepository.save(schedule);
+        
+        // Thông báo cho tất cả người tham gia về cập nhật
+        // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        // List<Long> participantIds = new java.util.ArrayList<>();
+        // if (request.getEmployeeIds() != null) {
+        //     participantIds.addAll(request.getEmployeeIds());
+        // }
+        
+        // if (!participantIds.isEmpty()) {
+        //     String scheduleInfo = saved.getTitle() != null ? saved.getTitle() : "Lịch hẹn";
+        //     if (saved.getStartTime() != null) {
+        //         scheduleInfo += " vào " + saved.getStartTime();
+        //     }
+        //     if (saved.getLocation() != null) {
+        //         scheduleInfo += " tại " + saved.getLocation();
+        //     }
+            
+        //     notificationProducer.sendNotificationToMultiple(
+        //         participantIds,
+        //         "Lịch hẹn đã được cập nhật",
+        //         "Lịch hẹn '" + scheduleInfo + "' đã được cập nhật.",
+        //         token
+        //     );
+        // }
+        
+        return saved;
     }
 
     public void deleteSchedule(Long id) {
@@ -353,5 +416,84 @@ public class ScheduleService {
             }
         }
         return schedules.stream().map(s -> toDetailDTO(s, token, userMap, candidateMap)).toList();
+    }
+
+    /**
+     * Lấy danh sách người tham dự khả dụng (không trùng lịch) cho khoảng thời gian
+     * đã chọn
+     * 
+     * @param startTime         Thời gian bắt đầu
+     * @param endTime           Thời gian kết thúc
+     * @param excludeScheduleId ID của schedule cần loại trừ (dùng khi update, null
+     *                          nếu tạo mới)
+     * @param token             JWT token để gọi user service
+     * @return Danh sách người tham dự khả dụng
+     */
+    public List<AvailableParticipantDTO> getAvailableParticipants(LocalDateTime startTime,
+            LocalDateTime endTime,
+            Long excludeScheduleId,
+            String token) {
+        // 1. Lấy tất cả employee IDs
+        List<Long> allEmployeeIds = userService.getAllEmployeeIds(token);
+        if (allEmployeeIds.isEmpty()) {
+            return List.of();
+        }
+
+        // 2. Tìm các schedules trùng lịch
+        List<Schedule> overlappingSchedules = scheduleRepository.findOverlappingSchedules(
+                startTime, endTime, excludeScheduleId);
+
+        // 3. Lấy danh sách participant IDs từ các schedules trùng lịch (chỉ USER type)
+        Set<Long> busyEmployeeIds = new java.util.HashSet<>();
+        if (!overlappingSchedules.isEmpty()) {
+            List<Long> overlappingScheduleIds = overlappingSchedules.stream()
+                    .map(Schedule::getId)
+                    .toList();
+
+            List<Long> participantIds = scheduleParticipantRepository
+                    .findParticipantIdsByScheduleIds(overlappingScheduleIds);
+            busyEmployeeIds.addAll(participantIds);
+        }
+
+        // 4. Lọc ra các employee IDs khả dụng (không bận)
+        List<Long> availableEmployeeIds = allEmployeeIds.stream()
+                .filter(id -> !busyEmployeeIds.contains(id))
+                .toList();
+
+        if (availableEmployeeIds.isEmpty()) {
+            return List.of();
+        }
+
+        // 5. Lấy tên và department name của các employees khả dụng
+        Map<Long, String> employeeNameMap = new HashMap<>();
+        Map<Long, String> employeeDepartmentNameMap = new HashMap<>();
+        var nameResponse = userService.getEmployeeNamesAndDepartmentNames(availableEmployeeIds, token);
+        if (nameResponse.getStatusCode().is2xxSuccessful() && nameResponse.getBody() != null) {
+            JsonNode result = nameResponse.getBody();
+            result.fields().forEachRemaining(e -> {
+                Long employeeId = Long.valueOf(e.getKey());
+                JsonNode employeeInfo = e.getValue();
+
+                if (employeeInfo.has("name")) {
+                    employeeNameMap.put(employeeId, employeeInfo.get("name").asText());
+                } else {
+                    employeeNameMap.put(employeeId, "Unknown");
+                }
+
+                if (employeeInfo.has("departmentName")) {
+                    employeeDepartmentNameMap.put(employeeId, employeeInfo.get("departmentName").asText());
+                } else {
+                    employeeDepartmentNameMap.put(employeeId, "Unknown");
+                }
+            });
+        }
+
+        // 6. Tạo danh sách DTO
+        return availableEmployeeIds.stream()
+                .map(id -> new AvailableParticipantDTO(
+                        id,
+                        employeeNameMap.getOrDefault(id, "Unknown"),
+                        employeeDepartmentNameMap.getOrDefault(id, "Unknown")))
+                .toList();
     }
 }

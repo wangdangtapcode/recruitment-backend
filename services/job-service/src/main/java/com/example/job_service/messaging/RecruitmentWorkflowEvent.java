@@ -13,6 +13,8 @@ public class RecruitmentWorkflowEvent {
 
     private String eventType; // REQUEST_SUBMITTED, REQUEST_APPROVED, REQUEST_REJECTED, REQUEST_RETURNED,
                               // REQUEST_CANCELLED, STEP_APPROVED, STEP_REJECTED
+    // Loại yêu cầu: RECRUITMENT_REQUEST hoặc OFFER (giúp phân biệt ở consumer)
+    private String requestType;
     private Long requestId;
     private Long workflowId;
     private Long currentStepId; // Bước workflow hiện tại đang xử lý

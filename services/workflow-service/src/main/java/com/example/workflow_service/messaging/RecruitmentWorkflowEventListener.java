@@ -26,9 +26,10 @@ public class RecruitmentWorkflowEventListener {
     public void consume(String message) {
         try {
             RecruitmentWorkflowEvent event = objectMapper.readValue(message, RecruitmentWorkflowEvent.class);
+            // Xử lý cả recruitment request và offer (cùng event structure)
             approvalTrackingService.handleWorkflowEvent(event);
         } catch (Exception ex) {
-            log.error("Failed to process recruitment workflow event: {}", message, ex);
+            log.error("Failed to process workflow event (request/offer): {}", message, ex);
         }
     }
 }

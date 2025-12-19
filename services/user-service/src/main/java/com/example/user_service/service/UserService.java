@@ -1,6 +1,7 @@
 package com.example.user_service.service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,6 +11,7 @@ import com.example.user_service.dto.Meta;
 import com.example.user_service.dto.PaginationDTO;
 import com.example.user_service.dto.user.CreateUserDTO;
 import com.example.user_service.dto.user.UpdateUserDTO;
+import com.example.user_service.dto.user.UserDTO;
 import com.example.user_service.exception.CustomException;
 import com.example.user_service.model.Employee;
 import com.example.user_service.model.Role;
@@ -43,9 +45,8 @@ public class UserService {
         return rs;
     }
 
-    public User create(CreateUserDTO createUserDTO) {
+    public UserDTO create(CreateUserDTO createUserDTO) {
         User user = new User();
-        // User không có field name, name lấy từ Employee
         user.setEmail(createUserDTO.getEmail());
         user.setPassword(createUserDTO.getPassword());
         Role role = this.roleService.getById(createUserDTO.getRoleId());
@@ -63,10 +64,11 @@ public class UserService {
         user.setEmployee(employee);
         employee.setUser(user);
 
-        return this.userRepository.save(user);
+        User savedUser = this.userRepository.save(user);
+        return convertToDTO(savedUser);
     }
 
-    public User update(Long id, UpdateUserDTO updateUserDTO) {
+    public UserDTO update(Long id, UpdateUserDTO updateUserDTO) {
 
         User user = this.getById(id);
         if (user == null) {
@@ -99,7 +101,8 @@ public class UserService {
             employee.setUser(user);
         }
 
-        return this.userRepository.save(user);
+        User updatedUser = this.userRepository.save(user);
+        return convertToDTO(updatedUser);
     }
 
     public User update(User u) {
@@ -131,6 +134,11 @@ public class UserService {
         return this.userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    public UserDTO getByIdAsDTO(Long id) {
+        User user = this.getById(id);
+        return convertToDTO(user);
+    }
+
     public PaginationDTO getAllWithFilters(Long departmentId, String role, Boolean isActive, String keyword,
             Pageable pageable) {
         Page<User> pageUser = this.userRepository.findByFilters(departmentId, role, isActive, keyword, pageable);
@@ -141,12 +149,42 @@ public class UserService {
         mt.setPages(pageUser.getTotalPages());
         mt.setTotal(pageUser.getTotalElements());
         rs.setMeta(mt);
-        rs.setResult(pageUser.getContent());
+        // Convert User entities to UserDTO
+        List<UserDTO> userDTOs = pageUser.getContent().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+        rs.setResult(userDTOs);
         return rs;
     }
 
-    public List<User> getByIds(List<Long> ids) {
-        return this.userRepository.findAllById(ids);
+    public List<UserDTO> getByIds(List<Long> ids) {
+        List<User> users = this.userRepository.findAllById(ids);
+        return users.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
+    public List<UserDTO> getByDepartmentIds(List<Long> departmentIds) {
+        List<User> users = this.userRepository.findByDepartmentIds(departmentIds);
+        return users.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Helper method to convert User entity to UserDTO
+    private UserDTO convertToDTO(User user) {
+        UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
+        dto.setEmail(user.getEmail());
+        dto.setPassword(user.getPassword());
+        dto.setActive(user.is_active());
+        dto.setCreateBy(user.getCreateBy());
+        dto.setUpdateBy(user.getUpdateBy());
+        dto.setRefreshToken(user.getRefreshToken());
+        if (user.getRole() != null) {
+            dto.setRoleId(user.getRole().getId());
+        }
+        dto.setEmployee(user.getEmployee());
+        return dto;
+    }
 }

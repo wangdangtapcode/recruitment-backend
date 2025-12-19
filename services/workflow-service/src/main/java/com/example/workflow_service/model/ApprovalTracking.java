@@ -76,8 +76,8 @@ public class ApprovalTracking {
 
     // User được gán để phê duyệt (tìm từ User_Positions dựa trên
     // approver_position_id)
-    @Column(name = "assigned_user_id")
-    private Long assignedUserId;
+    @Column(name = "approver_position_id")
+    private Long approverPositionId;
 
     // User thực hiện hành động (approve/reject)
     @Column(name = "action_user_id")

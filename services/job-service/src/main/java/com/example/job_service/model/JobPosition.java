@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import com.example.job_service.utils.enums.JobPositionStatus;
 
@@ -38,7 +39,6 @@ public class JobPosition {
     private String benefits;
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;
-    private String currency;
     private String employmentType;
     private String experienceLevel;
     private String location;
@@ -47,12 +47,14 @@ public class JobPosition {
     private LocalDate deadline;
     private int applicationCount;
     private String yearsOfExperience;
-
+    public LocalDateTime publishedAt;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private JobPositionStatus status;
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "recruitment_request_id")
     private RecruitmentRequest recruitmentRequest;
+
+
 
 }
