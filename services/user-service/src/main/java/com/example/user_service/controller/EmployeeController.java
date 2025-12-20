@@ -109,6 +109,7 @@ public class EmployeeController {
                 .toList();
         return ResponseEntity.ok(this.employeeService.getByIds(employeeIds));
     }
+
     @GetMapping(params = "departmentIds")
     @ApiMessage("Lấy danh sách nhân viên theo departmentIds")
     public ResponseEntity<List<Employee>> findByDepartmentIds(@RequestParam("departmentIds") String departmentIds) {

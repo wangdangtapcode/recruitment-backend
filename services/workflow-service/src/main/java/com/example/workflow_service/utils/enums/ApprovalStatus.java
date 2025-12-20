@@ -5,6 +5,5 @@ public enum ApprovalStatus {
     APPROVED,
     REJECTED,
     CANCELLED,
-    DELEGATED,
     RETURNED
 }

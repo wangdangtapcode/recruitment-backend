@@ -18,7 +18,7 @@ public class RecruitmentRequestWithUserDTO {
     private String reason;
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;
-    private boolean isExceedBudget;
+    private boolean exceedBudget;
     private RecruitmentRequestStatus status;
     private Long requesterId;
     private JsonNode requester;

@@ -26,15 +26,10 @@ public class JobPosition {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(columnDefinition = "TEXT")
-    private String responsibilities;
+
 
     @Column(columnDefinition = "TEXT")
     private String requirements;
-
-    @Column(columnDefinition = "TEXT")
-    private String qualifications;
-
     @Column(columnDefinition = "TEXT")
     private String benefits;
     private BigDecimal salaryMin;

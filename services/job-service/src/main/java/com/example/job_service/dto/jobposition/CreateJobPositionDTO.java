@@ -13,9 +13,7 @@ public class CreateJobPositionDTO {
     @NotNull
     private String title;
     private String description;
-    private String responsibilities;
     private String requirements;
-    private String qualifications;
     private String benefits;
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;

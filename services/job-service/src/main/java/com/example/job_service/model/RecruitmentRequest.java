@@ -25,7 +25,8 @@ public class RecruitmentRequest {
     @Column(columnDefinition = "TEXT")
     private String reason;
 
-    private boolean isExceedBudget;
+    @Column(name = "exceed_budget")
+    private boolean exceedBudget;
     // Salary only if exceeds budget
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;
@@ -73,7 +74,7 @@ public class RecruitmentRequest {
      */
     @Column(name = "current_step_id")
     private Long currentStepId;
-    
+
     private Long workflowId;
 
     // private LocalDateTime approvedAt;

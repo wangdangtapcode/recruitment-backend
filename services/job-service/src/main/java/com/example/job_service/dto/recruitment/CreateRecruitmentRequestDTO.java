@@ -14,16 +14,10 @@ public class CreateRecruitmentRequestDTO {
     private String title;
     @NotNull
     private Integer quantity;
-    private String priorityLevel;
     private String reason;
-    private String description;
-    private String benefits;
-    private String requirements;
-    private BigDecimal salaryMin; // Chỉ có giá trị khi isExceedBudget = true
-    private BigDecimal salaryMax; // Chỉ có giá trị khi isExceedBudget = true
-    private String currency; // Chỉ có giá trị khi isExceedBudget = true
-    private String location;
-    private boolean isExceedBudget;
+    private BigDecimal salaryMin; // Chỉ có giá trị khi exceedBudget = true
+    private BigDecimal salaryMax; // Chỉ có giá trị khi exceedBudget = true
+    private boolean exceedBudget;
 
     // @NotNull
     // private Long jobCategoryId;
@@ -41,8 +35,8 @@ public class CreateRecruitmentRequestDTO {
      */
     @AssertTrue(message = "Khi vượt quỹ, phải cung cấp thông tin lương")
     public boolean isValidSalaryWhenExceedBudget() {
-        if (isExceedBudget) {
-            return salaryMin != null && salaryMax != null && currency != null && !currency.trim().isEmpty();
+        if (exceedBudget) {
+            return salaryMin != null && salaryMax != null;
         }
         return true;
     }

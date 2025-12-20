@@ -4,7 +4,7 @@ public enum ApplicationStatus {
 
     SUBMITTED,
 
-    REVIEWING,
+    // REVIEWING,
     INTERVIEW,
     OFFER,
     HIRED,

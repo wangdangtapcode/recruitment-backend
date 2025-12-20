@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -43,9 +44,7 @@ public class JobPositionService {
         JobPosition position = new JobPosition();
         position.setTitle(dto.getTitle());
         position.setDescription(dto.getDescription());
-        position.setResponsibilities(dto.getResponsibilities());
         position.setRequirements(dto.getRequirements());
-        position.setQualifications(dto.getQualifications());
         position.setBenefits(dto.getBenefits());
 
         // Fill from RecruitmentRequest if not provided in DTO
@@ -232,14 +231,8 @@ public class JobPositionService {
         if (dto.getDescription() != null) {
             position.setDescription(dto.getDescription());
         }
-        if (dto.getResponsibilities() != null) {
-            position.setResponsibilities(dto.getResponsibilities());
-        }
         if (dto.getRequirements() != null) {
             position.setRequirements(dto.getRequirements());
-        }
-        if (dto.getQualifications() != null) {
-            position.setQualifications(dto.getQualifications());
         }
         if (dto.getBenefits() != null) {
             position.setBenefits(dto.getBenefits());
@@ -290,6 +283,7 @@ public class JobPositionService {
             throw new IdInvalidException("Chỉ có thể publish vị trí ở trạng thái DRAFT");
         }
         position.setStatus(JobPositionStatus.PUBLISHED);
+        position.setPublishedAt(LocalDateTime.now());
         return jobPositionRepository.save(position);
     }
 
