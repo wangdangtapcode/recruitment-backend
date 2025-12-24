@@ -107,7 +107,7 @@ public class NotificationController {
     @PutMapping("/{notificationId}/read")
     public ResponseEntity<String> markAsRead(@PathVariable Long notificationId) {
         notificationService.markAsRead(notificationId);
-        return ResponseEntity.ok("Notification marked as read");
+        return ResponseEntity.ok("Thông báo đã đọc");
     }
 
     @GetMapping("/stats/{recipientId}")

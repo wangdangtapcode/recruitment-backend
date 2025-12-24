@@ -71,6 +71,34 @@ public class SecurityUtil {
         }
         return null;
     }
+    public static String extractUserEmail() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null)
+            return null;
+
+        // Trường hợp phổ biến: JwtAuthenticationToken
+        if (auth instanceof JwtAuthenticationToken token) {
+            Object user = token.getTokenAttributes().get("user");
+            if (user instanceof java.util.Map<?, ?> map) {
+                Object email = map.get("email");
+                if (email instanceof String s)
+                    return s;
+            }
+            return null;
+        }
+
+        // Một số cấu hình để principal là Jwt
+        Object principal = auth.getPrincipal();
+        if (principal instanceof Jwt jwt) {
+            Object user = jwt.getClaim("user");
+            if (user instanceof java.util.Map<?, ?> map) {
+                Object email = map.get("email");
+                if (email instanceof String s)
+                    return s;
+            }
+        }
+        return null;
+    }
     // public static boolean isAuthenticated(){
     // Authentication authentication =
     // SecurityContextHolder.getContext().getAuthentication();

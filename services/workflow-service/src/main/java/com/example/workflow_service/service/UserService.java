@@ -31,19 +31,10 @@ public class UserService {
     @Value("${user-service.url:http://localhost:8082}")
     private String userServiceBaseUrl;
 
-    /**
-     * Lấy danh sách tên user/employee theo danh sách IDs
-     * Gọi user-service một lần để lấy tất cả user names
-     * 
-     * @param userIds Danh sách user IDs
-     * @param token   JWT token để xác thực
-     * @return Map với key là userId và value là userName
-     */
     public Map<Long, String> getUserNamesByIds(List<Long> userIds, String token) {
         if (userIds == null || userIds.isEmpty()) {
             return new HashMap<>();
         }
-
         try {
             // Tạo query string với các IDs
             String idsParam = userIds.stream()
@@ -94,14 +85,6 @@ public class UserService {
         }
     }
 
-    /**
-     * Lấy danh sách tên position theo danh sách IDs
-     * Gọi user-service một lần để lấy tất cả position names
-     * 
-     * @param positionIds Danh sách position IDs
-     * @param token       JWT token để xác thực
-     * @return Map với key là positionId và value là positionName
-     */
     public Map<Long, String> getPositionNamesByIds(List<Long> positionIds, String token) {
         if (positionIds == null || positionIds.isEmpty()) {
             return new HashMap<>();
@@ -158,13 +141,67 @@ public class UserService {
     }
 
     /**
-     * Lấy danh sách tên position theo danh sách user IDs
-     * Gọi user-service để lấy positionName của từng user
+     * Lấy hierarchyOrder của các positions theo IDs
      * 
-     * @param userIds Danh sách user IDs
-     * @param token   JWT token để xác thực
-     * @return Map với key là userId và value là positionName
+     * @param positionIds Danh sách position IDs
+     * @param token       JWT token để xác thực
+     * @return Map từ positionId -> hierarchyOrder
      */
+    public Map<Long, Integer> getPositionHierarchyOrdersByIds(List<Long> positionIds, String token) {
+        if (positionIds == null || positionIds.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        try {
+            // Tạo query string với các IDs
+            String idsParam = positionIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+
+            String url = UriComponentsBuilder.fromUriString(userServiceBaseUrl)
+                    .path("/api/v1/user-service/positions")
+                    .queryParam("ids", idsParam)
+                    .build()
+                    .toUriString();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+
+            HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
+
+            // User-service trả về Response<List<PositionDTO>> với field data
+            ResponseEntity<Response<List<PositionDTO>>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    requestEntity,
+                    new ParameterizedTypeReference<Response<List<PositionDTO>>>() {
+                    });
+
+            Response<List<PositionDTO>> responseBody = response.getBody();
+            if (responseBody == null || responseBody.getData() == null) {
+                return new HashMap<>();
+            }
+
+            List<PositionDTO> positions = responseBody.getData();
+
+            // Tạo Map từ positionId -> hierarchyOrder
+            return positions.stream()
+                    .filter(p -> p.getId() != null && p.getHierarchyOrder() != null)
+                    .collect(Collectors.toMap(
+                            PositionDTO::getId,
+                            PositionDTO::getHierarchyOrder,
+                            (existing, replacement) -> existing // Nếu trùng key, giữ giá trị cũ
+                    ));
+        } catch (Exception ex) {
+            // Log error và trả về map rỗng
+            System.err.println("Error fetching position hierarchy orders: " + ex.getMessage());
+            return new HashMap<>();
+        }
+    }
+
     public Map<Long, String> getPositionNamesByUserIds(List<Long> userIds, String token) {
         if (userIds == null || userIds.isEmpty()) {
             return new HashMap<>();
@@ -226,6 +263,7 @@ public class UserService {
         private Long id;
         private String name;
         private String level;
+        private Integer hierarchyOrder;
         private Boolean active;
     }
 

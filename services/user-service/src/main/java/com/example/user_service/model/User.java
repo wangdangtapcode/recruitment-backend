@@ -1,5 +1,7 @@
 package com.example.user_service.model;
 
+import java.time.LocalDateTime;
+
 import com.example.user_service.utils.SecurityUtil;
 
 import jakarta.persistence.CascadeType;
@@ -30,10 +32,10 @@ public class User {
     private String email;
     private String password;
     private boolean is_active;
-    // @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss a", timezone = "GMT+7")
-    // private Instant createAt;
-    // @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss a", timezone = "GMT+7")
-    // private Instant updateAt;
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
     private String createBy;
     private String updateBy;
     @Column(columnDefinition = "MEDIUMTEXT")
@@ -52,7 +54,7 @@ public class User {
         this.createBy = SecurityUtil.getCurrentUserLogin().isPresent() == true
                 ? SecurityUtil.getCurrentUserLogin().get()
                 : "";
-        // this.createAt = Instant.now();
+        this.createdAt = LocalDateTime.now();
     }
 
     @PreUpdate
@@ -60,7 +62,7 @@ public class User {
         this.updateBy = SecurityUtil.getCurrentUserLogin().isPresent() == true
                 ? SecurityUtil.getCurrentUserLogin().get()
                 : "";
-        // this.updateAt = Instant.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
 }

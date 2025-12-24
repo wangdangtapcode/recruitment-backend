@@ -24,7 +24,7 @@ import com.example.job_service.dto.recruitment.RejectRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.ReturnRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.WithdrawRecruitmentRequestDTO;
 import com.example.job_service.exception.IdInvalidException;
-import com.example.job_service.exception.UserServiceException;
+import com.example.job_service.exception.UserClientException;
 import com.example.job_service.messaging.RecruitmentWorkflowEvent;
 import com.example.job_service.messaging.RecruitmentWorkflowProducer;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,18 +35,15 @@ import com.example.job_service.utils.enums.RecruitmentRequestStatus;
 @Service
 public class RecruitmentRequestService {
     private final RecruitmentRequestRepository recruitmentRequestRepository;
-    private final JobCategoryService jobCategoryService;
-    private final UserService userService;
+    private final UserClient userService;
     private final RecruitmentWorkflowProducer workflowProducer;
-    private final WorkflowServiceClient workflowServiceClient;
+    private final WorkflowClient workflowServiceClient;
 
     public RecruitmentRequestService(RecruitmentRequestRepository recruitmentRequestRepository,
-            JobCategoryService jobCategoryService,
-            UserService userService,
+            UserClient userService,
             RecruitmentWorkflowProducer workflowProducer,
-            WorkflowServiceClient workflowServiceClient) {
+            WorkflowClient workflowServiceClient) {
         this.recruitmentRequestRepository = recruitmentRequestRepository;
-        this.jobCategoryService = jobCategoryService;
         this.userService = userService;
         this.workflowProducer = workflowProducer;
         this.workflowServiceClient = workflowServiceClient;
@@ -158,17 +155,17 @@ public class RecruitmentRequestService {
         return new SingleResponseDTO<>(dto, TextTruncateUtil.getRecruitmentRequestCharacterLimits());
     }
 
-    public PaginationDTO getAllByDepartmentIdWithUser(Long departmentId, String token, Pageable pageable) {
-        Page<RecruitmentRequest> requests = recruitmentRequestRepository.findByDepartmentIdAndIsActiveTrue(departmentId,
-                pageable);
-        return convertToWithUserDTOList(requests, token);
-    }
+    // public PaginationDTO getAllByDepartmentIdWithUser(Long departmentId, String token, Pageable pageable) {
+    //     Page<RecruitmentRequest> requests = recruitmentRequestRepository.findByDepartmentIdAndIsActiveTrue(departmentId,
+    //             pageable);
+    //     return convertToWithUserDTOList(requests, token);
+    // }
 
-    public PaginationDTO getAllWithUser(String token, Pageable pageable) {
+    // public PaginationDTO getAllWithUser(String token, Pageable pageable) {
 
-        Page<RecruitmentRequest> requests = recruitmentRequestRepository.findAllByIsActiveTrue(pageable);
-        return convertToWithUserDTOList(requests, token);
-    }
+    //     Page<RecruitmentRequest> requests = recruitmentRequestRepository.findAllByIsActiveTrue(pageable);
+    //     return convertToWithUserDTOList(requests, token);
+    // }
 
     public PaginationDTO getAllWithFilters(Long departmentId, String status, Long createdBy, String keyword,
             String token,
@@ -203,7 +200,7 @@ public class RecruitmentRequestService {
                 dto.setRequester(requesterResponse.getBody());
             } else {
                 // Nếu lỗi → ném lại exception có nội dung JSON lỗi
-                throw new UserServiceException(requesterResponse);
+                throw new UserClientException(requesterResponse);
             }
         }
 
@@ -224,7 +221,7 @@ public class RecruitmentRequestService {
             if (departmentResponse.getStatusCode().is2xxSuccessful()) {
                 dto.setDepartment(departmentResponse.getBody());
             } else {
-                throw new UserServiceException(departmentResponse);
+                throw new UserClientException(departmentResponse);
             }
         }
 

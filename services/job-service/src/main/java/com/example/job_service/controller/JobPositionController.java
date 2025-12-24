@@ -45,14 +45,12 @@ public class JobPositionController {
         return ResponseEntity.ok(jobPositionService.getByIdWithDepartmentName(id, token));
     }
 
-    // Unified GET endpoint for all job positions with filtering, pagination, and
-    // sorting
+
     @GetMapping
     @ApiMessage("Lấy danh sách vị trí tuyển dụng với bộ lọc, phân trang và sắp xếp")
     public ResponseEntity<PaginationDTO> getAll(
             @RequestParam(name = "departmentId", required = false) Long departmentId,
             @RequestParam(name = "status", required = false) JobPositionStatus status,
-            // @RequestParam(name = "categoryId", required = false) Long categoryId,
             @RequestParam(name = "published", required = false) Boolean published,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
@@ -82,22 +80,11 @@ public class JobPositionController {
                 departmentId, status, published, keyword, pageable, token));
     }
 
-    @GetMapping("/status")
-    @ApiMessage("Lấy danh sách vị trí tuyển dụng theo trạng thái")
-    public ResponseEntity<List<JobPositionResponseDTO>> getByStatus(
-            @RequestParam(name = "status", required = false) JobPositionStatus status) {
-        List<JobPosition> positions = jobPositionService.findByStatus(status);
-        List<JobPositionResponseDTO> response = positions.stream()
-                .map(JobPositionResponseDTO::fromEntity)
-                .toList();
-        return ResponseEntity.ok(response);
-    }
 
     @GetMapping("/published")
     @ApiMessage("Lấy danh sách vị trí tuyển dụng đã xuất bản (phân trang)")
     public ResponseEntity<PaginationDTO> getPublishedPaged(
             @RequestParam(name = "departmentId", required = false) Long departmentId,
-            // @RequestParam(name = "categoryId", required = false) Long categoryId,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
@@ -134,33 +121,33 @@ public class JobPositionController {
         return ResponseEntity.ok(jobPositionService.getByIdWithPublished(id));
     }
 
-    @GetMapping("/department/{departmentId}")
-    @ApiMessage("Lấy danh sách vị trí tuyển dụng theo phòng ban")
-    public ResponseEntity<PaginationDTO> getByDepartmentId(@PathVariable Long departmentId,
-            @RequestParam(name = "currentPage", defaultValue = "1", required = false) Optional<String> currentPageOptional,
-            @RequestParam(name = "pageSize", defaultValue = "10", required = false) Optional<String> pageSizeOptional) {
-        String sCurrentPage = currentPageOptional.orElse("1");
-        String sPageSize = pageSizeOptional.orElse("10");
+    // @GetMapping("/department/{departmentId}")
+    // @ApiMessage("Lấy danh sách vị trí tuyển dụng theo phòng ban")
+    // public ResponseEntity<PaginationDTO> getByDepartmentId(@PathVariable Long departmentId,
+    //         @RequestParam(name = "currentPage", defaultValue = "1", required = false) Optional<String> currentPageOptional,
+    //         @RequestParam(name = "pageSize", defaultValue = "10", required = false) Optional<String> pageSizeOptional) {
+    //     String sCurrentPage = currentPageOptional.orElse("1");
+    //     String sPageSize = pageSizeOptional.orElse("10");
 
-        int current = Integer.parseInt(sCurrentPage);
-        int pageSize = Integer.parseInt(sPageSize);
-        Pageable pageable = PageRequest.of(current - 1, pageSize);
+    //     int current = Integer.parseInt(sCurrentPage);
+    //     int pageSize = Integer.parseInt(sPageSize);
+    //     Pageable pageable = PageRequest.of(current - 1, pageSize);
 
-        PaginationDTO positions = jobPositionService.findByDepartmentId(departmentId, pageable);
-        return ResponseEntity.ok(positions);
-    }
+    //     PaginationDTO positions = jobPositionService.findByDepartmentId(departmentId, pageable);
+    //     return ResponseEntity.ok(positions);
+    // }
 
-    @GetMapping("/department/{departmentId}/status/{status}")
-    @ApiMessage("Lấy danh sách vị trí tuyển dụng theo phòng ban và trạng thái")
-    public ResponseEntity<List<JobPositionResponseDTO>> getByDepartmentIdAndStatus(
-            @PathVariable Long departmentId,
-            @PathVariable JobPositionStatus status) {
-        List<JobPosition> positions = jobPositionService.findByDepartmentIdAndStatus(departmentId, status);
-        List<JobPositionResponseDTO> response = positions.stream()
-                .map(JobPositionResponseDTO::fromEntity)
-                .toList();
-        return ResponseEntity.ok(response);
-    }
+    // @GetMapping("/department/{departmentId}/status/{status}")
+    // @ApiMessage("Lấy danh sách vị trí tuyển dụng theo phòng ban và trạng thái")
+    // public ResponseEntity<List<JobPositionResponseDTO>> getByDepartmentIdAndStatus(
+    //         @PathVariable Long departmentId,
+    //         @PathVariable JobPositionStatus status) {
+    //     List<JobPosition> positions = jobPositionService.findByDepartmentIdAndStatus(departmentId, status);
+    //     List<JobPositionResponseDTO> response = positions.stream()
+    //             .map(JobPositionResponseDTO::fromEntity)
+    //             .toList();
+    //     return ResponseEntity.ok(response);
+    // }
 
     @PutMapping("/{id}")
     @ApiMessage("Cập nhật vị trí tuyển dụng")

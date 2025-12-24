@@ -1,5 +1,6 @@
 package com.example.user_service.model;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.example.user_service.utils.SecurityUtil;
@@ -33,13 +34,11 @@ public class Role {
     private String name;
     @Column(columnDefinition = "MEDIUMTEXT")
     private String description;
-    // @Column(columnDefinition = "JSON")
-    // private String permissions;
     private boolean is_active;
-    // @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss a", timezone = "GMT+7")
-    // private Instant createAt;
-    // @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss a", timezone = "GMT+7")
-    // private Instant updateAt;
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
     private String createBy;
     private String updateBy;
 
@@ -57,7 +56,7 @@ public class Role {
         this.createBy = SecurityUtil.getCurrentUserLogin().isPresent() == true
                 ? SecurityUtil.getCurrentUserLogin().get()
                 : "";
-        // this.createAt = Instant.now();
+        this.createdAt = LocalDateTime.now();
     }
 
     @PreUpdate
@@ -65,7 +64,7 @@ public class Role {
         this.updateBy = SecurityUtil.getCurrentUserLogin().isPresent() == true
                 ? SecurityUtil.getCurrentUserLogin().get()
                 : "";
-        // this.updateAt = Instant.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
 }

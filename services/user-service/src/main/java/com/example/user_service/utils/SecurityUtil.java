@@ -35,7 +35,7 @@ public class SecurityUtil {
         if (auth == null)
             return null;
 
-        // Trường hợp phổ biến: JwtAuthenticationToken
+        //  JwtAuthenticationToken
         if (auth instanceof JwtAuthenticationToken token) {
             Object user = token.getTokenAttributes().get("user");
             if (user instanceof java.util.Map<?, ?> map) {

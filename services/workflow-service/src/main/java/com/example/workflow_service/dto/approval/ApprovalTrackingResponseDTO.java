@@ -4,7 +4,7 @@ import com.example.workflow_service.utils.enums.ApprovalStatus;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -24,11 +24,11 @@ public class ApprovalTrackingResponseDTO {
 
     private String actionUserName;
 
-    private OffsetDateTime actionAt;
+    private LocalDateTime actionAt;
 
     private String notes;
 
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
 
-    private OffsetDateTime updatedAt;
+    private LocalDateTime updatedAt;
 }

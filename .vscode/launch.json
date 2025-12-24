@@ -108,6 +108,27 @@
             "mainClass": "com.example.email_service.EmailServiceApplication",
             "projectName": "email-service",
             "args": "",
+            "envFile": "${workspaceFolder}/.env",
+            "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=53606 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=email-service"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-UploadServiceApplication<upload-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.example.upload_service.UploadServiceApplication",
+            "projectName": "upload-service",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-ScheduleServiceApplication<schedule-service>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.example.schedule_service.ScheduleServiceApplication",
+            "projectName": "schedule-service",
+            "args": "",
             "envFile": "${workspaceFolder}/.env"
         }
     ]

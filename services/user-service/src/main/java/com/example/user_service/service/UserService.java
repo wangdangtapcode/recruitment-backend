@@ -61,6 +61,9 @@ public class UserService {
         if (employee == null) {
             throw new CustomException("Nhân viên không tồn tại");
         }
+        if (employee.getUser() != null) {
+            throw new CustomException("Nhân viên đã có tài khoản");
+        }
         user.setEmployee(employee);
         employee.setUser(user);
 
@@ -96,6 +99,9 @@ public class UserService {
             Employee employee = this.employeeService.getById(updateUserDTO.getEmployeeId());
             if (employee == null) {
                 throw new CustomException("Nhân viên không tồn tại");
+            }
+            if (employee.getUser() != null) {
+                throw new CustomException("Nhân viên đã có tài khoản");
             }
             user.setEmployee(employee);
             employee.setUser(user);

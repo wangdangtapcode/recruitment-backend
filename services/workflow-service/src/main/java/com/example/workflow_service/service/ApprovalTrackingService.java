@@ -39,7 +39,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -152,7 +152,7 @@ public class ApprovalTrackingService {
             // Approve
             tracking.setStatus(ApprovalStatus.APPROVED);
             tracking.setActionUserId(currentUserId);
-            tracking.setActionAt(OffsetDateTime.now());
+            tracking.setActionAt(LocalDateTime.now());
             tracking.setNotes(dto.getApprovalNotes());
             approvalTrackingRepository.save(tracking);
 
@@ -162,7 +162,7 @@ public class ApprovalTrackingService {
             // Reject
             tracking.setStatus(ApprovalStatus.REJECTED);
             tracking.setActionUserId(currentUserId);
-            tracking.setActionAt(OffsetDateTime.now());
+            tracking.setActionAt(LocalDateTime.now());
             tracking.setNotes(dto.getApprovalNotes());
             approvalTrackingRepository.save(tracking);
         }
@@ -597,7 +597,7 @@ public class ApprovalTrackingService {
                     tracking.setStatus(ApprovalStatus.CANCELLED);
                     tracking.setActionType("RESUBMIT");
                     tracking.setActionUserId(event.getActorUserId());
-                    tracking.setActionAt(OffsetDateTime.now());
+                    tracking.setActionAt(LocalDateTime.now());
                     tracking.setNotes("Placeholder cancelled due to resubmit");
                     approvalTrackingRepository.save(tracking);
                 });
@@ -722,10 +722,10 @@ public class ApprovalTrackingService {
         currentTracking.setStatus(ApprovalStatus.RETURNED);
         currentTracking.setActionType("RETURN");
         currentTracking.setActionUserId(event.getActorUserId());
-        currentTracking.setActionAt(OffsetDateTime.now());
+        currentTracking.setActionAt(LocalDateTime.now());
         currentTracking.setNotes(event.getReason());
         currentTracking.setReturnedToStepId(returnedToStepId);
-        currentTracking.setReturnedAt(OffsetDateTime.now());
+        currentTracking.setReturnedAt(LocalDateTime.now());
         approvalTrackingRepository.save(currentTracking);
 
         // Invalidate tất cả các bước đã qua (từ bước hiện tại trở về sau)
@@ -750,11 +750,11 @@ public class ApprovalTrackingService {
             tracking.setStatus(ApprovalStatus.CANCELLED);
             tracking.setActionType("CANCEL");
             tracking.setActionUserId(event.getActorUserId());
-            tracking.setActionAt(OffsetDateTime.now());
+            tracking.setActionAt(LocalDateTime.now());
             tracking.setNotes(event.getReason());
             tracking.setCancelledByStepId(tracking.getStepId());
             tracking.setCancelledByUserId(event.getActorUserId());
-            tracking.setCancelledAt(OffsetDateTime.now());
+            tracking.setCancelledAt(LocalDateTime.now());
             approvalTrackingRepository.save(tracking);
         }
 
@@ -775,7 +775,7 @@ public class ApprovalTrackingService {
             tracking.setStatus(ApprovalStatus.CANCELLED);
             tracking.setActionType("WITHDRAW");
             tracking.setActionUserId(event.getActorUserId());
-            tracking.setActionAt(OffsetDateTime.now());
+            tracking.setActionAt(LocalDateTime.now());
             tracking.setNotes(event.getReason());
             approvalTrackingRepository.save(tracking);
         }
@@ -901,7 +901,7 @@ public class ApprovalTrackingService {
         tracking.setStatus(status);
         tracking.setActionType(actionType);
         tracking.setActionUserId(event.getActorUserId());
-        tracking.setActionAt(OffsetDateTime.now());
+        tracking.setActionAt(LocalDateTime.now());
         tracking.setNotes(notes);
         return approvalTrackingRepository.save(tracking);
     }

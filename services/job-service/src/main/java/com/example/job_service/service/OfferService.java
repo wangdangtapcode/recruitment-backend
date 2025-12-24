@@ -23,7 +23,7 @@ import com.example.job_service.dto.offer.ReturnOfferDTO;
 import com.example.job_service.dto.offer.UpdateOfferDTO;
 import com.example.job_service.dto.offer.WithdrawOfferDTO;
 import com.example.job_service.exception.IdInvalidException;
-import com.example.job_service.exception.UserServiceException;
+import com.example.job_service.exception.UserClientException;
 import com.example.job_service.messaging.OfferWorkflowProducer;
 import com.example.job_service.messaging.RecruitmentWorkflowEvent;
 import com.example.job_service.model.Offer;
@@ -34,15 +34,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 @Service
 public class OfferService {
     private final OfferRepository offerRepository;
-    private final UserService userService;
+    private final UserClient userService;
     private final OfferWorkflowProducer workflowProducer;
-    private final WorkflowServiceClient workflowServiceClient;
+    private final WorkflowClient workflowServiceClient;
 
     public OfferService(
             OfferRepository offerRepository,
-            UserService userService,
+            UserClient userService,
             OfferWorkflowProducer workflowProducer,
-            WorkflowServiceClient workflowServiceClient) {
+            WorkflowClient workflowServiceClient) {
         this.offerRepository = offerRepository;
         this.userService = userService;
         this.workflowProducer = workflowProducer;
@@ -217,15 +217,15 @@ public class OfferService {
         return new SingleResponseDTO<>(dto);
     }
 
-    public PaginationDTO getAllByDepartmentIdWithUser(Long departmentId, String token, Pageable pageable) {
-        // Use getAllWithFilters which handles pagination properly
-        return getAllWithFilters(departmentId, null, null, null, token, pageable);
-    }
+    // public PaginationDTO getAllByDepartmentIdWithUser(Long departmentId, String token, Pageable pageable) {
+    //     // Use getAllWithFilters which handles pagination properly
+    //     return getAllWithFilters(departmentId, null, null, null, token, pageable);
+    // }
 
-    public PaginationDTO getAllWithUser(String token, Pageable pageable) {
-        Page<Offer> offers = offerRepository.findByIsActiveTrue(pageable);
-        return convertToWithUserDTOList(offers, token);
-    }
+    // public PaginationDTO getAllWithUser(String token, Pageable pageable) {
+    //     Page<Offer> offers = offerRepository.findByIsActiveTrue(pageable);
+    //     return convertToWithUserDTOList(offers, token);
+    // }
 
     public PaginationDTO getAllWithFilters(Long departmentId, String status, Long createdBy, String keyword,
             String token, Pageable pageable) {
@@ -258,7 +258,7 @@ public class OfferService {
             if (requesterResponse.getStatusCode().is2xxSuccessful()) {
                 dto.setRequester(requesterResponse.getBody());
             } else {
-                throw new UserServiceException(requesterResponse);
+                throw new UserClientException(requesterResponse);
             }
         }
 
@@ -267,7 +267,7 @@ public class OfferService {
             if (departmentResponse.getStatusCode().is2xxSuccessful()) {
                 dto.setDepartment(departmentResponse.getBody());
             } else {
-                throw new UserServiceException(departmentResponse);
+                throw new UserClientException(departmentResponse);
             }
         }
 

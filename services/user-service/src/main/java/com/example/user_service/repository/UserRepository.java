@@ -19,21 +19,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
         Optional<User> findById(Long id);
 
         @Query("""
-                        SELECT DISTINCT u FROM User u
-                        LEFT JOIN u.employee e
-                        LEFT JOIN e.department d
-                        WHERE (:departmentId IS NULL OR d.id = :departmentId)
-                        AND (:role IS NULL OR u.role.name = :role)
-                        AND (:isActive IS NULL OR u.is_active = :isActive)
-                        AND (
-                                :keyword IS NULL OR
-                                LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
-                                (e.name IS NOT NULL AND LOWER(e.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR
-                                (e.phone IS NOT NULL AND LOWER(e.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR
-                                (e.email IS NOT NULL AND LOWER(e.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR
-                                (e.idNumber IS NOT NULL AND LOWER(e.idNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))
-                        )
-                        """)
+                SELECT DISTINCT u FROM User u
+                LEFT JOIN u.employee e
+                LEFT JOIN e.department d
+                WHERE (:departmentId IS NULL OR d.id = :departmentId)
+                AND (:role IS NULL OR u.role.name = :role)
+                AND (:isActive IS NULL OR u.is_active = :isActive)
+                AND (
+                        :keyword IS NULL OR
+                        LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
+                        (e.name IS NOT NULL AND LOWER(e.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR
+                        (e.phone IS NOT NULL AND LOWER(e.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR
+                        (e.email IS NOT NULL AND LOWER(e.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR
+                        (e.idNumber IS NOT NULL AND LOWER(e.idNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))
+                )
+                """)
         Page<User> findByFilters(@Param("departmentId") Long departmentId,
                         @Param("role") String role,
                         @Param("isActive") Boolean isActive,
@@ -41,10 +41,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         Pageable pageable);
 
         @Query("""
-                        SELECT DISTINCT u FROM User u
-                        LEFT JOIN u.employee e
-                        LEFT JOIN e.department d
-                        WHERE d.id IN :departmentIds
-                        """)
+                SELECT DISTINCT u FROM User u
+                LEFT JOIN u.employee e
+                LEFT JOIN e.department d
+                WHERE d.id IN :departmentIds
+                """)
         List<User> findByDepartmentIds(@Param("departmentIds") List<Long> departmentIds);
 }

@@ -1,6 +1,10 @@
 package com.example.user_service.model;
 
+import java.time.LocalDateTime;
 import java.util.List;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import com.example.user_service.utils.SecurityUtil;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -29,23 +33,26 @@ public class Department {
     @Column(columnDefinition = "MEDIUMTEXT")
     private String description;
     private boolean is_active;
-    // @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss a", timezone = "GMT+7")
-    // private Instant createAt;
-    // @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss a", timezone = "GMT+7")
-    // private Instant updateAt;
-    private String createBy;
-    private String updateBy;
 
     @OneToMany(mappedBy = "department", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Employee> employees;
+    // @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    // @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    private String createBy;
+    private String updateBy;
 
     @PrePersist
     public void handleBeforeCreate() {
         this.createBy = SecurityUtil.getCurrentUserLogin().isPresent() == true
                 ? SecurityUtil.getCurrentUserLogin().get()
                 : "";
-        // this.createAt = Instant.now();
+        this.createdAt = LocalDateTime.now();
     }
 
     @PreUpdate
@@ -53,6 +60,6 @@ public class Department {
         this.updateBy = SecurityUtil.getCurrentUserLogin().isPresent() == true
                 ? SecurityUtil.getCurrentUserLogin().get()
                 : "";
-        // this.updateAt = Instant.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }

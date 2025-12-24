@@ -12,5 +12,6 @@ import lombok.Setter;
 public class UpdatePositionDTO {
     private String name;
     private String level;
+    private Integer hierarchyOrder;
     private Boolean isActive;
 }

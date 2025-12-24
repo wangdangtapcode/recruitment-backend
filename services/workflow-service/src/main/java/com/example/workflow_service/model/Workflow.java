@@ -8,7 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import com.example.workflow_service.utils.JpaJsonConverter;
 import com.example.workflow_service.utils.enums.WorkflowType;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -50,9 +50,9 @@ public class Workflow {
     // Timestamps
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private OffsetDateTime updatedAt;
+    private LocalDateTime updatedAt;
 }

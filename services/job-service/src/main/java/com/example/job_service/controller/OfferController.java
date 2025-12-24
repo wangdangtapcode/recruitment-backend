@@ -132,24 +132,24 @@ public class OfferController {
         return ResponseEntity.ok(offerService.getByIdWithUserAndMetadata(id, token));
     }
 
-    @GetMapping("/department/{departmentId}")
-    @ApiMessage("Lấy danh sách offer tiền lương theo phòng ban")
-    public ResponseEntity<PaginationDTO> getAllByDepartmentId(
-            @PathVariable Long departmentId,
-            @RequestParam(name = "currentPage", defaultValue = "1", required = false) Optional<String> currentPageOptional,
-            @RequestParam(name = "pageSize", defaultValue = "10", required = false) Optional<String> pageSizeOptional) {
-        String sCurrentPage = currentPageOptional.orElse("1");
-        String sPageSize = pageSizeOptional.orElse("10");
+    // @GetMapping("/department/{departmentId}")
+    // @ApiMessage("Lấy danh sách offer tiền lương theo phòng ban")
+    // public ResponseEntity<PaginationDTO> getAllByDepartmentId(
+    //         @PathVariable Long departmentId,
+    //         @RequestParam(name = "currentPage", defaultValue = "1", required = false) Optional<String> currentPageOptional,
+    //         @RequestParam(name = "pageSize", defaultValue = "10", required = false) Optional<String> pageSizeOptional) {
+    //     String sCurrentPage = currentPageOptional.orElse("1");
+    //     String sPageSize = pageSizeOptional.orElse("10");
 
-        int current = Integer.parseInt(sCurrentPage);
-        int pageSize = Integer.parseInt(sPageSize);
-        Pageable pageable = PageRequest.of(current - 1, pageSize);
-        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
-        if (token == null) {
-            throw new RuntimeException("Token không hợp lệ");
-        }
-        return ResponseEntity.ok(offerService.getAllByDepartmentIdWithUser(departmentId, token, pageable));
-    }
+    //     int current = Integer.parseInt(sCurrentPage);
+    //     int pageSize = Integer.parseInt(sPageSize);
+    //     Pageable pageable = PageRequest.of(current - 1, pageSize);
+    //     String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+    //     if (token == null) {
+    //         throw new RuntimeException("Token không hợp lệ");
+    //     }
+    //     return ResponseEntity.ok(offerService.getAllByDepartmentIdWithUser(departmentId, token, pageable));
+    // }
 
     @GetMapping
     @ApiMessage("Lấy danh sách offer tiền lương với bộ lọc, phân trang và sắp xếp")

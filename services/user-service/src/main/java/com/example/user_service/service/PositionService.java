@@ -38,6 +38,7 @@ public class PositionService {
         Position position = new Position();
         position.setName(createPositionDTO.getName());
         position.setLevel(createPositionDTO.getLevel());
+        position.setHierarchyOrder(createPositionDTO.getHierarchyOrder());
         position.setActive(createPositionDTO.getIsActive() != null ? createPositionDTO.getIsActive() : true);
         return this.positionRepository.save(position);
     }
@@ -50,6 +51,9 @@ public class PositionService {
         }
         if (updatePositionDTO.getLevel() != null) {
             position.setLevel(updatePositionDTO.getLevel());
+        }
+        if (updatePositionDTO.getHierarchyOrder() != null) {
+            position.setHierarchyOrder(updatePositionDTO.getHierarchyOrder());
         }
         if (updatePositionDTO.getIsActive() != null) {
             position.setActive(updatePositionDTO.getIsActive());

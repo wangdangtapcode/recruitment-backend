@@ -45,8 +45,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 
-    @ExceptionHandler(value = UserServiceException.class)
-    public ResponseEntity<JsonNode> handleUserServiceException(UserServiceException ex) {
+    @ExceptionHandler(value = UserClientException.class)
+    public ResponseEntity<JsonNode> handleUserServiceException(UserClientException ex) {
         return ex.getResponseEntity();
     }
 

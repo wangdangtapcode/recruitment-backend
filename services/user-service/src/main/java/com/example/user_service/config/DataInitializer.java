@@ -105,26 +105,31 @@ public class DataInitializer implements CommandLineRunner {
                 Position ceoPosition = new Position();
                 ceoPosition.setName("Giám đốc điều hành");
                 ceoPosition.setLevel("C-Level");
+                ceoPosition.setHierarchyOrder(1);
                 ceoPosition.setActive(true);
 
                 Position managerPosition = new Position();
                 managerPosition.setName("Trưởng phòng");
                 managerPosition.setLevel("Manager");
+                managerPosition.setHierarchyOrder(2);
                 managerPosition.setActive(true);
 
                 Position seniorStaffPosition = new Position();
                 seniorStaffPosition.setName("Nhân viên cấp cao");
                 seniorStaffPosition.setLevel("Senior");
+                seniorStaffPosition.setHierarchyOrder(3);
                 seniorStaffPosition.setActive(true);
 
                 Position staffPosition = new Position();
                 staffPosition.setName("Nhân viên");
                 staffPosition.setLevel("Staff");
+                staffPosition.setHierarchyOrder(4);
                 staffPosition.setActive(true);
 
                 Position adminPosition = new Position();
                 adminPosition.setName("Quản trị viên");
                 adminPosition.setLevel("Admin");
+                adminPosition.setHierarchyOrder(0);
                 adminPosition.setActive(true);
 
                 positionRepository.saveAll(Arrays.asList(ceoPosition, managerPosition, seniorStaffPosition,

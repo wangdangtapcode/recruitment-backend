@@ -27,7 +27,6 @@ public class RecruitmentRequest {
 
     @Column(name = "exceed_budget")
     private boolean exceedBudget;
-    // Salary only if exceeds budget
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;
 

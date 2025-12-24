@@ -7,7 +7,9 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalDateTime;
 
+import com.example.job_service.utils.SecurityUtil;
 import com.example.job_service.utils.enums.JobPositionStatus;
 
 @Entity
@@ -25,8 +27,6 @@ public class JobPosition {
 
     @Column(columnDefinition = "TEXT")
     private String description;
-
-
 
     @Column(columnDefinition = "TEXT")
     private String requirements;
@@ -50,6 +50,27 @@ public class JobPosition {
     @JoinColumn(name = "recruitment_request_id")
     private RecruitmentRequest recruitmentRequest;
 
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    private String createBy;
+    private String updateBy;
 
+    @PrePersist
+    public void handleBeforeCreate() {
+        this.createBy = !SecurityUtil.extractUserEmail().isEmpty() == true
+                ? SecurityUtil.extractUserEmail()
+                : "";
+        this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void handleBeforeUpdate() {
+        this.updateBy = !SecurityUtil.extractUserEmail().isEmpty() == true
+                ? SecurityUtil.extractUserEmail()
+                : "";
+        this.updatedAt = LocalDateTime.now();
+    }
 }

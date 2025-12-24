@@ -31,8 +31,6 @@ public interface JobPositionRepository extends JpaRepository<JobPosition, Long> 
         @Query("SELECT jp FROM JobPosition jp WHERE " +
                         "(:departmentId IS NULL OR jp.recruitmentRequest.departmentId = :departmentId) AND " +
                         "(:status IS NULL OR jp.status = :status) AND " +
-                        // "(:categoryId IS NULL OR jp.recruitmentRequest.jobCategory.id = :categoryId)
-                        // AND " +
                         "(:published IS NULL OR jp.status = 'PUBLISHED') AND " +
                         "(:keyword IS NULL OR LOWER(jp.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
                         "LOWER(jp.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +

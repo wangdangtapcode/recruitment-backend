@@ -224,7 +224,7 @@ public class UserService {
                     new HttpEntity<>(headers),
                     new ParameterizedTypeReference<Response<PaginationDTO>>() {
                     });
-            
+
             List<Long> result = new ArrayList<>();
             if (response.getBody() != null && response.getBody().getData() != null) {
                 PaginationDTO pagination = response.getBody().getData();

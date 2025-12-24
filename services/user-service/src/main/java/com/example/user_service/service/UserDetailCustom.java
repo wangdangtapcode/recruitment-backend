@@ -24,7 +24,7 @@ public class UserDetailCustom implements UserDetailsService {
 
         com.example.user_service.model.User user = this.userService.handleGetUserByUsername(username);
         if (user == null) {
-            throw new UsernameNotFoundException("Username/password không hợp lệ");
+            throw new UsernameNotFoundException("Email/Mật khẩu không hợp lệ");
         }
         
         return new User(

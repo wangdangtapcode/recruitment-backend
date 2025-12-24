@@ -1,5 +1,6 @@
 package com.example.user_service.model;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.example.user_service.utils.SecurityUtil;
@@ -33,6 +34,10 @@ public class Permission {
     private boolean active;
     private String createBy;
     private String updateBy;
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @ManyToMany(fetch = FetchType.LAZY, mappedBy = "permissions")
     @JsonIgnore
@@ -43,7 +48,7 @@ public class Permission {
         this.createBy = SecurityUtil.getCurrentUserLogin().isPresent() == true
                 ? SecurityUtil.getCurrentUserLogin().get()
                 : "";
-        // this.createAt = Instant.now();
+        this.createdAt = LocalDateTime.now();
     }
 
     @PreUpdate
@@ -51,7 +56,7 @@ public class Permission {
         this.updateBy = SecurityUtil.getCurrentUserLogin().isPresent() == true
                 ? SecurityUtil.getCurrentUserLogin().get()
                 : "";
-        // this.updateAt = Instant.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
 }

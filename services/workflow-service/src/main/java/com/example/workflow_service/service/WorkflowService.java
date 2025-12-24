@@ -2,6 +2,7 @@ package com.example.workflow_service.service;
 
 import com.example.workflow_service.dto.PaginationDTO;
 import com.example.workflow_service.dto.workflow.CreateWorkflowDTO;
+import com.example.workflow_service.dto.workflow.CreateWorkflowStepDTO;
 import com.example.workflow_service.dto.workflow.UpdateWorkflowDTO;
 import com.example.workflow_service.dto.workflow.WorkflowResponseDTO;
 import com.example.workflow_service.dto.workflow.WorkflowStepResponseDTO;
@@ -37,6 +38,51 @@ public class WorkflowService {
         // Kiểm tra tên workflow đã tồn tại
         if (workflowRepository.findByName(dto.getName()).isPresent()) {
             throw new CustomException("Tên workflow đã tồn tại: " + dto.getName());
+        }
+
+        // Validate hierarchyOrder của các steps nếu có
+        if (dto.getSteps() != null && !dto.getSteps().isEmpty()) {
+            // Thu thập tất cả position IDs từ steps
+            List<Long> positionIds = dto.getSteps().stream()
+                    .map(CreateWorkflowStepDTO::getApproverPositionId)
+                    .filter(positionId -> positionId != null)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            if (!positionIds.isEmpty()) {
+                // Lấy token từ SecurityContext
+                String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+
+                // Gọi user-service để lấy hierarchyOrder của các positions
+                Map<Long, Integer> positionHierarchyOrders = userService.getPositionHierarchyOrdersByIds(positionIds,
+                        token);
+
+                // Validate: các steps phải có hierarchyOrder tăng dần theo stepOrder
+                // Sắp xếp steps theo stepOrder
+                List<CreateWorkflowStepDTO> sortedSteps = dto.getSteps().stream()
+                        .sorted((s1, s2) -> Integer.compare(s1.getStepOrder(), s2.getStepOrder()))
+                        .collect(Collectors.toList());
+
+                Integer previousHierarchyOrder = null;
+                for (CreateWorkflowStepDTO stepDTO : sortedSteps) {
+                    Long positionId = stepDTO.getApproverPositionId();
+                    Integer hierarchyOrder = positionHierarchyOrders.get(positionId);
+
+                    if (hierarchyOrder == null) {
+                        throw new CustomException("Không tìm thấy hierarchyOrder cho position ID: " + positionId);
+                    }
+
+                    // Kiểm tra hierarchyOrder phải tăng dần (step sau phải có level >= step trước)
+                    if (previousHierarchyOrder != null && hierarchyOrder < previousHierarchyOrder) {
+                        throw new CustomException(
+                                "Thứ tự hierarchy không hợp lệ: Step " + stepDTO.getStepOrder() +
+                                        " có hierarchyOrder (" + hierarchyOrder + ") thấp hơn step trước (" +
+                                        previousHierarchyOrder + "). Workflow phải đi từ level thấp lên level cao.");
+                    }
+
+                    previousHierarchyOrder = hierarchyOrder;
+                }
+            }
         }
 
         Workflow workflow = new Workflow();
@@ -145,6 +191,51 @@ public class WorkflowService {
             workflow.setIsActive(dto.getIsActive());
         }
         workflow.setUpdatedBy(SecurityUtil.extractEmployeeId());
+
+        // Validate hierarchyOrder của các steps nếu có
+        if (dto.getSteps() != null && !dto.getSteps().isEmpty()) {
+            // Thu thập tất cả position IDs từ steps
+            List<Long> positionIds = dto.getSteps().stream()
+                    .map(CreateWorkflowStepDTO::getApproverPositionId)
+                    .filter(positionId -> positionId != null)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            if (!positionIds.isEmpty()) {
+                // Lấy token từ SecurityContext
+                String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+
+                // Gọi user-service để lấy hierarchyOrder của các positions
+                Map<Long, Integer> positionHierarchyOrders = userService.getPositionHierarchyOrdersByIds(positionIds,
+                        token);
+
+                // Validate: các steps phải có hierarchyOrder tăng dần theo stepOrder
+                // Sắp xếp steps theo stepOrder
+                List<CreateWorkflowStepDTO> sortedSteps = dto.getSteps().stream()
+                        .sorted((s1, s2) -> Integer.compare(s1.getStepOrder(), s2.getStepOrder()))
+                        .collect(Collectors.toList());
+
+                Integer previousHierarchyOrder = null;
+                for (CreateWorkflowStepDTO stepDTO : sortedSteps) {
+                    Long positionId = stepDTO.getApproverPositionId();
+                    Integer hierarchyOrder = positionHierarchyOrders.get(positionId);
+
+                    if (hierarchyOrder == null) {
+                        throw new CustomException("Không tìm thấy hierarchyOrder cho position ID: " + positionId);
+                    }
+
+                    // Kiểm tra hierarchyOrder phải tăng dần (step sau phải có level >= step trước)
+                    if (previousHierarchyOrder != null && hierarchyOrder < previousHierarchyOrder) {
+                        throw new CustomException(
+                                "Thứ tự hierarchy không hợp lệ: Step " + stepDTO.getStepOrder() +
+                                        " có hierarchyOrder (" + hierarchyOrder + ") thấp hơn step trước (" +
+                                        previousHierarchyOrder + "). Workflow phải đi từ level thấp lên level cao.");
+                    }
+
+                    previousHierarchyOrder = hierarchyOrder;
+                }
+            }
+        }
 
         // Cập nhật steps nếu có
         if (dto.getSteps() != null) {

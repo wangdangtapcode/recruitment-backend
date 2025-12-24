@@ -7,7 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import com.example.workflow_service.utils.enums.ApprovalStatus;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "approval_trackings")
@@ -54,7 +54,7 @@ public class ApprovalTracking {
      * Thời điểm bị trả về
      */
     @Column(name = "returned_at")
-    private OffsetDateTime returnedAt;
+    private LocalDateTime returnedAt;
 
     /**
      * Bước hủy request (khi actionType = 'CANCEL')
@@ -72,7 +72,7 @@ public class ApprovalTracking {
      * Thời điểm hủy
      */
     @Column(name = "cancelled_at")
-    private OffsetDateTime cancelledAt;
+    private LocalDateTime cancelledAt;
 
     // User được gán để phê duyệt (tìm từ User_Positions dựa trên
     // approver_position_id)
@@ -85,7 +85,7 @@ public class ApprovalTracking {
 
     // Thời gian thực hiện hành động
     @Column(name = "action_at")
-    private OffsetDateTime actionAt;
+    private LocalDateTime actionAt;
 
     // Ghi chú phê duyệt/từ chối
     @Column(columnDefinition = "MEDIUMTEXT")
@@ -94,9 +94,9 @@ public class ApprovalTracking {
     // Timestamps
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private OffsetDateTime createdAt;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private OffsetDateTime updatedAt;
+    private LocalDateTime updatedAt;
 }

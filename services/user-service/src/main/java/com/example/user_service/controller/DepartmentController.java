@@ -26,8 +26,6 @@ public class DepartmentController {
         this.departmentService = departmentService;
     }
 
-    // Unified GET endpoint for all departments with filtering, pagination, and
-    // sorting
     @GetMapping
     @ApiMessage("Lấy danh sách phòng ban với bộ lọc, phân trang và sắp xếp")
     public ResponseEntity<PaginationDTO> getAll(

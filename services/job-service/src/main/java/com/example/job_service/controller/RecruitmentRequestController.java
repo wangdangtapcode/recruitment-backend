@@ -103,24 +103,24 @@ public class RecruitmentRequestController {
         return ResponseEntity.ok(recruitmentRequestService.cancel(id, dto, actorId, token));
     }
 
-    @GetMapping("/department/{departmentId}")
-    @ApiMessage("Lấy danh sách yêu cầu tuyển dụng theo phòng ban")
-    public ResponseEntity<PaginationDTO> getAllByDepartmentId(
-            @PathVariable Long departmentId,
-            @RequestParam(name = "currentPage", defaultValue = "1", required = false) Optional<String> currentPageOptional,
-            @RequestParam(name = "pageSize", defaultValue = "10", required = false) Optional<String> pageSizeOptional) {
-        String sCurrentPage = currentPageOptional.orElse("1");
-        String sPageSize = pageSizeOptional.orElse("10");
+    // @GetMapping("/department/{departmentId}")
+    // @ApiMessage("Lấy danh sách yêu cầu tuyển dụng theo phòng ban")
+    // public ResponseEntity<PaginationDTO> getAllByDepartmentId(
+    //         @PathVariable Long departmentId,
+    //         @RequestParam(name = "currentPage", defaultValue = "1", required = false) Optional<String> currentPageOptional,
+    //         @RequestParam(name = "pageSize", defaultValue = "10", required = false) Optional<String> pageSizeOptional) {
+    //     String sCurrentPage = currentPageOptional.orElse("1");
+    //     String sPageSize = pageSizeOptional.orElse("10");
 
-        int current = Integer.parseInt(sCurrentPage);
-        int pageSize = Integer.parseInt(sPageSize);
-        Pageable pageable = PageRequest.of(current - 1, pageSize);
-        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
-        if (token == null) {
-            throw new RuntimeException("Token không hợp lệ");
-        }
-        return ResponseEntity.ok(recruitmentRequestService.getAllByDepartmentIdWithUser(departmentId, token, pageable));
-    }
+    //     int current = Integer.parseInt(sCurrentPage);
+    //     int pageSize = Integer.parseInt(sPageSize);
+    //     Pageable pageable = PageRequest.of(current - 1, pageSize);
+    //     String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+    //     if (token == null) {
+    //         throw new RuntimeException("Token không hợp lệ");
+    //     }
+    //     return ResponseEntity.ok(recruitmentRequestService.getAllByDepartmentIdWithUser(departmentId, token, pageable));
+    // }
 
     @GetMapping("/{id}")
     @ApiMessage("Lấy yêu cầu tuyển dụng theo id")
@@ -132,8 +132,7 @@ public class RecruitmentRequestController {
         return ResponseEntity.ok(recruitmentRequestService.getByIdWithUser(id, token));
     }
 
-    // Unified GET endpoint for all recruitment requests with filtering, pagination,
-    // and sorting
+
     @GetMapping
     @ApiMessage("Lấy danh sách yêu cầu tuyển dụng với bộ lọc, phân trang và sắp xếp")
     public ResponseEntity<PaginationDTO> getAll(
@@ -182,7 +181,7 @@ public class RecruitmentRequestController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/actions/withdraw")
+    @PostMapping("/withdraw/{id}")
     @ApiMessage("Rút lại yêu cầu tuyển dụng (chỉ submitter/owner mới có thể rút)")
     public ResponseEntity<RecruitmentRequest> withdrawRequest(
             @PathVariable Long id,
