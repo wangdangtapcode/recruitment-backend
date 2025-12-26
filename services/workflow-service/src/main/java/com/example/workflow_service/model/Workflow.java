@@ -9,7 +9,7 @@ import com.example.workflow_service.utils.JpaJsonConverter;
 import com.example.workflow_service.utils.enums.WorkflowType;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Set;
 import java.util.Map;
 
 @Entity
@@ -44,8 +44,7 @@ public class Workflow {
 
     // Quan hệ với WorkflowStep
     @OneToMany(mappedBy = "workflow", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("stepOrder asc")
-    private List<WorkflowStep> steps;
+    private Set<WorkflowStep> steps;
 
     // Timestamps
     @CreationTimestamp

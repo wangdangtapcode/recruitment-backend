@@ -18,7 +18,6 @@ public class RecruitmentRequestWithUserDTO {
     private String reason;
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;
-    private boolean exceedBudget;
     private RecruitmentRequestStatus status;
     private Long requesterId;
     private JsonNode requester;
@@ -50,12 +49,11 @@ public class RecruitmentRequestWithUserDTO {
         dto.setQuantity(entity.getQuantity());
         dto.setReason(truncateText ? TextTruncateUtil.truncateReason(entity.getReason()) : entity.getReason());
         // Chỉ set salary khi vượt quỹ
-        if (entity.isExceedBudget()) {
+        if (entity.getSalaryMin() != null && entity.getSalaryMax() != null) {
             dto.setSalaryMin(entity.getSalaryMin());
             dto.setSalaryMax(entity.getSalaryMax());
         }
 
-        dto.setExceedBudget(entity.isExceedBudget());
         dto.setStatus(entity.getStatus());
         dto.setRequesterId(entity.getRequesterId());
         // dto.setApprovedId(entity.getApprovedId());

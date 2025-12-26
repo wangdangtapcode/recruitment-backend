@@ -1,7 +1,7 @@
 package com.example.user_service.config;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -217,10 +217,10 @@ public class DataInitializer implements CommandLineRunner {
 
                 // Gán quyền cho từng vai trò
                 // ADMIN: Tất cả quyền (read + manage)
-                adminRole.setPermissions(new ArrayList<>(savedPermissions));
+                adminRole.setPermissions(new HashSet<>(savedPermissions));
 
                 // CEO: Đọc tất cả, manage một số quan trọng
-                ceoRole.setPermissions(new ArrayList<>(List.of(
+                ceoRole.setPermissions(new HashSet<>(List.of(
                                 // user-service - đọc tất cả
                                 requirePermission.apply("user-service:permissions:read"),
                                 requirePermission.apply("user-service:roles:read"),
@@ -254,7 +254,7 @@ public class DataInitializer implements CommandLineRunner {
                                 requirePermission.apply("email-service:emails:read"))));
 
                 // MANAGER: Đọc nhiều, manage các resources liên quan đến công việc của họ
-                managerRole.setPermissions(new ArrayList<>(List.of(
+                managerRole.setPermissions(new HashSet<>(List.of(
                                 // user-service - đọc, manage employees
                                 requirePermission.apply("user-service:departments:read"),
                                 requirePermission.apply("user-service:employees:read"),
@@ -292,7 +292,7 @@ public class DataInitializer implements CommandLineRunner {
                                 requirePermission.apply("email-service:emails:read"))));
 
                 // STAFF: Chỉ read
-                staffRole.setPermissions(new ArrayList<>(List.of(
+                staffRole.setPermissions(new HashSet<>(List.of(
                                 // user-service - chỉ đọc
                                 requirePermission.apply("user-service:departments:read"),
                                 requirePermission.apply("user-service:employees:read"),

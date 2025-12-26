@@ -23,16 +23,10 @@ public class ApprovalTracking {
     @Column(name = "request_id", nullable = false)
     private Long requestId;
 
-    // ID của bước workflow hiện tại
-    @Column(name = "step_id", nullable = false)
-    private Long stepId;
-
-    /**
-     * Bước workflow hiện tại của request (để track tuần tự)
-     * Có thể khác step_id nếu đang ở bước khác
-     */
-    @Column(name = "current_step_id")
-    private Long currentStepId;
+    // Liên kết với bước workflow
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "step_id", nullable = false)
+    private WorkflowStep step;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -49,30 +43,6 @@ public class ApprovalTracking {
      */
     @Column(name = "returned_to_step_id")
     private Long returnedToStepId;
-
-    /**
-     * Thời điểm bị trả về
-     */
-    @Column(name = "returned_at")
-    private LocalDateTime returnedAt;
-
-    /**
-     * Bước hủy request (khi actionType = 'CANCEL')
-     */
-    @Column(name = "cancelled_by_step_id")
-    private Long cancelledByStepId;
-
-    /**
-     * User hủy request
-     */
-    @Column(name = "cancelled_by_user_id")
-    private Long cancelledByUserId;
-
-    /**
-     * Thời điểm hủy
-     */
-    @Column(name = "cancelled_at")
-    private LocalDateTime cancelledAt;
 
     // User được gán để phê duyệt (tìm từ User_Positions dựa trên
     // approver_position_id)

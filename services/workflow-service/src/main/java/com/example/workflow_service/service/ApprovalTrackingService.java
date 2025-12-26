@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -100,7 +101,7 @@ public class ApprovalTrackingService {
         // Tạo ApprovalTracking
         ApprovalTracking tracking = new ApprovalTracking();
         tracking.setRequestId(dto.getRequestId());
-        tracking.setStepId(firstStep.getId());
+        tracking.setStep(firstStep);
         tracking.setStatus(ApprovalStatus.PENDING);
         tracking.setApproverPositionId(assignedUserId);
         tracking.setActionUserId(actionUserId); // Lưu actionUserId ngay khi tạo
@@ -344,8 +345,7 @@ public class ApprovalTrackingService {
 
         if (!trackings.isEmpty()) {
             ApprovalTracking firstTracking = trackings.get(0);
-            WorkflowStep firstStep = workflowStepRepository.findById(firstTracking.getStepId())
-                    .orElse(null);
+            WorkflowStep firstStep = firstTracking.getStep();
             if (firstStep != null && actualWorkflowId == null) {
                 actualWorkflowId = firstStep.getWorkflow().getId();
             }
@@ -355,15 +355,15 @@ public class ApprovalTrackingService {
                     .filter(t -> t.getStatus() == ApprovalStatus.PENDING)
                     .findFirst()
                     .orElse(null);
-            if (currentTracking != null) {
-                currentStepId = currentTracking.getStepId();
+            if (currentTracking != null && currentTracking.getStep() != null) {
+                currentStepId = currentTracking.getStep().getId();
             }
         }
 
         // Thu thập tất cả position IDs từ trackings và workflow steps
         Set<Long> allPositionIds = trackings.stream()
                 .map(tracking -> {
-                    WorkflowStep step = workflowStepRepository.findById(tracking.getStepId()).orElse(null);
+                    WorkflowStep step = tracking.getStep();
                     return step != null ? step.getApproverPositionId() : null;
                 })
                 .filter(id -> id != null)
@@ -439,6 +439,7 @@ public class ApprovalTrackingService {
         if (workflow.getSteps() != null) {
             List<com.example.workflow_service.dto.workflow.WorkflowStepResponseDTO> stepDTOs = workflow.getSteps()
                     .stream()
+                    .sorted(java.util.Comparator.comparing(WorkflowStep::getStepOrder))
                     .map(step -> convertStepToDTO(step, positionNamesMap))
                     .collect(Collectors.toList());
             dto.setSteps(stepDTOs);
@@ -516,7 +517,7 @@ public class ApprovalTrackingService {
         ApprovalTrackingResponseDTO dto = new ApprovalTrackingResponseDTO();
         dto.setId(tracking.getId());
         dto.setRequestId(tracking.getRequestId());
-        dto.setStepId(tracking.getStepId());
+        dto.setStepId(tracking.getStep() != null ? tracking.getStep().getId() : null);
         dto.setStatus(tracking.getStatus());
         dto.setApproverPositionId(tracking.getApproverPositionId());
         dto.setActionUserId(tracking.getActionUserId());
@@ -564,8 +565,11 @@ public class ApprovalTrackingService {
     }
 
     private void moveToNextStep(ApprovalTracking currentTracking, Long departmentId, String authToken) {
-        WorkflowStep currentStep = workflowStepRepository.findById(currentTracking.getStepId())
-                .orElseThrow(() -> new CustomException("Không tìm thấy workflow step"));
+        WorkflowStep currentStep = currentTracking.getStep();
+        if (currentStep == null) {
+            throw new CustomException("Không tìm thấy workflow step");
+
+        }
 
         Workflow workflow = currentStep.getWorkflow();
         WorkflowStep nextStep = workflowStepRepository
@@ -653,8 +657,10 @@ public class ApprovalTrackingService {
         ApprovalTracking current = markCurrentTracking(event, ApprovalStatus.APPROVED, "APPROVE", event.getNotes());
         if (current != null) {
             // Kiểm tra có bước tiếp theo không
-            WorkflowStep currentStep = workflowStepRepository.findById(current.getStepId())
-                    .orElseThrow(() -> new CustomException("Không tìm thấy workflow step: " + current.getStepId()));
+            WorkflowStep currentStep = current.getStep();
+            if (currentStep == null) {
+                throw new CustomException("Không tìm thấy workflow step cho tracking: " + current.getId());
+            }
 
             Workflow workflow = currentStep.getWorkflow();
             WorkflowStep nextStep = workflowStepRepository
@@ -688,9 +694,9 @@ public class ApprovalTrackingService {
     private void handleStepRejected(RecruitmentWorkflowEvent event) {
         // Reject: Từ chối ở bước này, kết thúc luồng
         ApprovalTracking tracking = markCurrentTracking(event, ApprovalStatus.REJECTED, "REJECT", event.getNotes());
-        if (tracking != null) {
+        if (tracking != null && tracking.getStep() != null) {
             // Invalidate tất cả các bước tiếp theo (nếu có)
-            invalidateFutureSteps(event.getRequestId(), tracking.getStepId());
+            invalidateFutureSteps(event.getRequestId(), tracking.getStep().getId());
 
             notifyRequester(event,
                     "Yêu cầu #" + event.getRequestId() + " bị từ chối",
@@ -725,11 +731,12 @@ public class ApprovalTrackingService {
         currentTracking.setActionAt(LocalDateTime.now());
         currentTracking.setNotes(event.getReason());
         currentTracking.setReturnedToStepId(returnedToStepId);
-        currentTracking.setReturnedAt(LocalDateTime.now());
         approvalTrackingRepository.save(currentTracking);
 
         // Invalidate tất cả các bước đã qua (từ bước hiện tại trở về sau)
-        invalidateFutureSteps(event.getRequestId(), currentTracking.getStepId());
+        if (currentTracking.getStep() != null) {
+            invalidateFutureSteps(event.getRequestId(), currentTracking.getStep().getId());
+        }
         // Không tạo pending mới khi return - sẽ tạo khi submit lại
 
         notifyRequester(event,
@@ -752,9 +759,6 @@ public class ApprovalTrackingService {
             tracking.setActionUserId(event.getActorUserId());
             tracking.setActionAt(LocalDateTime.now());
             tracking.setNotes(event.getReason());
-            tracking.setCancelledByStepId(tracking.getStepId());
-            tracking.setCancelledByUserId(event.getActorUserId());
-            tracking.setCancelledAt(LocalDateTime.now());
             approvalTrackingRepository.save(tracking);
         }
 
@@ -808,7 +812,8 @@ public class ApprovalTrackingService {
             // Tìm và invalidate các tracking của các bước này
             List<ApprovalTracking> futureTrackings = approvalTrackingRepository.findByRequestId(requestId)
                     .stream()
-                    .filter(t -> futureStepIds.contains(t.getStepId()) && t.getStatus() == ApprovalStatus.PENDING)
+                    .filter(t -> t.getStep() != null && futureStepIds.contains(t.getStep().getId())
+                            && t.getStatus() == ApprovalStatus.PENDING)
                     .collect(Collectors.toList());
 
             for (ApprovalTracking tracking : futureTrackings) {
@@ -834,8 +839,7 @@ public class ApprovalTrackingService {
 
         ApprovalTracking tracking = new ApprovalTracking();
         tracking.setRequestId(event.getRequestId());
-        tracking.setStepId(returnedStep.getId());
-        tracking.setCurrentStepId(returnedStep.getId());
+        tracking.setStep(returnedStep);
         tracking.setStatus(ApprovalStatus.PENDING);
 
         tracking.setApproverPositionId(returnedStep.getApproverPositionId());
@@ -874,7 +878,7 @@ public class ApprovalTrackingService {
      * Nếu requesterId và ownerUserId trùng nhau thì chỉ gửi 1 thông báo.
      */
     private void notifyRequester(RecruitmentWorkflowEvent event, String title, String message) {
-        java.util.Set<Long> recipients = new java.util.HashSet<>();
+        Set<Long> recipients = new HashSet<>();
         if (event.getRequesterId() != null) {
             recipients.add(event.getRequesterId());
         }
@@ -928,8 +932,7 @@ public class ApprovalTrackingService {
         // }
         ApprovalTracking tracking = new ApprovalTracking();
         tracking.setRequestId(requestId);
-        tracking.setStepId(step.getId());
-        tracking.setCurrentStepId(step.getId());
+        tracking.setStep(step);
         tracking.setStatus(ApprovalStatus.PENDING);
         tracking.setApproverPositionId(step.getApproverPositionId());
         tracking.setActionUserId(actionUserId);

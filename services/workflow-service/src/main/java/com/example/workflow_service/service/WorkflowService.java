@@ -318,6 +318,7 @@ public class WorkflowService {
 
         if (workflow.getSteps() != null) {
             List<WorkflowStepResponseDTO> stepDTOs = workflow.getSteps().stream()
+                    .sorted(java.util.Comparator.comparing(WorkflowStep::getStepOrder))
                     .map(step -> toStepResponseDTO(step, positionNamesMap))
                     .collect(Collectors.toList());
             dto.setSteps(stepDTOs);

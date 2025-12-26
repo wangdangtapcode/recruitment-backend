@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.IsoFields;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -67,7 +68,7 @@ public class ScheduleService {
         Schedule savedSchedule = scheduleRepository.save(schedule);
 
         // Build participants from new DTO fields
-        savedSchedule.setParticipants(new java.util.ArrayList<>());
+        savedSchedule.setParticipants(new HashSet<>());
         if (request.getCandidateId() != null) {
             ScheduleParticipant candidate = new ScheduleParticipant();
             candidate.setParticipantType("CANDIDATE");
@@ -131,11 +132,7 @@ public class ScheduleService {
         schedule.setReminderTime(request.getReminderTime());
 
         // Rebuild participants per new DTO
-        if (schedule.getParticipants() != null) {
-            schedule.getParticipants().clear();
-        } else {
-            schedule.setParticipants(new java.util.ArrayList<>());
-        }
+        schedule.setParticipants(new HashSet<>());
         if (request.getCandidateId() != null) {
             ScheduleParticipant candidate = new ScheduleParticipant();
             candidate.setParticipantType("CANDIDATE");
@@ -233,8 +230,8 @@ public class ScheduleService {
 
     public ScheduleDetailDTO getScheduleWithParticipantNames(Long id, String token) {
         Schedule schedule = getScheduleById(id);
-        Set<Long> employeeIds = new java.util.HashSet<>();
-        Set<Long> candidateIds = new java.util.HashSet<>();
+        Set<Long> employeeIds = new HashSet<>();
+        Set<Long> candidateIds = new HashSet<>();
         if (schedule.getParticipants() != null) {
             for (var p : schedule.getParticipants()) {
                 if ("USER".equalsIgnoreCase(p.getParticipantType())) {
@@ -383,8 +380,8 @@ public class ScheduleService {
                     .toList();
         }
         // Batch employee/candidate names resolve
-        Set<Long> allEmployeeIds = new java.util.HashSet<>();
-        Set<Long> allCandidateIds = new java.util.HashSet<>();
+        Set<Long> allEmployeeIds = new HashSet<>();
+        Set<Long> allCandidateIds = new HashSet<>();
         for (Schedule s : schedules) {
             if (s.getParticipants() == null)
                 continue;
@@ -441,7 +438,7 @@ public class ScheduleService {
                 startTime, endTime, excludeScheduleId);
 
         // 3. Lấy danh sách participant IDs từ các schedules trùng lịch (chỉ USER type)
-        Set<Long> busyEmployeeIds = new java.util.HashSet<>();
+        Set<Long> busyEmployeeIds = new HashSet<>();
         if (!overlappingSchedules.isEmpty()) {
             List<Long> overlappingScheduleIds = overlappingSchedules.stream()
                     .map(Schedule::getId)

@@ -48,15 +48,9 @@ public class JobPositionService {
         position.setBenefits(dto.getBenefits());
 
         // Fill from RecruitmentRequest if not provided in DTO
-        // Chỉ lấy salary từ RecruitmentRequest khi vượt quỹ
-        if (rr.isExceedBudget()) {
-            position.setSalaryMin(dto.getSalaryMin() != null ? dto.getSalaryMin() : rr.getSalaryMin());
-            position.setSalaryMax(dto.getSalaryMax() != null ? dto.getSalaryMax() : rr.getSalaryMax());
-        } else {
-            // Nếu không vượt quỹ, chỉ sử dụng giá trị từ DTO
-            position.setSalaryMin(dto.getSalaryMin());
-            position.setSalaryMax(dto.getSalaryMax());
-        }
+        // Lấy salary từ DTO nếu có, nếu không thì lấy từ RecruitmentRequest
+        position.setSalaryMin(dto.getSalaryMin() != null ? dto.getSalaryMin() : rr.getSalaryMin());
+        position.setSalaryMax(dto.getSalaryMax() != null ? dto.getSalaryMax() : rr.getSalaryMax());
         position.setEmploymentType(dto.getEmploymentType());
         position.setExperienceLevel(dto.getExperienceLevel());
         position.setLocation(dto.getLocation());

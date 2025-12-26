@@ -51,7 +51,6 @@ public class WorkflowCompletionListener {
                     if (request != null && (request.getStatus() == RecruitmentRequestStatus.SUBMITTED
                             || request.getStatus() == RecruitmentRequestStatus.PENDING)) {
                         request.setStatus(RecruitmentRequestStatus.APPROVED);
-                        request.setCurrentStepId(null);
                         recruitmentRequestRepository.save(request);
                         log.info("Request {} đã được chuyển sang APPROVED sau khi hoàn thành workflow",
                                 event.getRequestId());
@@ -74,7 +73,6 @@ public class WorkflowCompletionListener {
                     if (request != null && (request.getStatus() == RecruitmentRequestStatus.SUBMITTED
                             || request.getStatus() == RecruitmentRequestStatus.PENDING)) {
                         request.setStatus(RecruitmentRequestStatus.APPROVED);
-                        request.setCurrentStepId(null);
                         recruitmentRequestRepository.save(request);
                         log.info("Request {} đã được chuyển sang APPROVED sau khi hoàn thành workflow (fallback)",
                                 event.getRequestId());

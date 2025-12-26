@@ -25,8 +25,6 @@ public class RecruitmentRequest {
     @Column(columnDefinition = "TEXT")
     private String reason;
 
-    @Column(name = "exceed_budget")
-    private boolean exceedBudget;
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;
 
@@ -66,13 +64,6 @@ public class RecruitmentRequest {
      */
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
-
-    /**
-     * Bước workflow hiện tại
-     * NULL nếu chưa submit hoặc đã kết thúc
-     */
-    @Column(name = "current_step_id")
-    private Long currentStepId;
 
     private Long workflowId;
 

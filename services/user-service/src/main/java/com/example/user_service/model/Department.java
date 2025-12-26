@@ -1,7 +1,7 @@
 package com.example.user_service.model;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Set;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -36,7 +36,7 @@ public class Department {
 
     @OneToMany(mappedBy = "department", fetch = FetchType.LAZY)
     @JsonIgnore
-    private List<Employee> employees;
+    private Set<Employee> employees;
     // @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

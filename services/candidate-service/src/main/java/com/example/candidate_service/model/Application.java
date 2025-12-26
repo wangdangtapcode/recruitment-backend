@@ -49,6 +49,6 @@ public class Application {
     private Set<Comment> comments;
 
     @OneToMany(mappedBy = "application", cascade = CascadeType.ALL)
-    private Set<com.example.candidate_service.model.Review> reviews;
+    private Set<Review> reviews;
 
 }

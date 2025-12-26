@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Set;
 
 import com.example.schedule_service.utils.enums.MeetingType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -47,7 +47,7 @@ public class Schedule {
     private Long roomId;
 
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ScheduleParticipant> participants;
+    private Set<ScheduleParticipant> participants;
 
     private Long createdById; // Lưu employeeId (người tạo lịch hẹn)
 

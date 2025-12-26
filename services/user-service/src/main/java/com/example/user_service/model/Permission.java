@@ -1,7 +1,7 @@
 package com.example.user_service.model;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Set;
 
 import com.example.user_service.utils.SecurityUtil;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -41,7 +41,7 @@ public class Permission {
 
     @ManyToMany(fetch = FetchType.LAZY, mappedBy = "permissions")
     @JsonIgnore
-    private List<Role> roles;
+    private Set<Role> roles;
 
     @PrePersist
     public void handleBeforeCreate() {

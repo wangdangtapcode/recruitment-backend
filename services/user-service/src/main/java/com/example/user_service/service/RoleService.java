@@ -1,5 +1,6 @@
 package com.example.user_service.service;
 
+import java.util.HashSet;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -50,7 +51,7 @@ public class RoleService {
         } else {
             role.set_active(true);
         }
-        role.setPermissions(permissionService.findByIds(createRoleDTO.getPermissionIds()));
+        role.setPermissions(new HashSet<>(permissionService.findByIds(createRoleDTO.getPermissionIds())));
 
         return roleRepository.save(role);
     }
@@ -63,7 +64,7 @@ public class RoleService {
             role.set_active(createRoleDTO.getIsActive());
         }
         if (createRoleDTO.getPermissionIds() != null) {
-            role.setPermissions(permissionService.findByIds(createRoleDTO.getPermissionIds()));
+            role.setPermissions(new HashSet<>(permissionService.findByIds(createRoleDTO.getPermissionIds())));
         }
         return roleRepository.save(role);
     }

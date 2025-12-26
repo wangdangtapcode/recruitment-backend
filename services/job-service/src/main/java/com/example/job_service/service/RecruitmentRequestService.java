@@ -56,13 +56,10 @@ public class RecruitmentRequestService {
         rr.setTitle(dto.getTitle());
         rr.setQuantity(dto.getQuantity());
         rr.setReason(dto.getReason());
-        // Chỉ set salary khi vượt quỹ
-        if (dto.isExceedBudget()) {
-            rr.setSalaryMin(dto.getSalaryMin());
-            rr.setSalaryMax(dto.getSalaryMax());
-        }
+        // Set salary nếu có
+        rr.setSalaryMin(dto.getSalaryMin());
+        rr.setSalaryMax(dto.getSalaryMax());
 
-        rr.setExceedBudget(dto.isExceedBudget());
         rr.setStatus(RecruitmentRequestStatus.DRAFT);
         rr.setRequesterId(dto.getRequesterId());
         rr.setOwnerUserId(dto.getRequesterId());
@@ -82,14 +79,11 @@ public class RecruitmentRequestService {
             throw new IllegalStateException("Chỉ có thể phê duyệt yêu cầu ở trạng thái SUBMITTED hoặc PENDING");
         }
 
-        // Lưu currentStepId trước khi xử lý
-        Long currentStepId = request.getCurrentStepId();
-
         // Approve: Vẫn giữ SUBMITTED/PENDING, workflow-service sẽ xử lý chuyển bước
         // Chỉ khi workflow-service xác nhận đã hết bước thì mới chuyển sang APPROVED
         // request.setApprovalNotes(dto.getApprovalNotes());
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
-        publishWorkflowEvent("REQUEST_APPROVED", saved, actorId, dto.getApprovalNotes(), null, currentStepId, null,
+        publishWorkflowEvent("REQUEST_APPROVED", saved, actorId, dto.getApprovalNotes(), null, null, null,
                 token);
         return saved;
     }
@@ -103,16 +97,12 @@ public class RecruitmentRequestService {
             throw new IllegalStateException("Chỉ có thể từ chối yêu cầu ở trạng thái SUBMITTED hoặc PENDING");
         }
 
-        // Lưu currentStepId trước khi xử lý
-        Long currentStepId = request.getCurrentStepId();
-
         // Reject: Từ chối ở bước này, kết thúc luồng
         request.setStatus(RecruitmentRequestStatus.REJECTED);
         // request.setApprovalNotes(dto.getReason());
         // request.setApprovedAt(LocalDateTime.now());
-        request.setCurrentStepId(null); // Không còn bước nào
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
-        publishWorkflowEvent("REQUEST_REJECTED", saved, actorId, null, dto.getReason(), currentStepId, null, token);
+        publishWorkflowEvent("REQUEST_REJECTED", saved, actorId, null, dto.getReason(), null, null, token);
         return saved;
     }
 
@@ -155,16 +145,19 @@ public class RecruitmentRequestService {
         return new SingleResponseDTO<>(dto, TextTruncateUtil.getRecruitmentRequestCharacterLimits());
     }
 
-    // public PaginationDTO getAllByDepartmentIdWithUser(Long departmentId, String token, Pageable pageable) {
-    //     Page<RecruitmentRequest> requests = recruitmentRequestRepository.findByDepartmentIdAndIsActiveTrue(departmentId,
-    //             pageable);
-    //     return convertToWithUserDTOList(requests, token);
+    // public PaginationDTO getAllByDepartmentIdWithUser(Long departmentId, String
+    // token, Pageable pageable) {
+    // Page<RecruitmentRequest> requests =
+    // recruitmentRequestRepository.findByDepartmentIdAndIsActiveTrue(departmentId,
+    // pageable);
+    // return convertToWithUserDTOList(requests, token);
     // }
 
     // public PaginationDTO getAllWithUser(String token, Pageable pageable) {
 
-    //     Page<RecruitmentRequest> requests = recruitmentRequestRepository.findAllByIsActiveTrue(pageable);
-    //     return convertToWithUserDTOList(requests, token);
+    // Page<RecruitmentRequest> requests =
+    // recruitmentRequestRepository.findAllByIsActiveTrue(pageable);
+    // return convertToWithUserDTOList(requests, token);
     // }
 
     public PaginationDTO getAllWithFilters(Long departmentId, String status, Long createdBy, String keyword,
@@ -315,13 +308,10 @@ public class RecruitmentRequestService {
         rr.setQuantity(dto.getQuantity());
         rr.setReason(dto.getReason());
 
-        // Chỉ set salary khi vượt quỹ
-        if (dto.isExceedBudget()) {
-            rr.setSalaryMin(dto.getSalaryMin());
-            rr.setSalaryMax(dto.getSalaryMax());
-        }
+        // Set salary nếu có
+        rr.setSalaryMin(dto.getSalaryMin());
+        rr.setSalaryMax(dto.getSalaryMax());
 
-        rr.setExceedBudget(dto.isExceedBudget());
         // rr.setJobCategory(category);
         rr.setDepartmentId(dto.getDepartmentId());
 
@@ -370,14 +360,10 @@ public class RecruitmentRequestService {
             throw new IllegalStateException("Chỉ có thể trả về yêu cầu đang SUBMITTED hoặc PENDING");
         }
 
-        // Lưu currentStepId trước khi return
-        Long currentStepId = request.getCurrentStepId();
-
         request.setStatus(RecruitmentRequestStatus.RETURNED);
         // request.setApprovalNotes(dto.getReason());
-        // Giữ nguyên currentStepId để workflow-service biết đang ở bước nào
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
-        publishWorkflowEvent("REQUEST_RETURNED", saved, actorId, null, dto.getReason(), currentStepId,
+        publishWorkflowEvent("REQUEST_RETURNED", saved, actorId, null, dto.getReason(), null,
                 dto.getReturnedToStepId(), token);
         return saved;
     }
@@ -397,12 +383,10 @@ public class RecruitmentRequestService {
             throw new IllegalStateException("Không thể hủy yêu cầu đã được APPROVED hoặc REJECTED");
         }
 
-        Long currentStepId = request.getCurrentStepId();
         request.setStatus(RecruitmentRequestStatus.CANCELLED);
         // request.setApprovalNotes(dto.getReason());
-        request.setCurrentStepId(null);
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
-        publishWorkflowEvent("REQUEST_CANCELLED", saved, actorId, null, dto.getReason(), currentStepId, null, token);
+        publishWorkflowEvent("REQUEST_CANCELLED", saved, actorId, null, dto.getReason(), null, null, token);
         return saved;
     }
 
@@ -422,13 +406,11 @@ public class RecruitmentRequestService {
             throw new IllegalStateException("Chỉ submitter hoặc owner mới có thể rút lại yêu cầu");
         }
 
-        Long currentStepId = request.getCurrentStepId();
         request.setStatus(RecruitmentRequestStatus.WITHDRAWN);
         // request.setApprovalNotes(dto.getReason());
-        request.setCurrentStepId(null);
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
 
-        publishWorkflowEvent("REQUEST_WITHDRAWN", saved, actorId, null, dto.getReason(), currentStepId, null, token);
+        publishWorkflowEvent("REQUEST_WITHDRAWN", saved, actorId, null, dto.getReason(), null, null, token);
         return saved;
     }
 
@@ -445,7 +427,7 @@ public class RecruitmentRequestService {
                 .requestType("RECRUITMENT_REQUEST")
                 .requestId(request.getId())
                 .workflowId(request.getWorkflowId())
-                .currentStepId(currentStepId != null ? currentStepId : request.getCurrentStepId())
+                .currentStepId(currentStepId)
                 .actorUserId(actorId)
                 .notes(notes)
                 .reason(reason)
