@@ -3,6 +3,7 @@ package com.example.schedule_service.controller;
 import com.example.schedule_service.dto.PaginationDTO;
 import com.example.schedule_service.dto.schedule.ScheduleDetailDTO;
 import com.example.schedule_service.dto.schedule.ScheduleRequest;
+import com.example.schedule_service.dto.schedule.ScheduleStatisticsDTO;
 import com.example.schedule_service.dto.schedule.AvailableParticipantDTO;
 import com.example.schedule_service.model.Schedule;
 import com.example.schedule_service.service.ScheduleService;
@@ -119,5 +120,18 @@ public class ScheduleController {
         List<AvailableParticipantDTO> availableParticipants = scheduleService.getAvailableParticipants(
                 startTime, endTime, excludeScheduleId, token);
         return ResponseEntity.ok(availableParticipants);
+    }
+
+    /**
+     * API thống kê - chỉ trả về dữ liệu cần thiết cho statistics service
+     * GET /api/v1/schedule-service/schedules/statistics
+     */
+    @GetMapping("/statistics")
+    public ResponseEntity<List<ScheduleStatisticsDTO>> getSchedulesForStatistics(
+            @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "meetingType", required = false) String meetingType) {
+        return ResponseEntity.ok(scheduleService.getSchedulesForStatistics(startDate, endDate, status, meetingType));
     }
 }

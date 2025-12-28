@@ -2,6 +2,7 @@ package com.example.statistics_service.service.client;
 
 import com.example.statistics_service.dto.PaginationDTO;
 import com.example.statistics_service.dto.Response;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.beans.factory.annotation.Value;
@@ -96,6 +97,56 @@ public class CandidateServiceClient {
             System.err.println("Error fetching applications: " + ex.getMessage());
             ex.printStackTrace();
             return null;
+        }
+    }
+
+    /**
+     * Lấy dữ liệu applications cho thống kê - API tối ưu chỉ trả về dữ liệu cần
+     * thiết
+     */
+    public List<JsonNode> getApplicationsForStatistics(String token, String status, String startDate,
+            String endDate, Long jobPositionId, Long departmentId) {
+        try {
+            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(candidateServiceBaseUrl)
+                    .path("/api/v1/candidate-service/applications/statistics");
+
+            if (status != null) {
+                builder.queryParam("status", status);
+            }
+            if (startDate != null) {
+                builder.queryParam("startDate", startDate);
+            }
+            if (endDate != null) {
+                builder.queryParam("endDate", endDate);
+            }
+            if (jobPositionId != null) {
+                builder.queryParam("jobPositionId", jobPositionId);
+            }
+            if (departmentId != null) {
+                builder.queryParam("departmentId", departmentId);
+            }
+
+            String url = builder.build().toUriString();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+
+            HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
+            ResponseEntity<Response<List<JsonNode>>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, requestEntity,
+                    new ParameterizedTypeReference<Response<List<JsonNode>>>() {
+                    });
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                return response.getBody().getData();
+            }
+            return List.of();
+        } catch (Exception ex) {
+            System.err.println("Error fetching applications for statistics: " + ex.getMessage());
+            ex.printStackTrace();
+            return List.of();
         }
     }
 }

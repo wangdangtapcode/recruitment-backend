@@ -6,6 +6,7 @@ import com.example.schedule_service.dto.schedule.ScheduleRequest;
 import com.example.schedule_service.dto.schedule.ScheduleDetailDTO;
 import com.example.schedule_service.dto.schedule.ScheduleParticipantDTO;
 import com.example.schedule_service.dto.schedule.AvailableParticipantDTO;
+import com.example.schedule_service.dto.schedule.ScheduleStatisticsDTO;
 import com.example.schedule_service.messaging.NotificationProducer;
 import com.example.schedule_service.model.Schedule;
 import com.example.schedule_service.model.ScheduleParticipant;
@@ -61,7 +62,6 @@ public class ScheduleService {
         schedule.setLocation(request.getLocation());
         schedule.setStartTime(request.getStartTime());
         schedule.setEndTime(request.getEndTime());
-        schedule.setTimezone(request.getTimezone());
         schedule.setReminderTime(request.getReminderTime());
         schedule.setCreatedById(request.getCreatedById());
 
@@ -88,31 +88,32 @@ public class ScheduleService {
             }
         }
         Schedule saved = scheduleRepository.save(savedSchedule);
-        
+
         // Thông báo cho tất cả người tham gia
         // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
         // List<Long> participantIds = new java.util.ArrayList<>();
         // if (request.getEmployeeIds() != null) {
-        //     participantIds.addAll(request.getEmployeeIds());
+        // participantIds.addAll(request.getEmployeeIds());
         // }
-        
+
         // if (!participantIds.isEmpty()) {
-        //     String scheduleInfo = saved.getTitle() != null ? saved.getTitle() : "Lịch hẹn";
-        //     if (saved.getStartTime() != null) {
-        //         scheduleInfo += " vào " + saved.getStartTime();
-        //     }
-        //     if (saved.getLocation() != null) {
-        //         scheduleInfo += " tại " + saved.getLocation();
-        //     }
-            
-        //     notificationProducer.sendNotificationToMultiple(
-        //         participantIds,
-        //         "Bạn có lịch hẹn mới",
-        //         "Bạn đã được mời tham gia: " + scheduleInfo + ".",
-        //         token
-        //     );
+        // String scheduleInfo = saved.getTitle() != null ? saved.getTitle() : "Lịch
+        // hẹn";
+        // if (saved.getStartTime() != null) {
+        // scheduleInfo += " vào " + saved.getStartTime();
         // }
-        
+        // if (saved.getLocation() != null) {
+        // scheduleInfo += " tại " + saved.getLocation();
+        // }
+
+        // notificationProducer.sendNotificationToMultiple(
+        // participantIds,
+        // "Bạn có lịch hẹn mới",
+        // "Bạn đã được mời tham gia: " + scheduleInfo + ".",
+        // token
+        // );
+        // }
+
         return saved;
     }
 
@@ -128,7 +129,6 @@ public class ScheduleService {
         schedule.setLocation(request.getLocation());
         schedule.setStartTime(request.getStartTime());
         schedule.setEndTime(request.getEndTime());
-        schedule.setTimezone(request.getTimezone());
         schedule.setReminderTime(request.getReminderTime());
 
         // Rebuild participants per new DTO
@@ -153,31 +153,32 @@ public class ScheduleService {
         }
 
         Schedule saved = scheduleRepository.save(schedule);
-        
+
         // Thông báo cho tất cả người tham gia về cập nhật
         // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
         // List<Long> participantIds = new java.util.ArrayList<>();
         // if (request.getEmployeeIds() != null) {
-        //     participantIds.addAll(request.getEmployeeIds());
+        // participantIds.addAll(request.getEmployeeIds());
         // }
-        
+
         // if (!participantIds.isEmpty()) {
-        //     String scheduleInfo = saved.getTitle() != null ? saved.getTitle() : "Lịch hẹn";
-        //     if (saved.getStartTime() != null) {
-        //         scheduleInfo += " vào " + saved.getStartTime();
-        //     }
-        //     if (saved.getLocation() != null) {
-        //         scheduleInfo += " tại " + saved.getLocation();
-        //     }
-            
-        //     notificationProducer.sendNotificationToMultiple(
-        //         participantIds,
-        //         "Lịch hẹn đã được cập nhật",
-        //         "Lịch hẹn '" + scheduleInfo + "' đã được cập nhật.",
-        //         token
-        //     );
+        // String scheduleInfo = saved.getTitle() != null ? saved.getTitle() : "Lịch
+        // hẹn";
+        // if (saved.getStartTime() != null) {
+        // scheduleInfo += " vào " + saved.getStartTime();
         // }
-        
+        // if (saved.getLocation() != null) {
+        // scheduleInfo += " tại " + saved.getLocation();
+        // }
+
+        // notificationProducer.sendNotificationToMultiple(
+        // participantIds,
+        // "Lịch hẹn đã được cập nhật",
+        // "Lịch hẹn '" + scheduleInfo + "' đã được cập nhật.",
+        // token
+        // );
+        // }
+
         return saved;
     }
 
@@ -218,7 +219,6 @@ public class ScheduleService {
         dto.setLocation(schedule.getLocation());
         dto.setStartTime(schedule.getStartTime());
         dto.setEndTime(schedule.getEndTime());
-        dto.setTimezone(schedule.getTimezone());
         dto.setReminderTime(schedule.getReminderTime());
         dto.setRoomId(schedule.getRoomId());
         dto.setCreatedById(schedule.getCreatedById());
@@ -489,5 +489,79 @@ public class ScheduleService {
                         employeeNameMap.getOrDefault(id, "Unknown"),
                         employeeDepartmentNameMap.getOrDefault(id, "Unknown")))
                 .toList();
+    }
+
+    /**
+     * Lấy dữ liệu schedules cho thống kê - chỉ trả về các field cần thiết
+     */
+    public List<ScheduleStatisticsDTO> getSchedulesForStatistics(LocalDate startDate, LocalDate endDate,
+            String status, String meetingType) {
+        List<Schedule> schedules;
+
+        // Xây dựng query dựa trên filters
+        if (startDate != null && endDate != null) {
+            LocalDateTime startDateTime = startDate.atStartOfDay();
+            LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+
+            if (status != null && meetingType != null) {
+                // Filter by date range, status và meetingType
+                schedules = scheduleRepository.findByStartTimeBetween(startDateTime, endDateTime,
+                        Sort.by(Sort.Direction.ASC, "startTime"));
+                schedules = schedules.stream()
+                        .filter(s -> status.equals(s.getStatus()) &&
+                                meetingType.equals(s.getMeetingType() != null ? s.getMeetingType().name() : null))
+                        .collect(java.util.stream.Collectors.toList());
+            } else if (status != null) {
+                // Filter by date range và status
+                schedules = scheduleRepository.findByStartTimeBetween(startDateTime, endDateTime,
+                        Sort.by(Sort.Direction.ASC, "startTime"));
+                schedules = schedules.stream()
+                        .filter(s -> status.equals(s.getStatus()))
+                        .collect(java.util.stream.Collectors.toList());
+            } else if (meetingType != null) {
+                // Filter by date range và meetingType
+                schedules = scheduleRepository.findByStartTimeBetween(startDateTime, endDateTime,
+                        Sort.by(Sort.Direction.ASC, "startTime"));
+                schedules = schedules.stream()
+                        .filter(s -> meetingType.equals(s.getMeetingType() != null ? s.getMeetingType().name() : null))
+                        .collect(java.util.stream.Collectors.toList());
+            } else {
+                // Chỉ filter by date range
+                schedules = scheduleRepository.findByStartTimeBetween(startDateTime, endDateTime,
+                        Sort.by(Sort.Direction.ASC, "startTime"));
+            }
+        } else if (status != null) {
+            // Filter by status only (lấy tất cả, không giới hạn date)
+            Page<Schedule> schedulePage = scheduleRepository.findByStatus(status,
+                    PageRequest.of(0, 10000, Sort.by(Sort.Direction.ASC, "startTime")));
+            schedules = schedulePage.getContent();
+            if (meetingType != null) {
+                schedules = schedules.stream()
+                        .filter(s -> meetingType.equals(s.getMeetingType() != null ? s.getMeetingType().name() : null))
+                        .collect(java.util.stream.Collectors.toList());
+            }
+        } else if (meetingType != null) {
+            // Filter by meetingType only
+            Page<Schedule> schedulePage = scheduleRepository.findByMeetingType(meetingType,
+                    PageRequest.of(0, 10000, Sort.by(Sort.Direction.ASC, "startTime")));
+            schedules = schedulePage.getContent();
+        } else {
+            // Lấy tất cả (giới hạn 10000 records)
+            schedules = scheduleRepository.findAll(Sort.by(Sort.Direction.ASC, "startTime"));
+            if (schedules.size() > 10000) {
+                schedules = schedules.subList(0, 10000);
+            }
+        }
+
+        // Convert to statistics DTO
+        return schedules.stream()
+                .map(schedule -> ScheduleStatisticsDTO.builder()
+                        .id(schedule.getId())
+                        .startTime(schedule.getStartTime())
+                        .status(schedule.getStatus())
+                        .meetingType(schedule.getMeetingType() != null ? schedule.getMeetingType().name() : null)
+                        .title(schedule.getTitle())
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
     }
 }

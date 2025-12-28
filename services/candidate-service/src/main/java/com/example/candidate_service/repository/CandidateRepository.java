@@ -14,18 +14,18 @@ import java.util.Optional;
 
 @Repository
 public interface CandidateRepository extends JpaRepository<Candidate, Long> {
-    Optional<Candidate> findByEmail(String email);
+        Optional<Candidate> findByEmail(String email);
 
-    boolean existsByEmail(String email);
+        boolean existsByEmail(String email);
 
-    @Query("SELECT DISTINCT c FROM Candidate c " +
-            "LEFT JOIN c.applications a " +
-            "WHERE (:stage IS NULL OR c.stage = :stage) " +
-            "AND (:keyword IS NULL OR LOWER(c.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))) "
-            +
-            "AND (:jobPositionIds IS NULL OR :jobPositionIds IS NULL OR a.jobPositionId IN :jobPositionIds)")
-    Page<Candidate> findByFilters(@Param("stage") CandidateStage stage,
-            @Param("keyword") String keyword,
-            @Param("jobPositionIds") java.util.List<Long> jobPositionIds,
-            Pageable pageable);
+        @Query("SELECT DISTINCT c FROM Candidate c " +
+                        "LEFT JOIN c.applications a " +
+                        "WHERE (:stage IS NULL OR c.stage = :stage) " +
+                        "AND (:keyword IS NULL OR LOWER(c.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))) "
+                        +
+                        "AND (:jobPositionIds IS NULL OR :jobPositionIds IS NULL OR a.jobPositionId IN :jobPositionIds)")
+        Page<Candidate> findByFilters(@Param("stage") CandidateStage stage,
+                        @Param("keyword") String keyword,
+                        @Param("jobPositionIds") java.util.List<Long> jobPositionIds,
+                        Pageable pageable);
 }

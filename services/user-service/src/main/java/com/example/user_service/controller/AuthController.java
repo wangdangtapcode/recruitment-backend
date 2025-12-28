@@ -78,7 +78,9 @@ public class AuthController {
                                 currentUserDB.getId(),
                                 employeeId != null ? employeeId : 0L,
                                 employeeEmail,
-                                employeeName != null ? employeeName : "");
+                                employeeName != null ? employeeName : "",
+                                currentUserDB.getRole().getName(),
+                                currentUserDB.getEmployee().getDepartment().getId());
 
                 if (currentUserDB != null) {
                         ResponseLoginDTO.UserLogin userLogin = new ResponseLoginDTO.UserLogin(
@@ -177,7 +179,9 @@ public class AuthController {
                                 currentUserDB.getId(),
                                 employeeId != null ? employeeId : 0L,
                                 employeeEmail,
-                                employeeName != null ? employeeName : "");
+                                employeeName != null ? employeeName : "",
+                                currentUserDB.getRole().getName(),
+                                currentUserDB.getEmployee().getDepartment().getId());
 
                 if (currentUserDB != null) {
                         ResponseLoginDTO.UserLogin userLogin = new ResponseLoginDTO.UserLogin(

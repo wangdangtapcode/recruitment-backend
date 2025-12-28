@@ -33,8 +33,6 @@ public class ScheduleRequest {
     @NotNull(message = "End t   ime is required")
     private LocalDateTime endTime;
 
-    private String timezone;
-
     private Integer reminderTime; // minutes before start
 
     private Long createdById; // Employee Id (người tạo lịch hẹn)

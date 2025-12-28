@@ -2,9 +2,12 @@ package com.example.candidate_service.service;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +27,7 @@ import com.example.candidate_service.messaging.ApplicationEventsProducer;
 import com.example.candidate_service.messaging.NotificationProducer;
 import com.example.candidate_service.utils.SecurityUtil;
 import com.example.candidate_service.dto.application.ApplicationDetailResponseDTO;
+import com.example.candidate_service.dto.application.ApplicationStatisticsDTO;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,7 +44,7 @@ public class ApplicationService {
     private final CloudinaryService cloudinaryService;
     private final ApplicationEventsProducer applicationEventsProducer;
     private final JobService jobService;
-    private final CommunicationService communicationService;
+    private final ScheduleService communicationService;
     private final CommentService commentService;
     private final ReviewService reviewService;
     private final NotificationProducer notificationProducer;
@@ -48,7 +52,7 @@ public class ApplicationService {
 
     public ApplicationService(ApplicationRepository applicationRepository, CandidateService candidateService,
             CloudinaryService cloudinaryService, ApplicationEventsProducer applicationEventsProducer,
-            JobService jobService, CommunicationService communicationService, CommentService commentService,
+            JobService jobService, ScheduleService communicationService, CommentService commentService,
             ReviewService reviewService, NotificationProducer notificationProducer, UserService userService) {
         this.applicationRepository = applicationRepository;
         this.candidateService = candidateService;
@@ -63,9 +67,31 @@ public class ApplicationService {
     }
 
     public PaginationDTO getAllApplicationsWithFilters(Long candidateId, Long jobPositionId, ApplicationStatus status,
-            Pageable pageable, String token) {
+            String startDate, String endDate, Pageable pageable, String token) {
+        // Parse date strings to LocalDate
+        LocalDate parsedStartDate = null;
+        LocalDate parsedEndDate = null;
+
+        if (startDate != null && !startDate.isEmpty()) {
+            try {
+                parsedStartDate = LocalDate.parse(startDate, DateTimeFormatter.ISO_DATE);
+            } catch (Exception e) {
+                // Log error but continue without date filter
+                System.err.println("Error parsing startDate: " + e.getMessage());
+            }
+        }
+
+        if (endDate != null && !endDate.isEmpty()) {
+            try {
+                parsedEndDate = LocalDate.parse(endDate, DateTimeFormatter.ISO_DATE);
+            } catch (Exception e) {
+                // Log error but continue without date filter
+                System.err.println("Error parsing endDate: " + e.getMessage());
+            }
+        }
+
         Page<Application> applications = applicationRepository.findByFilters(jobPositionId, status, candidateId,
-                pageable);
+                parsedStartDate, parsedEndDate, pageable);
 
         PaginationDTO paginationDTO = new PaginationDTO();
         Meta meta = new Meta();
@@ -246,9 +272,17 @@ public class ApplicationService {
         Application application = applicationRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("Đơn ứng tuyển không tồn tại"));
 
-        application.setStatus(ApplicationStatus.valueOf(status));
-        application.setFeedback(feedback);
+        ApplicationStatus newStatus = ApplicationStatus.valueOf(status);
+        application.setStatus(newStatus);
         application.setUpdatedBy(updatedBy);
+
+        if (newStatus == ApplicationStatus.REJECTED) {
+            if (feedback != null) {
+                application.setRejectionReason(feedback);
+            }
+        } else {
+            application.setFeedback(feedback);
+        }
         Application savedApplication = applicationRepository.save(application);
         return ApplicationResponseDTO.fromEntity(savedApplication);
     }
@@ -328,117 +362,6 @@ public class ApplicationService {
         return ApplicationResponseDTO.fromEntity(saved);
     }
 
-    @Transactional
-    public ApplicationResponseDTO acceptApplication(Long applicationId, String feedback) throws IdInvalidException {
-        Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new IdInvalidException("Đơn ứng tuyển không tồn tại"));
-
-        // Cập nhật trạng thái application
-        application.setStatus(ApplicationStatus.INTERVIEW);
-        application.setFeedback(feedback);
-
-        // Cập nhật trạng thái candidate thành "SHORTLISTED"
-        Candidate candidate = application.getCandidate();
-        candidate.setStage(CandidateStage.INTERVIEW1);
-        candidateService.saveCandidate(candidate);
-
-        Application savedApplication = applicationRepository.save(application);
-
-        // Thông báo cho ứng viên (nếu có email và có thể tìm được employeeId từ email)
-        // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
-        // if (candidate != null && candidate.getEmail() != null) {
-        // try {
-        // Long candidateEmployeeId =
-        // userService.getUserIdByEmail(candidate.getEmail());
-        // if (candidateEmployeeId != null) {
-        // String jobTitle = "vị trí ứng tuyển";
-        // try {
-        // var jobPositionResponse =
-        // jobService.getJobPositionById(savedApplication.getJobPositionId(), token);
-        // if (jobPositionResponse.getStatusCode().is2xxSuccessful() &&
-        // jobPositionResponse.getBody() != null) {
-        // var jobPosition = jobPositionResponse.getBody();
-        // if (jobPosition.has("title")) {
-        // jobTitle = jobPosition.get("title").asText();
-        // }
-        // }
-        // } catch (Exception e) {
-        // // Ignore
-        // }
-
-        // notificationProducer.sendNotification(
-        // candidateEmployeeId,
-        // "Đơn ứng tuyển đã được chấp nhận",
-        // "Đơn ứng tuyển của bạn cho vị trí '" + jobTitle + "' đã được chấp nhận. Bạn
-        // sẽ được mời phỏng vấn.",
-        // token
-        // );
-        // }
-        // } catch (Exception e) {
-        // // Log error nhưng không fail toàn bộ process
-        // System.err.println("Error sending notification for accepted application: " +
-        // e.getMessage());
-        // }
-        // }
-
-        return ApplicationResponseDTO.fromEntity(savedApplication);
-    }
-
-    @Transactional
-    public ApplicationResponseDTO rejectApplication(Long applicationId, String rejectionReason)
-            throws IdInvalidException {
-        Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new IdInvalidException("Đơn ứng tuyển không tồn tại"));
-
-        // Cập nhật trạng thái application
-        application.setStatus(ApplicationStatus.REJECTED);
-        application.setRejectionReason(rejectionReason);
-
-        Application savedApplication = applicationRepository.save(application);
-
-        // Thông báo cho ứng viên (nếu có email và có thể tìm được employeeId từ email)
-        // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
-        // Candidate candidate = savedApplication.getCandidate();
-        // if (candidate != null && candidate.getEmail() != null) {
-        // try {
-        // Long candidateEmployeeId =
-        // userService.getUserIdByEmail(candidate.getEmail());
-        // if (candidateEmployeeId != null) {
-        // String jobTitle = "vị trí ứng tuyển";
-        // try {
-        // var jobPositionResponse =
-        // jobService.getJobPositionById(savedApplication.getJobPositionId(), token);
-        // if (jobPositionResponse.getStatusCode().is2xxSuccessful() &&
-        // jobPositionResponse.getBody() != null) {
-        // var jobPosition = jobPositionResponse.getBody();
-        // if (jobPosition.has("title")) {
-        // jobTitle = jobPosition.get("title").asText();
-        // }
-        // }
-        // } catch (Exception e) {
-        // // Ignore
-        // }
-
-        // String reasonMsg = rejectionReason != null ? " Lý do: " + rejectionReason :
-        // "";
-        // notificationProducer.sendNotification(
-        // candidateEmployeeId,
-        // "Đơn ứng tuyển đã bị từ chối",
-        // "Đơn ứng tuyển của bạn cho vị trí '" + jobTitle + "' đã bị từ chối." +
-        // reasonMsg,
-        // token
-        // );
-        // }
-        // } catch (Exception e) {
-        // // Log error nhưng không fail toàn bộ process
-        // System.err.println("Error sending notification for rejected application: " +
-        // e.getMessage());
-        // }
-        // }
-
-        return ApplicationResponseDTO.fromEntity(savedApplication);
-    }
-
     public ApplicationDetailResponseDTO getApplicationDetailById(Long id, String token) throws IdInvalidException {
         Application application = applicationRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("Đơn ứng tuyển không tồn tại"));
@@ -488,5 +411,82 @@ public class ApplicationService {
             }
         }
         return dto;
+    }
+
+    /**
+     * Lấy dữ liệu đơn ứng tuyển cho thống kê - chỉ trả về các field cần thiết
+     */
+    public List<ApplicationStatisticsDTO> getApplicationsForStatistics(ApplicationStatus status,
+            String startDate, String endDate, Long jobPositionId, Long departmentId, String token) {
+        // Parse date strings to LocalDate
+        LocalDate parsedStartDate = null;
+        LocalDate parsedEndDate = null;
+
+        if (startDate != null && !startDate.isEmpty()) {
+            try {
+                parsedStartDate = LocalDate.parse(startDate, DateTimeFormatter.ISO_DATE);
+            } catch (Exception e) {
+                System.err.println("Error parsing startDate: " + e.getMessage());
+            }
+        }
+
+        if (endDate != null && !endDate.isEmpty()) {
+            try {
+                parsedEndDate = LocalDate.parse(endDate, DateTimeFormatter.ISO_DATE);
+            } catch (Exception e) {
+                System.err.println("Error parsing endDate: " + e.getMessage());
+            }
+        }
+
+        // Lấy tất cả applications với filters (không phân trang để lấy hết)
+        Pageable pageable = PageRequest.of(0, 10000, Sort.by(Sort.Direction.DESC, "appliedDate"));
+        Page<Application> applications = applicationRepository.findByFilters(
+                jobPositionId, status, null, parsedStartDate, parsedEndDate, pageable);
+
+        // Batch collect unique jobPositionIds để lấy departmentId
+        Set<Long> uniqueJobIds = applications.getContent().stream()
+                .map(Application::getJobPositionId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        Map<Long, Long> idToDepartmentId = new HashMap<>();
+        for (Long jpId : uniqueJobIds) {
+            try {
+                var res = jobService.getJobPositionById(jpId, token);
+                if (res.getStatusCode().is2xxSuccessful() && res.getBody() != null) {
+                    var body = res.getBody();
+                    if (body.has("departmentId")) {
+                        idToDepartmentId.put(jpId, body.get("departmentId").asLong());
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        // Filter theo departmentId nếu có
+        List<Application> filteredApplications = applications.getContent();
+        if (departmentId != null) {
+            filteredApplications = filteredApplications.stream()
+                    .filter(app -> {
+                        Long appDeptId = idToDepartmentId.get(app.getJobPositionId());
+                        return appDeptId != null && appDeptId.equals(departmentId);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        // Convert to statistics DTO
+        return filteredApplications.stream()
+                .map(app -> {
+                    ApplicationStatisticsDTO dto = ApplicationStatisticsDTO.builder()
+                            .id(app.getId())
+                            .appliedDate(app.getAppliedDate())
+                            .status(app.getStatus())
+                            .jobPositionId(app.getJobPositionId())
+                            .departmentId(idToDepartmentId.get(app.getJobPositionId()))
+                            .candidateId(app.getCandidate() != null ? app.getCandidate().getId() : null)
+                            .build();
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 }

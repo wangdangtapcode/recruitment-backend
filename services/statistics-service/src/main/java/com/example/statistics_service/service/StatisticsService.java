@@ -1,10 +1,9 @@
 package com.example.statistics_service.service;
 
-import com.example.statistics_service.dto.Meta;
 import com.example.statistics_service.dto.PaginationDTO;
-import com.example.statistics_service.dto.dashboard.*;
 import com.example.statistics_service.dto.statistics.*;
 import com.example.statistics_service.service.client.*;
+import com.example.statistics_service.utils.SecurityUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +15,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,319 +28,9 @@ public class StatisticsService {
         private final UserServiceClient userServiceClient;
         private final JobServiceClient jobServiceClient;
         private final CandidateServiceClient candidateServiceClient;
-        private final WorkflowServiceClient workflowServiceClient;
-        private final CommunicationServiceClient communicationServiceClient;
-        private final StatisticsCalculationService statisticsCalculationService;
+        private final ScheduleServiceClient communicationServiceClient;
         private final ObjectMapper objectMapper = new ObjectMapper();
 
-        /**
-         * Lấy dashboard cho ADMIN - Tổng quan toàn hệ thống
-         */
-        @Cacheable(value = "dashboard-stats", key = "'admin-' + #token")
-        public AdminDashboardDTO getAdminDashboard(String token) {
-                log.info("Fetching admin dashboard data");
-
-                // Lấy dữ liệu từ các service
-                PaginationDTO users = userServiceClient.getUsers(token, null, null, 1, 1);
-                PaginationDTO departments = userServiceClient.getDepartments(token, 1, 100);
-                PaginationDTO jobPositions = jobServiceClient.getJobPositions(token, 1, 1);
-                PaginationDTO candidates = candidateServiceClient.getCandidates(token, 1, 1);
-                PaginationDTO recruitmentRequests = jobServiceClient.getRecruitmentRequests(token, null, 1, 1);
-                PaginationDTO workflows = workflowServiceClient.getWorkflows(token, true, 1, 1);
-                PaginationDTO approvals = workflowServiceClient.getApprovalTrackings(token, null, 1, 1);
-
-                // Tổng hợp dữ liệu
-                AdminDashboardDTO.SystemOverviewDTO systemOverview = AdminDashboardDTO.SystemOverviewDTO.builder()
-                                .totalUsers(getTotalFromPagination(users))
-                                .totalDepartments(getTotalFromPagination(departments))
-                                .totalJobPositions(getTotalFromPagination(jobPositions))
-                                .totalCandidates(getTotalFromPagination(candidates))
-                                .totalRecruitmentRequests(getTotalFromPagination(recruitmentRequests))
-                                .totalApprovals(getTotalFromPagination(approvals))
-                                .build();
-
-                // Thống kê người dùng theo role
-                Map<String, Long> usersByRole = new HashMap<>();
-                usersByRole.put("ADMIN",
-                                getTotalFromPagination(userServiceClient.getUsers(token, "ADMIN", true, 1, 1)));
-                usersByRole.put("CEO", getTotalFromPagination(userServiceClient.getUsers(token, "CEO", true, 1, 1)));
-                usersByRole.put("MANAGER",
-                                getTotalFromPagination(userServiceClient.getUsers(token, "MANAGER", true, 1, 1)));
-                usersByRole.put("STAFF",
-                                getTotalFromPagination(userServiceClient.getUsers(token, "STAFF", true, 1, 1)));
-
-                AdminDashboardDTO.UserStatisticsDTO userStatistics = AdminDashboardDTO.UserStatisticsDTO.builder()
-                                .totalUsers(getTotalFromPagination(users))
-                                .activeUsers(getTotalFromPagination(
-                                                userServiceClient.getUsers(token, null, true, 1, 1)))
-                                .inactiveUsers(getTotalFromPagination(
-                                                userServiceClient.getUsers(token, null, false, 1, 1)))
-                                .usersByRole(usersByRole)
-                                .usersByDepartment(new HashMap<>()) // Có thể tính toán từ departments
-                                .build();
-
-                // Thống kê tuyển dụng
-                PaginationDTO pendingRequests = jobServiceClient.getRecruitmentRequests(token, "PENDING", 1, 1);
-                PaginationDTO approvedRequests = jobServiceClient.getRecruitmentRequests(token, "APPROVED", 1, 1);
-                PaginationDTO rejectedRequests = jobServiceClient.getRecruitmentRequests(token, "REJECTED", 1, 1);
-
-                AdminDashboardDTO.RecruitmentStatisticsDTO recruitmentStatistics = AdminDashboardDTO.RecruitmentStatisticsDTO
-                                .builder()
-                                .totalRecruitmentRequests(getTotalFromPagination(recruitmentRequests))
-                                .pendingRequests(getTotalFromPagination(pendingRequests))
-                                .approvedRequests(getTotalFromPagination(approvedRequests))
-                                .rejectedRequests(getTotalFromPagination(rejectedRequests))
-                                .totalApplications(
-                                                getTotalFromPagination(candidateServiceClient.getApplications(token,
-                                                                null, null, null, 1, 1)))
-                                .pendingApplications(
-                                                getTotalFromPagination(candidateServiceClient.getApplications(token,
-                                                                "PENDING", null, null, 1, 1)))
-                                .acceptedApplications(
-                                                getTotalFromPagination(candidateServiceClient.getApplications(token,
-                                                                "ACCEPTED", null, null, 1, 1)))
-                                .rejectedApplications(
-                                                getTotalFromPagination(candidateServiceClient.getApplications(token,
-                                                                "REJECTED", null, null, 1, 1)))
-                                .build();
-
-                // Thống kê workflow
-                PaginationDTO pendingApprovals = workflowServiceClient.getApprovalTrackings(token, "PENDING", 1, 1);
-                PaginationDTO approvedApprovals = workflowServiceClient.getApprovalTrackings(token, "APPROVED", 1, 1);
-                PaginationDTO rejectedApprovals = workflowServiceClient.getApprovalTrackings(token, "REJECTED", 1, 1);
-
-                AdminDashboardDTO.WorkflowStatisticsDTO workflowStatistics = AdminDashboardDTO.WorkflowStatisticsDTO
-                                .builder()
-                                .totalWorkflows(getTotalFromPagination(workflows))
-                                .activeWorkflows(getTotalFromPagination(
-                                                workflowServiceClient.getWorkflows(token, true, 1, 1)))
-                                .totalApprovals(getTotalFromPagination(approvals))
-                                .pendingApprovals(getTotalFromPagination(pendingApprovals))
-                                .approvedApprovals(getTotalFromPagination(approvedApprovals))
-                                .rejectedApprovals(getTotalFromPagination(rejectedApprovals))
-                                .build();
-
-                // Thống kê theo phòng ban (đơn giản hóa)
-                List<AdminDashboardDTO.DepartmentStatisticsDTO> departmentStatistics = new ArrayList<>();
-
-                // Chart data (đơn giản hóa)
-                AdminDashboardDTO.ChartDataDTO chartData = AdminDashboardDTO.ChartDataDTO.builder()
-                                .recruitmentTrend(new ArrayList<>())
-                                .applicationStatus(new ArrayList<>())
-                                .departmentDistribution(new ArrayList<>())
-                                .approvalStatus(new ArrayList<>())
-                                .build();
-
-                return AdminDashboardDTO.builder()
-                                .systemOverview(systemOverview)
-                                .userStatistics(userStatistics)
-                                .recruitmentStatistics(recruitmentStatistics)
-                                .workflowStatistics(workflowStatistics)
-                                .departmentStatistics(departmentStatistics)
-                                .chartData(chartData)
-                                .build();
-        }
-
-        /**
-         * Lấy dashboard cho CEO - Tổng quan công ty và phê duyệt
-         */
-        @Cacheable(value = "dashboard-stats", key = "'ceo-' + #token")
-        public CEODashboardDTO getCEODashboard(String token) {
-                log.info("Fetching CEO dashboard data");
-
-                // Tổng quan công ty
-                PaginationDTO employees = userServiceClient.getUsers(token, null, true, 1, 1);
-                PaginationDTO departments = userServiceClient.getDepartments(token, 1, 1);
-                PaginationDTO activeRequests = jobServiceClient.getRecruitmentRequests(token, "APPROVED", 1, 1);
-                PaginationDTO candidates = candidateServiceClient.getCandidates(token, 1, 1);
-
-                CEODashboardDTO.CompanyOverviewDTO companyOverview = CEODashboardDTO.CompanyOverviewDTO.builder()
-                                .totalEmployees(getTotalFromPagination(employees))
-                                .totalDepartments(getTotalFromPagination(departments))
-                                .activeRecruitmentRequests(getTotalFromPagination(activeRequests))
-                                .totalCandidates(getTotalFromPagination(candidates))
-                                .build();
-
-                // Tổng quan tuyển dụng
-                PaginationDTO allRequests = jobServiceClient.getRecruitmentRequests(token, null, 1, 1);
-                PaginationDTO pendingRequests = jobServiceClient.getRecruitmentRequests(token, "PENDING", 1, 1);
-                PaginationDTO approvedRequests = jobServiceClient.getRecruitmentRequests(token, "APPROVED", 1, 1);
-
-                CEODashboardDTO.RecruitmentOverviewDTO recruitmentOverview = CEODashboardDTO.RecruitmentOverviewDTO
-                                .builder()
-                                .totalRequests(getTotalFromPagination(allRequests))
-                                .pendingRequests(getTotalFromPagination(pendingRequests))
-                                .approvedRequests(getTotalFromPagination(approvedRequests))
-                                .highPriorityRequests(0L) // Cần logic tính toán
-                                .totalApplications(
-                                                getTotalFromPagination(candidateServiceClient.getApplications(token,
-                                                                null, null, null, 1, 1)))
-                                .acceptedApplications(
-                                                getTotalFromPagination(candidateServiceClient.getApplications(token,
-                                                                "ACCEPTED", null, null, 1, 1)))
-                                .build();
-
-                // Tổng quan phê duyệt
-                PaginationDTO pendingApprovals = workflowServiceClient.getApprovalTrackings(token, "PENDING", 1, 1);
-
-                CEODashboardDTO.ApprovalOverviewDTO approvalOverview = CEODashboardDTO.ApprovalOverviewDTO.builder()
-                                .totalPendingApprovals(getTotalFromPagination(pendingApprovals))
-                                .totalApprovedThisMonth(0L) // Cần logic tính toán theo tháng
-                                .totalRejectedThisMonth(0L)
-                                .averageApprovalTime(0L)
-                                .approvalTrend(new ArrayList<>())
-                                .build();
-
-                // Yêu cầu chờ phê duyệt của CEO
-                List<CEODashboardDTO.PendingApprovalDTO> pendingCEOApprovals = new ArrayList<>();
-
-                return CEODashboardDTO.builder()
-                                .companyOverview(companyOverview)
-                                .recruitmentOverview(recruitmentOverview)
-                                .approvalOverview(approvalOverview)
-                                .departmentOverviews(new ArrayList<>())
-                                .pendingCEOApprovals(pendingCEOApprovals)
-                                .build();
-        }
-
-        /**
-         * Lấy dashboard cho MANAGER - Tổng quan phòng ban
-         */
-        @Cacheable(value = "dashboard-stats", key = "'manager-' + #token + '-' + #departmentId")
-        public ManagerDashboardDTO getManagerDashboard(String token, Long departmentId) {
-                log.info("Fetching manager dashboard data for department: {}", departmentId);
-
-                // Tổng quan phòng ban
-                JsonNode department = userServiceClient.getDepartmentById(token, departmentId);
-                String departmentName = department != null && department.has("name")
-                                ? department.get("name").asText()
-                                : "Unknown";
-
-                PaginationDTO deptEmployees = userServiceClient.getUsers(token, null, true, 1, 1);
-                PaginationDTO deptRequests = jobServiceClient.getRecruitmentRequests(token, null, 1, 1);
-                PaginationDTO deptApplications = candidateServiceClient.getApplications(token, null, departmentId, null,
-                                1, 1);
-
-                ManagerDashboardDTO.DepartmentOverviewDTO departmentOverview = ManagerDashboardDTO.DepartmentOverviewDTO
-                                .builder()
-                                .departmentId(departmentId)
-                                .departmentName(departmentName)
-                                .totalEmployees(getTotalFromPagination(deptEmployees))
-                                .activeRecruitmentRequests(getTotalFromPagination(deptRequests))
-                                .totalApplications(getTotalFromPagination(deptApplications))
-                                .build();
-
-                // Thống kê tuyển dụng phòng ban
-                PaginationDTO pendingRequests = jobServiceClient.getRecruitmentRequests(token, "PENDING", 1, 1);
-                PaginationDTO approvedRequests = jobServiceClient.getRecruitmentRequests(token, "APPROVED", 1, 1);
-                PaginationDTO rejectedRequests = jobServiceClient.getRecruitmentRequests(token, "REJECTED", 1, 1);
-
-                ManagerDashboardDTO.DepartmentRecruitmentDTO departmentRecruitment = ManagerDashboardDTO.DepartmentRecruitmentDTO
-                                .builder()
-                                .totalRequests(getTotalFromPagination(deptRequests))
-                                .pendingRequests(getTotalFromPagination(pendingRequests))
-                                .approvedRequests(getTotalFromPagination(approvedRequests))
-                                .rejectedRequests(getTotalFromPagination(rejectedRequests))
-                                .totalApplications(getTotalFromPagination(deptApplications))
-                                .pendingApplications(getTotalFromPagination(
-                                                candidateServiceClient.getApplications(token, "PENDING", departmentId,
-                                                                null, 1, 1)))
-                                .acceptedApplications(getTotalFromPagination(
-                                                candidateServiceClient.getApplications(token, "ACCEPTED", departmentId,
-                                                                null, 1, 1)))
-                                .rejectedApplications(getTotalFromPagination(
-                                                candidateServiceClient.getApplications(token, "REJECTED", departmentId,
-                                                                null, 1, 1)))
-                                .recruitmentTrend(new ArrayList<>())
-                                .build();
-
-                // Thống kê ứng viên
-                PaginationDTO candidates = candidateServiceClient.getCandidates(token, 1, 1);
-                Map<String, Long> applicationsByStatus = new HashMap<>();
-                applicationsByStatus.put("PENDING",
-                                getTotalFromPagination(candidateServiceClient.getApplications(token, "PENDING",
-                                                departmentId, null, 1, 1)));
-                applicationsByStatus.put("ACCEPTED",
-                                getTotalFromPagination(candidateServiceClient.getApplications(token, "ACCEPTED",
-                                                departmentId, null, 1, 1)));
-                applicationsByStatus.put("REJECTED",
-                                getTotalFromPagination(candidateServiceClient.getApplications(token, "REJECTED",
-                                                departmentId, null, 1, 1)));
-
-                ManagerDashboardDTO.CandidateStatisticsDTO candidateStatistics = ManagerDashboardDTO.CandidateStatisticsDTO
-                                .builder()
-                                .totalCandidates(getTotalFromPagination(candidates))
-                                .newCandidatesThisMonth(0L)
-                                .totalApplications(getTotalFromPagination(deptApplications))
-                                .pendingApplications(applicationsByStatus.get("PENDING"))
-                                .acceptedApplications(applicationsByStatus.get("ACCEPTED"))
-                                .rejectedApplications(applicationsByStatus.get("REJECTED"))
-                                .applicationsByStatus(applicationsByStatus)
-                                .build();
-
-                return ManagerDashboardDTO.builder()
-                                .departmentOverview(departmentOverview)
-                                .departmentRecruitment(departmentRecruitment)
-                                .candidateStatistics(candidateStatistics)
-                                .pendingApprovals(new ArrayList<>())
-                                .recentCandidates(new ArrayList<>())
-                                .build();
-        }
-
-        /**
-         * Lấy dashboard cho STAFF - Công việc cá nhân
-         */
-        @Cacheable(value = "dashboard-stats", key = "'staff-' + #token + '-' + #userId")
-        public StaffDashboardDTO getStaffDashboard(String token, Long userId) {
-                log.info("Fetching staff dashboard data for user: {}", userId);
-
-                // Thông tin cá nhân
-                StaffDashboardDTO.PersonalInfoDTO personalInfo = StaffDashboardDTO.PersonalInfoDTO.builder()
-                                .userId(userId)
-                                .userName("Staff User") // Cần lấy từ user service
-                                .email("staff@example.com")
-                                .departmentName("Department") // Cần lấy từ user service
-                                .positionName("Staff")
-                                .role("STAFF")
-                                .build();
-
-                // Công việc đang xử lý
-                PaginationDTO myApplications = candidateServiceClient.getApplications(token, null, null, null, 1, 1);
-                PaginationDTO pendingApplications = candidateServiceClient.getApplications(token, "PENDING", null, null,
-                                1, 1);
-                PaginationDTO completedApplications = candidateServiceClient.getApplications(token, "ACCEPTED", null,
-                                null, 1, 1);
-
-                StaffDashboardDTO.WorkInProgressDTO workInProgress = StaffDashboardDTO.WorkInProgressDTO.builder()
-                                .totalApplicationsAssigned(getTotalFromPagination(myApplications))
-                                .pendingApplications(getTotalFromPagination(pendingApplications))
-                                .completedApplications(getTotalFromPagination(completedApplications))
-                                .totalInterviewsScheduled(0L)
-                                .upcomingInterviews(0L)
-                                .build();
-
-                // Thống kê cá nhân
-                StaffDashboardDTO.PersonalStatisticsDTO personalStatistics = StaffDashboardDTO.PersonalStatisticsDTO
-                                .builder()
-                                .totalApplicationsProcessed(getTotalFromPagination(myApplications))
-                                .applicationsThisMonth(0L)
-                                .totalInterviewsConducted(0L)
-                                .interviewsThisMonth(0L)
-                                .averageProcessingTime(0.0)
-                                .build();
-
-                return StaffDashboardDTO.builder()
-                                .personalInfo(personalInfo)
-                                .workInProgress(workInProgress)
-                                .myCandidates(new ArrayList<>())
-                                .upcomingInterviews(new ArrayList<>())
-                                .personalStatistics(personalStatistics)
-                                .build();
-        }
-
-        /**
-         * Helper method để lấy total từ PaginationDTO
-         */
         private Long getTotalFromPagination(PaginationDTO pagination) {
                 if (pagination == null || pagination.getMeta() == null) {
                         return 0L;
@@ -348,51 +38,96 @@ public class StatisticsService {
                 return pagination.getMeta().getTotal();
         }
 
-        // ===================================================================
-        // CÁC API THỐNG KÊ CHO DASHBOARD FRONTEND
-        // ===================================================================
-
         /**
-         * Lấy thống kê tổng quan với so sánh tuần trước
+         * Lấy thống kê tổng quan với so sánh kỳ trước
          * GET /api/v1/statistics-service/statistics/summary
+         * 
+         * @param token      JWT token
+         * @param periodType WEEKLY, MONTHLY, YEARLY (mặc định: WEEKLY)
          */
-        // @Cacheable(value = "dashboard-stats", key = "'summary-' + #token")
-        public SummaryStatisticsDTO getSummaryStatistics(String token) {
-                log.info("Fetching summary statistics");
+        // @Cacheable(value = "dashboard-stats", key = "'summary-' + #token + '-' +
+        // #periodType")
+        public SummaryStatisticsDTO getSummaryStatistics(String token, String periodType) {
+                log.info("Fetching summary statistics for period: {}", periodType);
+
+                if (periodType == null || periodType.isEmpty()) {
+                        periodType = "WEEKLY";
+                }
 
                 LocalDate today = LocalDate.now();
-                LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1); // Thứ 2
-                LocalDate weekEnd = weekStart.plusDays(6); // Chủ nhật
-                LocalDate lastWeekStart = weekStart.minusWeeks(1);
-                LocalDate lastWeekEnd = lastWeekStart.plusDays(6);
+                LocalDate periodStart;
+                LocalDate periodEnd;
+                LocalDate previousPeriodStart;
+                LocalDate previousPeriodEnd;
 
-                // Lấy dữ liệu tuần này
-                PaginationDTO currentApplications = candidateServiceClient.getApplications(token, null, null, null, 1,
-                                1000);
-                PaginationDTO currentHired = candidateServiceClient.getApplications(token, "HIRED", null, null, 1,
-                                1000);
-                PaginationDTO currentInterviews = getInterviewCount(token, weekStart, weekEnd);
-                PaginationDTO currentRejected = candidateServiceClient.getApplications(token, "REJECTED", null, null, 1,
-                                1000);
+                switch (periodType.toUpperCase()) {
+                        case "MONTHLY": {
+                                YearMonth currentMonth = YearMonth.from(today);
+                                periodStart = currentMonth.atDay(1);
+                                periodEnd = currentMonth.atEndOfMonth();
 
-                // Lấy dữ liệu tuần trước (đơn giản hóa - lấy tất cả rồi filter)
-                Long lastWeekApplications = getApplicationsCountByDateRange(token, lastWeekStart, lastWeekEnd);
-                Long lastWeekHired = getApplicationsCountByStatusAndDateRange(token, "HIRED", lastWeekStart,
-                                lastWeekEnd);
-                Long lastWeekInterviews = getInterviewCountByDateRange(token, lastWeekStart, lastWeekEnd);
-                Long lastWeekRejected = getApplicationsCountByStatusAndDateRange(token, "REJECTED", lastWeekStart,
-                                lastWeekEnd);
+                                YearMonth previousMonth = currentMonth.minusMonths(1);
+                                previousPeriodStart = previousMonth.atDay(1);
+                                previousPeriodEnd = previousMonth.atEndOfMonth();
+                                break;
+                        }
+                        case "YEARLY": {
+                                periodStart = LocalDate.of(today.getYear(), 1, 1);
+                                periodEnd = LocalDate.of(today.getYear(), 12, 31);
 
-                Long currentAppsCount = getTotalFromPagination(currentApplications);
-                Long currentHiredCount = getTotalFromPagination(currentHired);
-                Long currentInterviewsCount = getTotalFromPagination(currentInterviews);
-                Long currentRejectedCount = getTotalFromPagination(currentRejected);
+                                previousPeriodStart = LocalDate.of(today.getYear() - 1, 1, 1);
+                                previousPeriodEnd = LocalDate.of(today.getYear() - 1, 12, 31);
+                                break;
+                        }
+                        default: // WEEKLY
+                        {
+                                LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1); // Thứ 2
+                                periodStart = weekStart;
+                                periodEnd = weekStart.plusDays(6); // Chủ nhật
+
+                                previousPeriodStart = weekStart.minusWeeks(1);
+                                previousPeriodEnd = previousPeriodStart.plusDays(6);
+                                break;
+                        }
+                }
+
+                // Lấy departmentId dựa trên role (CEO xem tất cả, MANAGER/STAFF xem phòng ban
+                // của họ)
+                Long departmentId = getDepartmentIdForStatistics();
+                // Gọi 1 lần API để lấy dữ liệu cho cả 2 kỳ (từ previousPeriodStart đến
+                // periodEnd)
+                String startDateStr = previousPeriodStart.format(DateTimeFormatter.ISO_DATE);
+                String endDateStr = periodEnd.format(DateTimeFormatter.ISO_DATE);
+
+                List<JsonNode> allApplications = candidateServiceClient.getApplicationsForStatistics(
+                                token, null, startDateStr, endDateStr, null, departmentId);
+                List<JsonNode> allSchedules = communicationServiceClient.getSchedulesForStatistics(
+                                token, previousPeriodStart, periodEnd, null, null);
+                // Filter dữ liệu kỳ hiện tại
+                Long currentApplications = (long) filterApplicationsByDateRange(allApplications, periodStart, periodEnd)
+                                .size();
+                Long currentHired = (long) filterApplicationsByDateRangeAndStatus(allApplications, periodStart,
+                                periodEnd, "HIRED").size();
+                Long currentRejected = (long) filterApplicationsByDateRangeAndStatus(allApplications, periodStart,
+                                periodEnd, "REJECTED").size();
+                Long currentInterviews = (long) filterSchedulesByDateRange(allSchedules, periodStart, periodEnd).size();
+
+                // Filter dữ liệu kỳ trước
+                Long previousApplications = (long) filterApplicationsByDateRange(allApplications, previousPeriodStart,
+                                previousPeriodEnd).size();
+                Long previousHired = (long) filterApplicationsByDateRangeAndStatus(allApplications, previousPeriodStart,
+                                previousPeriodEnd, "HIRED").size();
+                Long previousRejected = (long) filterApplicationsByDateRangeAndStatus(allApplications,
+                                previousPeriodStart, previousPeriodEnd, "REJECTED").size();
+                Long previousInterviews = (long) filterSchedulesByDateRange(allSchedules, previousPeriodStart,
+                                previousPeriodEnd).size();
 
                 return SummaryStatisticsDTO.builder()
-                                .applications(calculateStatisticItem(currentAppsCount, lastWeekApplications))
-                                .hired(calculateStatisticItem(currentHiredCount, lastWeekHired))
-                                .interviews(calculateStatisticItem(currentInterviewsCount, lastWeekInterviews))
-                                .rejected(calculateStatisticItem(currentRejectedCount, lastWeekRejected))
+                                .periodType(periodType.toUpperCase())
+                                .applications(calculateStatisticItem(currentApplications, previousApplications))
+                                .hired(calculateStatisticItem(currentHired, previousHired))
+                                .interviews(calculateStatisticItem(currentInterviews, previousInterviews))
+                                .rejected(calculateStatisticItem(currentRejected, previousRejected))
                                 .build();
         }
 
@@ -455,99 +190,6 @@ public class StatisticsService {
                                         .build());
                 }
                 return result;
-        }
-
-        /**
-         * Lấy xu hướng ứng tuyển theo 7 ngày
-         * GET /api/v1/statistics-service/statistics/application-trends
-         */
-        @Cacheable(value = "dashboard-stats", key = "'trends-' + #token")
-        public ApplicationTrendDTO getApplicationTrends(String token, String period) {
-                log.info("Fetching application trends for period: {}", period);
-
-                LocalDate today = LocalDate.now();
-                LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1); // Thứ 2
-
-                String[] dayNames = { "T2", "T3", "T4", "T5", "T6", "T7", "CN" };
-                List<ApplicationTrendDTO.DailyTrendItem> dailyTrend = new ArrayList<>();
-
-                for (int i = 0; i < 7; i++) {
-                        LocalDate day = weekStart.plusDays(i);
-                        Long count = getApplicationsCountByDate(token, day);
-
-                        dailyTrend.add(ApplicationTrendDTO.DailyTrendItem.builder()
-                                        .day(dayNames[i])
-                                        .count(count)
-                                        .date(day.format(DateTimeFormatter.ISO_DATE))
-                                        .build());
-                }
-
-                return ApplicationTrendDTO.builder()
-                                .period(period != null ? period : "7 ngày này")
-                                .dailyTrend(dailyTrend)
-                                .build();
-        }
-
-        /**
-         * Lấy phân bổ ứng tuyển theo vị trí
-         * GET /api/v1/statistics-service/statistics/applications-by-position
-         */
-        @Cacheable(value = "dashboard-stats", key = "'apps-by-position-' + #token")
-        public ApplicationByPositionDTO getApplicationsByPosition(String token) {
-                log.info("Fetching applications by position");
-
-                PaginationDTO jobPositions = jobServiceClient.getJobPositions(token, 1, 100);
-                if (jobPositions == null || jobPositions.getResult() == null) {
-                        return ApplicationByPositionDTO.builder()
-                                        .positions(new ArrayList<>())
-                                        .build();
-                }
-
-                @SuppressWarnings("unchecked")
-                List<Object> positions = (List<Object>) jobPositions.getResult();
-
-                // Lấy tổng số applications
-                PaginationDTO allApplications = candidateServiceClient.getApplications(token, null, null, null, 1, 1);
-                Long totalApplications = getTotalFromPagination(allApplications);
-
-                String[] colors = { "purple", "pink", "green", "blue", "orange", "yellow", "red" };
-
-                List<ApplicationByPositionDTO.PositionStatistic> positionStats = new ArrayList<>();
-                for (int i = 0; i < positions.size(); i++) {
-                        JsonNode pos = convertToJsonNode(positions.get(i));
-                        if (pos == null)
-                                continue;
-                        Long jobPositionId = pos.has("id") ? pos.get("id").asLong() : null;
-                        String title = pos.has("title") ? pos.get("title").asText() : "";
-
-                        Long appCount = jobPositionId != null
-                                        ? getApplicationCountByJobPosition(token, jobPositionId)
-                                        : 0L;
-
-                        Double percentage = totalApplications > 0
-                                        ? (appCount.doubleValue() / totalApplications.doubleValue()) * 100
-                                        : 0.0;
-
-                        if (appCount > 0) {
-                                positionStats.add(ApplicationByPositionDTO.PositionStatistic.builder()
-                                                .jobPositionId(jobPositionId)
-                                                .jobTitle(title)
-                                                .percentage(Math.round(percentage * 100.0) / 100.0) // Làm tròn 2 chữ số
-                                                .applicationCount(appCount)
-                                                .barColor(colors[i % colors.length])
-                                                .build());
-                        }
-                }
-
-                // Sắp xếp giảm dần và lấy top 10
-                positionStats.sort((a, b) -> Long.compare(b.getApplicationCount(), a.getApplicationCount()));
-                if (positionStats.size() > 10) {
-                        positionStats = positionStats.subList(0, 10);
-                }
-
-                return ApplicationByPositionDTO.builder()
-                                .positions(positionStats)
-                                .build();
         }
 
         /**
@@ -625,7 +267,6 @@ public class StatisticsService {
                         return SummaryStatisticsDTO.StatisticItem.builder()
                                         .value(current)
                                         .changePercent(0.0)
-                                        .changeText("So với tuần trước")
                                         .isIncrease(null)
                                         .build();
                 }
@@ -637,7 +278,6 @@ public class StatisticsService {
                 return SummaryStatisticsDTO.StatisticItem.builder()
                                 .value(current)
                                 .changePercent(Math.round(changePercent * 100.0) / 100.0)
-                                .changeText("So với tuần trước")
                                 .isIncrease(isIncrease)
                                 .build();
         }
@@ -670,70 +310,41 @@ public class StatisticsService {
                 return getTotalFromPagination(apps);
         }
 
-        private Long getApplicationsCountByDate(String token, LocalDate date) {
-                // Đơn giản hóa - lấy tất cả rồi filter
-                PaginationDTO apps = candidateServiceClient.getApplications(token, null, null, null, 1, 1000);
-                if (apps == null || apps.getResult() == null)
-                        return 0L;
+        /**
+         * Lấy departmentId dựa trên role để filter dữ liệu
+         * CEO: null (xem tất cả)
+         * MANAGER/STAFF: departmentId của họ
+         */
+        private Long getDepartmentIdForStatistics() {
+                String role = SecurityUtil.extractUserRole();
+                if (role == null) {
+                        return null;
+                }
 
-                @SuppressWarnings("unchecked")
-                List<Object> applications = (List<Object>) apps.getResult();
-                return applications.stream()
-                                .filter(app -> {
-                                        try {
-                                                JsonNode appNode = convertToJsonNode(app);
-                                                if (appNode != null && appNode.has("appliedDate")) {
-                                                        String appliedDateStr = appNode.get("appliedDate").asText();
-                                                        LocalDate appliedDate = LocalDate.parse(appliedDateStr);
-                                                        return appliedDate.equals(date);
-                                                }
-                                        } catch (Exception e) {
-                                                log.warn("Error parsing application date: {}", e.getMessage());
-                                        }
-                                        return false;
-                                })
-                                .count();
+                switch (role.toUpperCase()) {
+                        case "CEO":
+                        case "ADMIN":
+                                // Xem tất cả phòng ban
+                                return null;
+                        case "MANAGER":
+                        case "STAFF":
+                                // Chỉ xem phòng ban của mình
+                                return SecurityUtil.extractDepartmentId();
+                        default:
+                                return null;
+                }
         }
 
-        private Long getApplicationsCountByDateRange(String token, LocalDate start, LocalDate end) {
-                PaginationDTO apps = candidateServiceClient.getApplications(token, null, null, null, 1, 1000);
-                if (apps == null || apps.getResult() == null)
-                        return 0L;
-
-                @SuppressWarnings("unchecked")
-                List<Object> applications = (List<Object>) apps.getResult();
-                return applications.stream()
-                                .filter(app -> {
-                                        try {
-                                                JsonNode appNode = convertToJsonNode(app);
-                                                if (appNode != null && appNode.has("appliedDate")) {
-                                                        String appliedDateStr = appNode.get("appliedDate").asText();
-                                                        LocalDate appliedDate = LocalDate.parse(appliedDateStr);
-                                                        return !appliedDate.isBefore(start)
-                                                                        && !appliedDate.isAfter(end);
-                                                }
-                                        } catch (Exception e) {
-                                                log.warn("Error parsing application date: {}", e.getMessage());
-                                        }
-                                        return false;
-                                })
-                                .count();
-        }
-
-        private Long getApplicationsCountByStatusAndDateRange(String token, String status, LocalDate start,
+        /**
+         * Filter applications theo date range
+         */
+        private List<JsonNode> filterApplicationsByDateRange(List<JsonNode> applications, LocalDate start,
                         LocalDate end) {
-                PaginationDTO apps = candidateServiceClient.getApplications(token, status, null, null, 1, 1000);
-                if (apps == null || apps.getResult() == null)
-                        return 0L;
-
-                @SuppressWarnings("unchecked")
-                List<Object> applications = (List<Object>) apps.getResult();
                 return applications.stream()
                                 .filter(app -> {
                                         try {
-                                                JsonNode appNode = convertToJsonNode(app);
-                                                if (appNode != null && appNode.has("appliedDate")) {
-                                                        String appliedDateStr = appNode.get("appliedDate").asText();
+                                                if (app.has("appliedDate")) {
+                                                        String appliedDateStr = app.get("appliedDate").asText();
                                                         LocalDate appliedDate = LocalDate.parse(appliedDateStr);
                                                         return !appliedDate.isBefore(start)
                                                                         && !appliedDate.isAfter(end);
@@ -743,27 +354,57 @@ public class StatisticsService {
                                         }
                                         return false;
                                 })
-                                .count();
+                                .collect(Collectors.toList());
         }
 
-        private PaginationDTO getInterviewCount(String token, LocalDate start, LocalDate end) {
-                List<JsonNode> schedules = communicationServiceClient.getSchedules(token, start, end, null, null);
-                Long count = (long) schedules.size();
-
-                PaginationDTO result = new PaginationDTO();
-                Meta meta = new Meta();
-                meta.setTotal(count);
-                meta.setPage(1);
-                meta.setPageSize(schedules.size());
-                meta.setPages(1);
-                result.setMeta(meta);
-                result.setResult(schedules);
-                return result;
+        /**
+         * Filter applications theo date range và status
+         */
+        private List<JsonNode> filterApplicationsByDateRangeAndStatus(List<JsonNode> applications,
+                        LocalDate start, LocalDate end, String status) {
+                return applications.stream()
+                                .filter(app -> {
+                                        try {
+                                                // Check status
+                                                if (!app.has("status") || !status.equals(app.get("status").asText())) {
+                                                        return false;
+                                                }
+                                                // Check date
+                                                if (app.has("appliedDate")) {
+                                                        String appliedDateStr = app.get("appliedDate").asText();
+                                                        LocalDate appliedDate = LocalDate.parse(appliedDateStr);
+                                                        return !appliedDate.isBefore(start)
+                                                                        && !appliedDate.isAfter(end);
+                                                }
+                                        } catch (Exception e) {
+                                                log.warn("Error parsing application: {}", e.getMessage());
+                                        }
+                                        return false;
+                                })
+                                .collect(Collectors.toList());
         }
 
-        private Long getInterviewCountByDateRange(String token, LocalDate start, LocalDate end) {
-                List<JsonNode> schedules = communicationServiceClient.getSchedules(token, start, end, null, null);
-                return (long) schedules.size();
+        /**
+         * Filter schedules theo date range
+         */
+        private List<JsonNode> filterSchedulesByDateRange(List<JsonNode> schedules, LocalDate start, LocalDate end) {
+                return schedules.stream()
+                                .filter(schedule -> {
+                                        try {
+                                                if (schedule.has("startTime")) {
+                                                        String startTimeStr = schedule.get("startTime").asText();
+                                                        LocalDateTime startTime = LocalDateTime.parse(startTimeStr,
+                                                                        DateTimeFormatter.ISO_DATE_TIME);
+                                                        LocalDate scheduleDate = startTime.toLocalDate();
+                                                        return !scheduleDate.isBefore(start)
+                                                                        && !scheduleDate.isAfter(end);
+                                                }
+                                        } catch (Exception e) {
+                                                log.warn("Error parsing schedule date: {}", e.getMessage());
+                                        }
+                                        return false;
+                                })
+                                .collect(Collectors.toList());
         }
 
         private LocalDateTime parseDateTime(String dateTimeStr) {
@@ -796,126 +437,520 @@ public class StatisticsService {
                 }
         }
 
-        // ===================================================================
-        // CÁC API THỐNG KÊ MỚI VỚI MONGODB
-        // ===================================================================
-
         /**
-         * Lấy thống kê doanh thu theo tháng/quý/năm
-         * GET /api/v1/statistics-service/statistics/revenue
+         * Parse period string thành PeriodInfo
+         * Hỗ trợ: "X ngày qua", "X tháng này", "tháng này", "năm này", etc.
          */
-        public RevenueStatisticsDTO getRevenueStatistics(String token, String periodType, Integer year, Integer month,
-                        Integer quarter) {
-                log.info("Getting revenue statistics: periodType={}, year={}, month={}, quarter={}",
-                                periodType, year, month, quarter);
+        private PeriodInfo parsePeriodString(String period) {
+                if (period == null || period.isEmpty()) {
+                        return null;
+                }
 
-                // Tính toán và lưu vào MongoDB
-                com.example.statistics_service.model.mongodb.RevenueStatistics statistics = statisticsCalculationService
-                                .calculateAndSaveRevenueStatistics(token, periodType, year, month, quarter);
+                period = period.toLowerCase().trim();
+                LocalDate today = LocalDate.now();
 
-                // Lấy thống kê kỳ trước để so sánh
-                RevenueStatisticsDTO.RevenueComparisonDTO comparison = null;
-                if ("MONTHLY".equals(periodType)) {
-                        Integer prevMonth = month > 1 ? month - 1 : 12;
-                        Integer prevYear = month > 1 ? year : year - 1;
-                        // Lấy thống kê kỳ trước từ repository
-                        com.example.statistics_service.repository.mongodb.RevenueStatisticsRepository repo = statisticsCalculationService
-                                        .getRevenueStatisticsRepository();
-                        Optional<com.example.statistics_service.model.mongodb.RevenueStatistics> prevStats = repo
-                                        .findByPeriodTypeAndYearAndMonth(periodType, prevYear, prevMonth);
-                        if (prevStats.isPresent()) {
-                                BigDecimal prevRevenue = prevStats.get().getTotalRevenue();
-                                BigDecimal revenueChange = statistics.getTotalRevenue().subtract(prevRevenue);
-                                Double changePercent = prevRevenue.compareTo(BigDecimal.ZERO) > 0
-                                                ? (revenueChange.divide(prevRevenue, 4, RoundingMode.HALF_UP)
-                                                                .doubleValue()) * 100
-                                                : 0.0;
-                                comparison = RevenueStatisticsDTO.RevenueComparisonDTO.builder()
-                                                .previousTotalRevenue(prevRevenue)
-                                                .revenueChange(revenueChange)
-                                                .revenueChangePercent(Math.round(changePercent * 100.0) / 100.0)
-                                                .isIncrease(revenueChange.compareTo(BigDecimal.ZERO) > 0)
-                                                .build();
+                // Pattern: "X ngày qua" hoặc "X ngày trước"
+                if (period.contains("ngày") && (period.contains("qua") || period.contains("trước"))) {
+                        try {
+                                String numberStr = period.replaceAll("[^0-9]", "");
+                                if (!numberStr.isEmpty()) {
+                                        int days = Integer.parseInt(numberStr);
+                                        LocalDate start = today.minusDays(days - 1);
+                                        return new PeriodInfo(start, today, "DAILY");
+                                }
+                        } catch (NumberFormatException e) {
+                                log.warn("Cannot parse days from period: {}", period);
                         }
                 }
 
-                return RevenueStatisticsDTO.builder()
-                                .periodType(statistics.getPeriodType())
-                                .year(statistics.getYear())
-                                .month(statistics.getMonth())
-                                .quarter(statistics.getQuarter())
-                                .totalRevenue(statistics.getTotalRevenue())
-                                .hiredCount(statistics.getHiredCount())
-                                .averageRevenuePerEmployee(statistics.getAverageRevenuePerEmployee())
-                                .revenueByDepartment(statistics.getRevenueByDepartment())
-                                .revenueByPosition(statistics.getRevenueByPosition())
-                                .periodStart(statistics.getPeriodStart())
-                                .periodEnd(statistics.getPeriodEnd())
-                                .comparison(comparison)
-                                .build();
+                // Pattern: "X tháng này" hoặc "tháng này"
+                if (period.contains("tháng") && period.contains("này")) {
+                        try {
+                                String numberStr = period.replaceAll("[^0-9]", "");
+                                if (numberStr.isEmpty()) {
+                                        // "tháng này" = tháng hiện tại
+                                        YearMonth currentMonth = YearMonth.from(today);
+                                        LocalDate start = currentMonth.atDay(1);
+                                        LocalDate end = currentMonth.atEndOfMonth();
+                                        return new PeriodInfo(start, end, "MONTHLY");
+                                } else {
+                                        // "X tháng này" = X tháng gần nhất
+                                        int months = Integer.parseInt(numberStr);
+                                        YearMonth endMonth = YearMonth.from(today);
+                                        YearMonth startMonth = endMonth.minusMonths(months - 1);
+                                        LocalDate start = startMonth.atDay(1);
+                                        LocalDate end = endMonth.atEndOfMonth();
+                                        return new PeriodInfo(start, end, "MONTHLY");
+                                }
+                        } catch (NumberFormatException e) {
+                                log.warn("Cannot parse months from period: {}", period);
+                        }
+                }
+
+                // Pattern: "năm này"
+                if (period.contains("năm") && period.contains("này")) {
+                        LocalDate start = LocalDate.of(today.getYear(), 1, 1);
+                        LocalDate end = LocalDate.of(today.getYear(), 12, 31);
+                        return new PeriodInfo(start, end, "YEARLY");
+                }
+
+                // Pattern: "tuần này"
+                if (period.contains("tuần") && period.contains("này")) {
+                        LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1);
+                        LocalDate weekEnd = weekStart.plusDays(6);
+                        return new PeriodInfo(weekStart, weekEnd, "WEEKLY");
+                }
+
+                log.warn("Unknown period format: {}", period);
+                return null;
         }
 
         /**
-         * Lấy thống kê tuyển dụng theo thời gian
-         * GET /api/v1/statistics-service/statistics/recruitment
+         * Helper class để lưu thông tin period
          */
-        public RecruitmentStatisticsDTO getRecruitmentStatistics(String token, String periodType,
-                        Integer year, Integer month, Integer quarter, Integer day) {
-                log.info("Getting recruitment statistics: periodType={}, year={}, month={}, quarter={}, day={}",
-                                periodType, year, month, quarter, day);
+        private static class PeriodInfo {
+                LocalDate start;
+                LocalDate end;
+                String periodType;
 
-                com.example.statistics_service.model.mongodb.RecruitmentStatistics statistics = statisticsCalculationService
-                                .calculateAndSaveRecruitmentStatistics(
-                                                token, periodType, year, month, quarter, day);
-
-                return RecruitmentStatisticsDTO.builder()
-                                .periodType(statistics.getPeriodType())
-                                .year(statistics.getYear())
-                                .month(statistics.getMonth())
-                                .quarter(statistics.getQuarter())
-                                .day(statistics.getDay())
-                                .totalRequests(statistics.getTotalRequests())
-                                .requestsByStatus(statistics.getRequestsByStatus())
-                                .totalJobPositions(statistics.getTotalJobPositions())
-                                .totalApplications(statistics.getTotalApplications())
-                                .applicationsByStatus(statistics.getApplicationsByStatus())
-                                .hiredCount(statistics.getHiredCount())
-                                .hireRate(statistics.getHireRate())
-                                .requestsByDepartment(statistics.getRequestsByDepartment())
-                                .periodStart(statistics.getPeriodStart())
-                                .periodEnd(statistics.getPeriodEnd())
-                                .build();
+                PeriodInfo(LocalDate start, LocalDate end, String periodType) {
+                        this.start = start;
+                        this.end = end;
+                        this.periodType = periodType;
+                }
         }
 
         /**
-         * Lấy thống kê ứng viên theo thời gian
-         * GET /api/v1/statistics-service/statistics/applications
+         * Lấy dữ liệu biểu đồ chart về applications
+         * GET /api/v1/statistics-service/statistics/applications/chart
+         * 
+         * @param token      JWT token
+         * @param chartType  TIMELINE, STATUS, DEPARTMENT, POSITION
+         * @param period     Chuỗi mô tả kỳ thống kê (ví dụ: "30 ngày qua", "tháng này")
+         * @param periodType WEEKLY, MONTHLY, YEARLY
          */
-        public ApplicationStatisticsDTO getApplicationStatistics(String token, String periodType,
-                        Integer year, Integer month, Integer quarter, Integer day) {
-                log.info("Getting application statistics: periodType={}, year={}, month={}, quarter={}, day={}",
-                                periodType, year, month, quarter, day);
+        public ApplicationChartDTO getApplicationChart(String token, String chartType, String period,
+                        String periodType) {
+                log.info("Getting application chart: chartType={}, period={}, periodType={}", chartType, period,
+                                periodType);
 
-                com.example.statistics_service.model.mongodb.ApplicationStatistics statistics = statisticsCalculationService
-                                .calculateAndSaveApplicationStatistics(
-                                                token, periodType, year, month, quarter, day);
+                if (chartType == null || chartType.isEmpty()) {
+                        chartType = "TIMELINE";
+                }
 
-                return ApplicationStatisticsDTO.builder()
-                                .periodType(statistics.getPeriodType())
-                                .year(statistics.getYear())
-                                .month(statistics.getMonth())
-                                .quarter(statistics.getQuarter())
-                                .day(statistics.getDay())
-                                .totalCandidates(statistics.getTotalCandidates())
-                                .totalApplications(statistics.getTotalApplications())
-                                .applicationsByStatus(statistics.getApplicationsByStatus())
-                                .candidatesByStage(statistics.getCandidatesByStage())
-                                .applicationsByPosition(statistics.getApplicationsByPosition())
-                                .applicationsByDepartment(statistics.getApplicationsByDepartment())
-                                .conversionRate(statistics.getConversionRate())
-                                .averageProcessingTime(statistics.getAverageProcessingTime())
-                                .periodStart(statistics.getPeriodStart())
-                                .periodEnd(statistics.getPeriodEnd())
-                                .build();
+                // Parse period để lấy date range
+                PeriodInfo periodInfo = null;
+                if (period != null && !period.isEmpty()) {
+                        periodInfo = parsePeriodString(period);
+                }
+
+                // Nếu không có period, dùng periodType
+                if (periodInfo == null) {
+                        LocalDate today = LocalDate.now();
+                        if (periodType == null || periodType.isEmpty()) {
+                                periodType = "MONTHLY";
+                        }
+
+                        switch (periodType.toUpperCase()) {
+                                case "WEEKLY": {
+                                        LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1);
+                                        periodInfo = new PeriodInfo(weekStart, weekStart.plusDays(6), "WEEKLY");
+                                        break;
+                                }
+                                case "YEARLY": {
+                                        periodInfo = new PeriodInfo(LocalDate.of(today.getYear(), 1, 1),
+                                                        LocalDate.of(today.getYear(), 12, 31), "YEARLY");
+                                        break;
+                                }
+                                default: // MONTHLY
+                                {
+                                        YearMonth currentMonth = YearMonth.from(today);
+                                        periodInfo = new PeriodInfo(currentMonth.atDay(1), currentMonth.atEndOfMonth(),
+                                                        "MONTHLY");
+                                        break;
+                                }
+                        }
+                }
+
+                // Lấy departmentId dựa trên role
+                Long departmentId = getDepartmentIdForStatistics();
+
+                // Gọi API statistics để lấy dữ liệu
+                String startDateStr = periodInfo.start.format(DateTimeFormatter.ISO_DATE);
+                String endDateStr = periodInfo.end.format(DateTimeFormatter.ISO_DATE);
+
+                List<JsonNode> allApplications = candidateServiceClient.getApplicationsForStatistics(
+                                token, null, startDateStr, endDateStr, null, departmentId);
+
+                ApplicationChartDTO.ApplicationChartDTOBuilder chartBuilder = ApplicationChartDTO.builder()
+                                .chartType(chartType.toUpperCase())
+                                .periodType(periodInfo.periodType)
+                                .periodStart(periodInfo.start)
+                                .periodEnd(periodInfo.end);
+
+                // Tính toán dữ liệu theo chartType
+                switch (chartType.toUpperCase()) {
+                        case "STATUS":
+                                chartBuilder.statusData(calculateStatusChartData(allApplications));
+                                break;
+                        case "DEPARTMENT":
+                                chartBuilder.departmentData(calculateDepartmentChartData(allApplications, token));
+                                break;
+                        case "POSITION":
+                                chartBuilder.positionData(calculatePositionChartData(allApplications, token));
+                                break;
+                        default: // TIMELINE
+                                chartBuilder.timelineData(calculateTimelineChartData(allApplications, periodInfo));
+                                break;
+                }
+
+                return chartBuilder.build();
+        }
+
+        /**
+         * Tính toán dữ liệu timeline chart
+         */
+        private List<ApplicationChartDTO.TimelineDataItem> calculateTimelineChartData(List<JsonNode> applications,
+                        PeriodInfo periodInfo) {
+                List<ApplicationChartDTO.TimelineDataItem> timelineData = new ArrayList<>();
+                long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(periodInfo.start, periodInfo.end);
+
+                if (daysBetween <= 7) {
+                        // Daily data cho tuần
+                        String[] dayNames = { "CN", "T2", "T3", "T4", "T5", "T6", "T7" };
+                        LocalDate current = periodInfo.start;
+                        while (!current.isAfter(periodInfo.end)) {
+                                final LocalDate date = current;
+                                List<JsonNode> dayApps = applications.stream()
+                                                .filter(app -> {
+                                                        try {
+                                                                if (app.has("appliedDate")) {
+                                                                        LocalDate appliedDate = LocalDate
+                                                                                        .parse(app.get("appliedDate")
+                                                                                                        .asText());
+                                                                        return appliedDate.equals(date);
+                                                                }
+                                                        } catch (Exception e) {
+                                                                log.warn("Error parsing date: {}", e.getMessage());
+                                                        }
+                                                        return false;
+                                                })
+                                                .collect(Collectors.toList());
+
+                                Long total = (long) dayApps.size();
+                                Long hired = (long) dayApps.stream()
+                                                .filter(app -> app.has("status")
+                                                                && "HIRED".equals(app.get("status").asText()))
+                                                .count();
+                                Long rejected = (long) dayApps.stream()
+                                                .filter(app -> app.has("status")
+                                                                && "REJECTED".equals(app.get("status").asText()))
+                                                .count();
+                                Long pending = (long) dayApps.stream()
+                                                .filter(app -> app.has("status")
+                                                                && "PENDING".equals(app.get("status").asText()))
+                                                .count();
+
+                                int dayOfWeek = current.getDayOfWeek().getValue();
+                                String dayName = dayNames[dayOfWeek % 7];
+
+                                timelineData.add(ApplicationChartDTO.TimelineDataItem.builder()
+                                                .label(dayName)
+                                                .date(current.format(DateTimeFormatter.ISO_DATE))
+                                                .applications(total)
+                                                .hired(hired)
+                                                .rejected(rejected)
+                                                .pending(pending)
+                                                .build());
+
+                                current = current.plusDays(1);
+                        }
+                } else if (daysBetween <= 31) {
+                        // Weekly data cho tháng
+                        LocalDate weekStart = periodInfo.start;
+                        int weekNumber = 1;
+                        while (!weekStart.isAfter(periodInfo.end)) {
+                                LocalDate weekEnd = weekStart.plusDays(6);
+                                if (weekEnd.isAfter(periodInfo.end)) {
+                                        weekEnd = periodInfo.end;
+                                }
+
+                                final LocalDate start = weekStart;
+                                final LocalDate end = weekEnd;
+                                List<JsonNode> weekApps = applications.stream()
+                                                .filter(app -> {
+                                                        try {
+                                                                if (app.has("appliedDate")) {
+                                                                        LocalDate appliedDate = LocalDate
+                                                                                        .parse(app.get("appliedDate")
+                                                                                                        .asText());
+                                                                        return !appliedDate.isBefore(start)
+                                                                                        && !appliedDate.isAfter(end);
+                                                                }
+                                                        } catch (Exception e) {
+                                                                log.warn("Error parsing date: {}", e.getMessage());
+                                                        }
+                                                        return false;
+                                                })
+                                                .collect(Collectors.toList());
+
+                                Long total = (long) weekApps.size();
+                                Long hired = (long) weekApps.stream()
+                                                .filter(app -> app.has("status")
+                                                                && "HIRED".equals(app.get("status").asText()))
+                                                .count();
+                                Long rejected = (long) weekApps.stream()
+                                                .filter(app -> app.has("status")
+                                                                && "REJECTED".equals(app.get("status").asText()))
+                                                .count();
+                                Long pending = (long) weekApps.stream()
+                                                .filter(app -> app.has("status")
+                                                                && "PENDING".equals(app.get("status").asText()))
+                                                .count();
+
+                                timelineData.add(ApplicationChartDTO.TimelineDataItem.builder()
+                                                .label("Tuần " + weekNumber)
+                                                .date(weekStart.format(DateTimeFormatter.ISO_DATE) + " - "
+                                                                + weekEnd.format(DateTimeFormatter.ISO_DATE))
+                                                .applications(total)
+                                                .hired(hired)
+                                                .rejected(rejected)
+                                                .pending(pending)
+                                                .build());
+
+                                weekStart = weekStart.plusWeeks(1);
+                                weekNumber++;
+                        }
+                } else {
+                        // Monthly data cho năm
+                        LocalDate monthStart = periodInfo.start;
+                        while (!monthStart.isAfter(periodInfo.end)) {
+                                YearMonth yearMonth = YearMonth.from(monthStart);
+                                LocalDate monthEnd = yearMonth.atEndOfMonth();
+                                if (monthEnd.isAfter(periodInfo.end)) {
+                                        monthEnd = periodInfo.end;
+                                }
+
+                                final LocalDate start = monthStart;
+                                final LocalDate end = monthEnd;
+                                List<JsonNode> monthApps = applications.stream()
+                                                .filter(app -> {
+                                                        try {
+                                                                if (app.has("appliedDate")) {
+                                                                        LocalDate appliedDate = LocalDate
+                                                                                        .parse(app.get("appliedDate")
+                                                                                                        .asText());
+                                                                        return !appliedDate.isBefore(start)
+                                                                                        && !appliedDate.isAfter(end);
+                                                                }
+                                                        } catch (Exception e) {
+                                                                log.warn("Error parsing date: {}", e.getMessage());
+                                                        }
+                                                        return false;
+                                                })
+                                                .collect(Collectors.toList());
+
+                                Long total = (long) monthApps.size();
+                                Long hired = (long) monthApps.stream()
+                                                .filter(app -> app.has("status")
+                                                                && "HIRED".equals(app.get("status").asText()))
+                                                .count();
+                                Long rejected = (long) monthApps.stream()
+                                                .filter(app -> app.has("status")
+                                                                && "REJECTED".equals(app.get("status").asText()))
+                                                .count();
+                                Long pending = (long) monthApps.stream()
+                                                .filter(app -> app.has("status")
+                                                                && "PENDING".equals(app.get("status").asText()))
+                                                .count();
+
+                                timelineData.add(ApplicationChartDTO.TimelineDataItem.builder()
+                                                .label("Tháng " + yearMonth.getMonthValue())
+                                                .date(monthStart.format(DateTimeFormatter.ISO_DATE))
+                                                .applications(total)
+                                                .hired(hired)
+                                                .rejected(rejected)
+                                                .pending(pending)
+                                                .build());
+
+                                monthStart = yearMonth.plusMonths(1).atDay(1);
+                        }
+                }
+
+                return timelineData;
+        }
+
+        /**
+         * Tính toán dữ liệu status chart
+         */
+        private List<ApplicationChartDTO.StatusDataItem> calculateStatusChartData(List<JsonNode> applications) {
+                Map<String, Long> statusCount = new HashMap<>();
+                String[] colors = { "#10B981", "#EF4444", "#F59E0B", "#3B82F6", "#8B5CF6" };
+                Map<String, String> statusLabels = new HashMap<>();
+                statusLabels.put("HIRED", "Đã tuyển");
+                statusLabels.put("REJECTED", "Từ chối");
+                statusLabels.put("PENDING", "Đang xử lý");
+                statusLabels.put("SUBMITTED", "Đã nộp");
+                statusLabels.put("INTERVIEWED", "Đã phỏng vấn");
+
+                // Đếm theo status
+                for (JsonNode app : applications) {
+                        if (app.has("status")) {
+                                String status = app.get("status").asText();
+                                statusCount.merge(status, 1L, Long::sum);
+                        }
+                }
+
+                Long total = (long) applications.size();
+                List<ApplicationChartDTO.StatusDataItem> statusData = new ArrayList<>();
+                int colorIndex = 0;
+
+                for (Map.Entry<String, Long> entry : statusCount.entrySet()) {
+                        String status = entry.getKey();
+                        Long count = entry.getValue();
+                        Double percentage = total > 0 ? (count.doubleValue() / total.doubleValue()) * 100 : 0.0;
+
+                        statusData.add(ApplicationChartDTO.StatusDataItem.builder()
+                                        .status(status)
+                                        .statusLabel(statusLabels.getOrDefault(status, status))
+                                        .count(count)
+                                        .percentage(Math.round(percentage * 100.0) / 100.0)
+                                        .color(colors[colorIndex % colors.length])
+                                        .build());
+                        colorIndex++;
+                }
+
+                // Sắp xếp giảm dần theo count
+                statusData.sort((a, b) -> Long.compare(b.getCount(), a.getCount()));
+
+                return statusData;
+        }
+
+        /**
+         * Tính toán dữ liệu department chart
+         */
+        private List<ApplicationChartDTO.DepartmentDataItem> calculateDepartmentChartData(List<JsonNode> applications,
+                        String token) {
+                Map<Long, Long> deptCount = new HashMap<>();
+                Map<Long, String> deptNames = new HashMap<>();
+                String[] colors = { "#8B5CF6", "#EC4899", "#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#6366F1" };
+
+                // Đếm theo department
+                for (JsonNode app : applications) {
+                        if (app.has("departmentId") && !app.get("departmentId").isNull()) {
+                                Long deptId = app.get("departmentId").asLong();
+                                deptCount.merge(deptId, 1L, Long::sum);
+
+                                // Lấy tên department nếu chưa có
+                                if (!deptNames.containsKey(deptId)) {
+                                        JsonNode dept = userServiceClient.getDepartmentById(token, deptId);
+                                        if (dept != null && dept.has("name")) {
+                                                deptNames.put(deptId, dept.get("name").asText());
+                                        } else {
+                                                deptNames.put(deptId, "Phòng ban #" + deptId);
+                                        }
+                                }
+                        }
+                }
+
+                Long total = (long) applications.size();
+                List<ApplicationChartDTO.DepartmentDataItem> departmentData = new ArrayList<>();
+                int colorIndex = 0;
+
+                for (Map.Entry<Long, Long> entry : deptCount.entrySet()) {
+                        Long deptId = entry.getKey();
+                        Long count = entry.getValue();
+                        Double percentage = total > 0 ? (count.doubleValue() / total.doubleValue()) * 100 : 0.0;
+
+                        departmentData.add(ApplicationChartDTO.DepartmentDataItem.builder()
+                                        .departmentId(deptId)
+                                        .departmentName(deptNames.getOrDefault(deptId, "Phòng ban #" + deptId))
+                                        .count(count)
+                                        .percentage(Math.round(percentage * 100.0) / 100.0)
+                                        .color(colors[colorIndex % colors.length])
+                                        .build());
+                        colorIndex++;
+                }
+
+                // Sắp xếp giảm dần theo count
+                departmentData.sort((a, b) -> Long.compare(b.getCount(), a.getCount()));
+
+                return departmentData;
+        }
+
+        /**
+         * Tính toán dữ liệu position chart
+         */
+        private List<ApplicationChartDTO.PositionDataItem> calculatePositionChartData(List<JsonNode> applications,
+                        String token) {
+                Map<Long, Long> positionCount = new HashMap<>();
+                Map<Long, String> positionNames = new HashMap<>();
+                String[] colors = { "#8B5CF6", "#EC4899", "#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#6366F1" };
+
+                // Đếm theo position
+                for (JsonNode app : applications) {
+                        if (app.has("jobPositionId") && !app.get("jobPositionId").isNull()) {
+                                Long positionId = app.get("jobPositionId").asLong();
+                                positionCount.merge(positionId, 1L, Long::sum);
+
+                                // Lấy tên position nếu chưa có
+                                if (!positionNames.containsKey(positionId)) {
+                                        try {
+                                                PaginationDTO positions = jobServiceClient.getJobPositions(token, 1,
+                                                                1000);
+                                                if (positions != null && positions.getResult() != null) {
+                                                        @SuppressWarnings("unchecked")
+                                                        List<Object> positionList = (List<Object>) positions
+                                                                        .getResult();
+                                                        for (Object pos : positionList) {
+                                                                JsonNode posNode = convertToJsonNode(pos);
+                                                                if (posNode != null && posNode.has("id")
+                                                                                && posNode.get("id")
+                                                                                                .asLong() == positionId) {
+                                                                        if (posNode.has("title")) {
+                                                                                positionNames.put(positionId,
+                                                                                                posNode.get("title")
+                                                                                                                .asText());
+                                                                        }
+                                                                        break;
+                                                                }
+                                                        }
+                                                }
+                                        } catch (Exception e) {
+                                                log.warn("Error fetching position name: {}", e.getMessage());
+                                        }
+                                        if (!positionNames.containsKey(positionId)) {
+                                                positionNames.put(positionId, "Vị trí #" + positionId);
+                                        }
+                                }
+                        }
+                }
+
+                Long total = (long) applications.size();
+                List<ApplicationChartDTO.PositionDataItem> positionData = new ArrayList<>();
+                int colorIndex = 0;
+
+                for (Map.Entry<Long, Long> entry : positionCount.entrySet()) {
+                        Long positionId = entry.getKey();
+                        Long count = entry.getValue();
+                        Double percentage = total > 0 ? (count.doubleValue() / total.doubleValue()) * 100 : 0.0;
+
+                        positionData.add(ApplicationChartDTO.PositionDataItem.builder()
+                                        .positionId(positionId)
+                                        .positionName(positionNames.getOrDefault(positionId, "Vị trí #" + positionId))
+                                        .count(count)
+                                        .percentage(Math.round(percentage * 100.0) / 100.0)
+                                        .color(colors[colorIndex % colors.length])
+                                        .build());
+                        colorIndex++;
+                }
+
+                // Sắp xếp giảm dần theo count và lấy top 10
+                positionData.sort((a, b) -> Long.compare(b.getCount(), a.getCount()));
+                if (positionData.size() > 10) {
+                        positionData = positionData.subList(0, 10);
+                }
+
+                return positionData;
         }
 }

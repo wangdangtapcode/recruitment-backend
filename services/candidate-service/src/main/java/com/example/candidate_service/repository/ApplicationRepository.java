@@ -21,11 +21,15 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
         List<Application> findByJobPositionId(Long jobPositionId);
 
         @Query("SELECT a FROM Application a WHERE " +
-        "(:jobPositionId IS NULL OR a.jobPositionId = :jobPositionId) AND " +
-        "(:status IS NULL OR a.status = :status) AND " +
-        "(:candidateId IS NULL OR a.candidate.id = :candidateId)")
- Page<Application> findByFilters(@Param("jobPositionId") Long jobPositionId,
-                                 @Param("status") ApplicationStatus status,
-                                 @Param("candidateId") Long candidateId,
-                                 Pageable pageable);
+                        "(:jobPositionId IS NULL OR a.jobPositionId = :jobPositionId) AND " +
+                        "(:status IS NULL OR a.status = :status) AND " +
+                        "(:candidateId IS NULL OR a.candidate.id = :candidateId) AND " +
+                        "(:startDate IS NULL OR a.appliedDate >= :startDate) AND " +
+                        "(:endDate IS NULL OR a.appliedDate <= :endDate)")
+        Page<Application> findByFilters(@Param("jobPositionId") Long jobPositionId,
+                        @Param("status") ApplicationStatus status,
+                        @Param("candidateId") Long candidateId,
+                        @Param("startDate") java.time.LocalDate startDate,
+                        @Param("endDate") java.time.LocalDate endDate,
+                        Pageable pageable);
 }

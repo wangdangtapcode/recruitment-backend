@@ -18,15 +18,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @Service
-public class CommunicationService {
+public class ScheduleService {
 
-    @Value("${communications-service.url:http://localhost:8085}")
-    private String communicationsServiceUrl;
+    @Value("${schedule-service.url:http://localhost:8085}")
+    private String scheduleServiceUrl;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public CommunicationService(RestTemplate restTemplate, ObjectMapper objectMapper) {
+    public ScheduleService(RestTemplate restTemplate, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
     }
@@ -34,8 +34,8 @@ public class CommunicationService {
     // Lấy các lịch (detailed) theo participant (CANDIDATE)
     public ResponseEntity<JsonNode> getUpcomingSchedulesForCandidate(Long candidateId, String token) {
         try {
-            String url = communicationsServiceUrl
-                    + "/api/v1/communications-service/schedules?participantId=" + candidateId
+            String url = scheduleServiceUrl
+                    + "/api/v1/schedule-service/schedules?participantId=" + candidateId
                     + "&participantType=CANDIDATE&status=SCHEDULED";
             HttpHeaders headers = new HttpHeaders();
             headers.setAccept(List.of(MediaType.APPLICATION_JSON));

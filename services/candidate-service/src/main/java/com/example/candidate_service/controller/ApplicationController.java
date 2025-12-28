@@ -1,6 +1,7 @@
 package com.example.candidate_service.controller;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.candidate_service.dto.application.ApplicationDetailResponseDTO;
 import com.example.candidate_service.dto.application.ApplicationResponseDTO;
+import com.example.candidate_service.dto.application.ApplicationStatisticsDTO;
 import com.example.candidate_service.dto.PaginationDTO;
 import com.example.candidate_service.dto.application.CreateApplicationDTO;
 import com.example.candidate_service.dto.application.UpdateApplicationDTO;
@@ -36,6 +38,8 @@ public class ApplicationController {
             @RequestParam(name = "candidateId", required = false) Long candidateId,
             @RequestParam(name = "jobPositionId", required = false) Long jobPositionId,
             @RequestParam(name = "status", required = false) ApplicationStatus status,
+            @RequestParam(name = "startDate", required = false) String startDate,
+            @RequestParam(name = "endDate", required = false) String endDate,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit,
             @RequestParam(name = "sortBy", defaultValue = "id", required = false) String sortBy,
@@ -53,7 +57,7 @@ public class ApplicationController {
 
         String token = SecurityUtil.getCurrentUserJWT().orElse("");
         return ResponseEntity.ok(applicationService.getAllApplicationsWithFilters(
-                candidateId, jobPositionId, status, pageable, token));
+                candidateId, jobPositionId, status, startDate, endDate, pageable, token));
     }
 
     @PostMapping
@@ -99,19 +103,20 @@ public class ApplicationController {
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{applicationId}/accept")
-    @ApiMessage("Chấp nhận đơn ứng tuyển")
-    public ResponseEntity<ApplicationResponseDTO> acceptApplication(
-            @PathVariable Long applicationId,
-            @RequestParam(required = false) String feedback) throws IdInvalidException {
-        return ResponseEntity.ok(applicationService.acceptApplication(applicationId, feedback));
-    }
-
-    @PutMapping("/{applicationId}/reject")
-    @ApiMessage("Từ chối đơn ứng tuyển")
-    public ResponseEntity<ApplicationResponseDTO> rejectApplication(
-            @PathVariable Long applicationId,
-            @RequestParam String rejectionReason) throws IdInvalidException {
-        return ResponseEntity.ok(applicationService.rejectApplication(applicationId, rejectionReason));
+    /**
+     * API thống kê - chỉ trả về dữ liệu cần thiết cho statistics service
+     * GET /api/v1/candidate-service/applications/statistics
+     */
+    @GetMapping("/statistics")
+    @ApiMessage("Lấy dữ liệu đơn ứng tuyển cho thống kê")
+    public ResponseEntity<List<ApplicationStatisticsDTO>> getApplicationsForStatistics(
+            @RequestParam(name = "status", required = false) ApplicationStatus status,
+            @RequestParam(name = "startDate", required = false) String startDate,
+            @RequestParam(name = "endDate", required = false) String endDate,
+            @RequestParam(name = "jobPositionId", required = false) Long jobPositionId,
+            @RequestParam(name = "departmentId", required = false) Long departmentId) {
+        String token = SecurityUtil.getCurrentUserJWT().orElse("");
+        return ResponseEntity.ok(applicationService.getApplicationsForStatistics(
+                status, startDate, endDate, jobPositionId, departmentId, token));
     }
 }

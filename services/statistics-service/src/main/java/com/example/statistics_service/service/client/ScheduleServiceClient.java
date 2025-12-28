@@ -19,18 +19,18 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class CommunicationServiceClient {
+public class ScheduleServiceClient {
     private final RestTemplate restTemplate;
 
-    @Value("${communications-service.url:http://localhost:8085}")
+    @Value("${schedule-service.url:http://localhost:8085}")
     private String communicationsServiceBaseUrl;
 
-    public List<JsonNode> getSchedules(String token, LocalDate startDate, LocalDate endDate, 
-                                       Long participantId, String participantType) {
+    public List<JsonNode> getSchedules(String token, LocalDate startDate, LocalDate endDate,
+            Long participantId, String participantType) {
         try {
             UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(communicationsServiceBaseUrl)
-                    .path("/api/v1/communications-service/schedules");
-            
+                    .path("/api/v1/schedule-service/schedules");
+
             if (startDate != null) {
                 builder.queryParam("startDate", startDate);
             }
@@ -43,7 +43,7 @@ public class CommunicationServiceClient {
             if (participantType != null) {
                 builder.queryParam("participantType", participantType);
             }
-            
+
             String url = builder.build().toUriString();
 
             HttpHeaders headers = new HttpHeaders();
@@ -54,8 +54,9 @@ public class CommunicationServiceClient {
 
             HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
             ResponseEntity<Response<List<JsonNode>>> response = restTemplate.exchange(
-                    url, HttpMethod.GET, requestEntity, 
-                    new ParameterizedTypeReference<Response<List<JsonNode>>>() {});
+                    url, HttpMethod.GET, requestEntity,
+                    new ParameterizedTypeReference<Response<List<JsonNode>>>() {
+                    });
 
             if (response.getBody() != null && response.getBody().getData() != null) {
                 return response.getBody().getData();
@@ -71,12 +72,57 @@ public class CommunicationServiceClient {
         try {
             LocalDate today = LocalDate.now();
             LocalDate nextWeek = today.plusDays(7);
-            
+
             return getSchedules(token, today, nextWeek, null, null);
         } catch (Exception ex) {
             System.err.println("Error fetching upcoming schedules: " + ex.getMessage());
             return List.of();
         }
     }
-}
 
+    /**
+     * Lấy dữ liệu schedules cho thống kê - API tối ưu chỉ trả về dữ liệu cần thiết
+     */
+    public List<JsonNode> getSchedulesForStatistics(String token, LocalDate startDate, LocalDate endDate,
+            String status, String meetingType) {
+        try {
+            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(communicationsServiceBaseUrl)
+                    .path("/api/v1/schedule-service/schedules/statistics");
+
+            if (startDate != null) {
+                builder.queryParam("startDate", startDate);
+            }
+            if (endDate != null) {
+                builder.queryParam("endDate", endDate);
+            }
+            if (status != null) {
+                builder.queryParam("status", status);
+            }
+            if (meetingType != null) {
+                builder.queryParam("meetingType", meetingType);
+            }
+
+            String url = builder.build().toUriString();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+
+            HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
+            ResponseEntity<Response<List<JsonNode>>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, requestEntity,
+                    new ParameterizedTypeReference<Response<List<JsonNode>>>() {
+                    });
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                return response.getBody().getData();
+            }
+            return List.of();
+        } catch (Exception ex) {
+            System.err.println("Error fetching schedules for statistics: " + ex.getMessage());
+            ex.printStackTrace();
+            return List.of();
+        }
+    }
+}

@@ -37,7 +37,9 @@ public class ResponseLoginDTO {
         private long userId; // Lưu userId vào token
         private long employeeId; // Lưu employeeId vào token
         private String email;
-        private String name; // Lấy từ Employee
+        private String name;
+        private String role;
+        private Long departmentId;
     }
 
     @Getter

@@ -39,8 +39,6 @@ public class Schedule {
     @Column(name = "end_time")
     private LocalDateTime endTime;
 
-    @Column(name = "timezone")
-    private String timezone;
 
     private Integer reminderTime;
     @Column(name = "room_id")

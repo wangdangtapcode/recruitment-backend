@@ -5,7 +5,9 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
+import com.example.candidate_service.utils.SecurityUtil;
 import com.example.candidate_service.utils.enums.CandidateStage;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -57,5 +59,21 @@ public class Candidate {
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL)
     @JsonIgnore
     private Set<Application> applications;
+    private Long createdBy;
+    private Long updatedBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+        this.createdBy = SecurityUtil.extractEmployeeId();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+        this.updatedBy = SecurityUtil.extractEmployeeId();
+    }
 
 }
