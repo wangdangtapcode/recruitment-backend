@@ -6,14 +6,11 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CreateWorkflowStepDTO {
-    
+public class CreateStepDTO {
+
     @NotNull(message = "Thứ tự bước không được để trống")
     private Integer stepOrder;
-    
-    private String stepName;
-    
+
     @NotNull(message = "Vị trí phê duyệt không được để trống")
     private Long approverPositionId;
 }
-

@@ -13,8 +13,6 @@ public class WorkflowStepResponseDTO {
 
     private Integer stepOrder;
 
-    private String stepName;
-
     private Long approverPositionId;
 
     private String approverPositionName;

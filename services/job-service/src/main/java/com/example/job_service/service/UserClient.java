@@ -116,13 +116,46 @@ public class UserClient {
     }
 
     public Map<Long, JsonNode> getEmployeesByIds(List<Long> employeeIds, String token) {
-        return employeeIds.stream().collect(Collectors.toMap(
-                id -> id,
-                id -> {
-                    // Hàm getEmployeeById sẽ ném lỗi nếu user-service trả lỗi
-                    ResponseEntity<JsonNode> response = getEmployeeById(id, token);
-                    return response.getBody();
-                }));
+        if (employeeIds == null || employeeIds.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        try {
+            // Tạo query string với các IDs
+            String idsParam = employeeIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+
+            String url = userServiceUrl + "/api/v1/user-service/employees?ids=" + idsParam;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<Response<List<JsonNode>>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<Response<List<JsonNode>>>() {
+                    });
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                List<JsonNode> employees = response.getBody().getData();
+                return employees.stream()
+                        .filter(emp -> emp.get("id") != null)
+                        .collect(Collectors.toMap(
+                                emp -> emp.get("id").asLong(),
+                                emp -> emp,
+                                (existing, replacement) -> existing
+                        ));
+            }
+        } catch (Exception e) {
+            // Log error và fallback về cách cũ nếu cần
+            System.err.println("Error fetching employees by IDs: " + e.getMessage());
+        }
+
+        return new HashMap<>();
     }
 
     public ResponseEntity<JsonNode> getAllDepartments(String token) {
@@ -207,6 +240,49 @@ public class UserClient {
         }
 
         return departmentNames;
+    }
+
+    public Map<Long, JsonNode> getDepartmentsByIdsAsJsonNode(List<Long> departmentIds, String token) {
+        Map<Long, JsonNode> departmentMap = new HashMap<>();
+
+        if (departmentIds == null || departmentIds.isEmpty()) {
+            return departmentMap;
+        }
+
+        try {
+            // Create comma-separated string of department IDs
+            String idsParam = departmentIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+
+            String url = userServiceUrl + "/api/v1/user-service/departments?ids=" + idsParam;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<Response<List<JsonNode>>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<Response<List<JsonNode>>>() {
+                    });
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                List<JsonNode> departments = response.getBody().getData();
+                for (JsonNode dept : departments) {
+                    if (dept != null && dept.has("id")) {
+                        Long deptId = dept.get("id").asLong();
+                        departmentMap.put(deptId, dept);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching departments by IDs: " + e.getMessage());
+        }
+
+        return departmentMap;
     }
 
 }

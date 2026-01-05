@@ -25,11 +25,11 @@ public class CommentController {
     }
 
     @GetMapping
-    @ApiMessage("Lấy danh sách bình luận theo application")
-    public ResponseEntity<List<CommentResponseDTO>> listByApplication(@RequestParam Long applicationId)
+    @ApiMessage("Lấy danh sách bình luận theo candidate")
+    public ResponseEntity<List<CommentResponseDTO>> listByCandidate(@RequestParam Long candidateId)
             throws IdInvalidException {
         String token = SecurityUtil.getCurrentUserJWT().orElse("");
-        return ResponseEntity.ok(commentService.getByApplicationId(applicationId, token));
+        return ResponseEntity.ok(commentService.getByCandidateId(candidateId, token));
     }
 
     @GetMapping("/{id}")

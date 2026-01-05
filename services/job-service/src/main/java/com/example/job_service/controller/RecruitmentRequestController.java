@@ -1,6 +1,6 @@
 package com.example.job_service.controller;
 
-import java.util.Optional;
+import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -103,25 +103,6 @@ public class RecruitmentRequestController {
         return ResponseEntity.ok(recruitmentRequestService.cancel(id, dto, actorId, token));
     }
 
-    // @GetMapping("/department/{departmentId}")
-    // @ApiMessage("Lấy danh sách yêu cầu tuyển dụng theo phòng ban")
-    // public ResponseEntity<PaginationDTO> getAllByDepartmentId(
-    //         @PathVariable Long departmentId,
-    //         @RequestParam(name = "currentPage", defaultValue = "1", required = false) Optional<String> currentPageOptional,
-    //         @RequestParam(name = "pageSize", defaultValue = "10", required = false) Optional<String> pageSizeOptional) {
-    //     String sCurrentPage = currentPageOptional.orElse("1");
-    //     String sPageSize = pageSizeOptional.orElse("10");
-
-    //     int current = Integer.parseInt(sCurrentPage);
-    //     int pageSize = Integer.parseInt(sPageSize);
-    //     Pageable pageable = PageRequest.of(current - 1, pageSize);
-    //     String token = SecurityUtil.getCurrentUserJWT().orElse(null);
-    //     if (token == null) {
-    //         throw new RuntimeException("Token không hợp lệ");
-    //     }
-    //     return ResponseEntity.ok(recruitmentRequestService.getAllByDepartmentIdWithUser(departmentId, token, pageable));
-    // }
-
     @GetMapping("/{id}")
     @ApiMessage("Lấy yêu cầu tuyển dụng theo id")
     public ResponseEntity<RecruitmentRequestWithUserDTO> getById(@PathVariable Long id) throws IdInvalidException {
@@ -132,10 +113,9 @@ public class RecruitmentRequestController {
         return ResponseEntity.ok(recruitmentRequestService.getByIdWithUser(id, token));
     }
 
-
     @GetMapping
     @ApiMessage("Lấy danh sách yêu cầu tuyển dụng với bộ lọc, phân trang và sắp xếp")
-    public ResponseEntity<PaginationDTO> getAll(
+    public ResponseEntity<PaginationDTO> getAllDetail(
             @RequestParam(name = "departmentId", required = false) Long departmentId,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "createdBy", required = false) Long createdBy,
@@ -165,6 +145,17 @@ public class RecruitmentRequestController {
 
         return ResponseEntity.ok(recruitmentRequestService.getAllWithFilters(
                 departmentId, status, createdBy, keyword, token, pageable));
+    }
+
+    @GetMapping("/simple")
+    @ApiMessage("Lấy danh sách yêu cầu tuyển dụng đơn giản")
+    public ResponseEntity<List<RecruitmentRequest>> getAllSimple(
+            @RequestParam(name = "departmentId", required = false) Long departmentId,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "createdBy", required = false) Long createdBy,
+            @RequestParam(name = "keyword", required = false) String keyword) {
+        return ResponseEntity.ok(recruitmentRequestService.findAllWithFilters(
+                departmentId, status, createdBy, keyword));
     }
 
     @PutMapping("/{id}")

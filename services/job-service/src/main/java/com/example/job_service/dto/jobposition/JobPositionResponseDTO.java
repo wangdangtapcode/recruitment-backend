@@ -31,7 +31,7 @@ public class JobPositionResponseDTO {
     private int quantity;
     private LocalDate deadline;
     private Long departmentId;
-    private int applicationCount;
+    private Integer applicationCount;
     private JobPositionStatus status;
     private RecruitmentRequest recruitmentRequest;
     private String departmentName; // Tên phòng ban
@@ -62,7 +62,8 @@ public class JobPositionResponseDTO {
         dto.setRemote(position.isRemote());
         dto.setDeadline(position.getDeadline());
         dto.setQuantity(position.getQuantity());
-        dto.setApplicationCount(position.getApplicationCount());
+        // applicationCount sẽ được set từ service (gọi candidate-service)
+        dto.setApplicationCount(0);
         dto.setStatus(position.getStatus());
 
         dto.setRecruitmentRequest(position.getRecruitmentRequest());

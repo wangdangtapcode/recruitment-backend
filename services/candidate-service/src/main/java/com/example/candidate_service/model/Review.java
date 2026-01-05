@@ -18,9 +18,9 @@ public class Review {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "application_id", nullable = false)
+    @JoinColumn(name = "candidate_id", nullable = false)
     @JsonIgnore
-    private Application application;
+    private Candidate candidate;
 
     private Long reviewerId; // EmployeeId người đánh giá
 

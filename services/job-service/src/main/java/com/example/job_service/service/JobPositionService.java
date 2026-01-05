@@ -1,6 +1,8 @@
 package com.example.job_service.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,12 +31,15 @@ public class JobPositionService {
     private final JobPositionRepository jobPositionRepository;
     private final RecruitmentRequestService recruitmentRequestService;
     private final UserClient userService;
+    private final CandidateClient candidateClient;
 
     public JobPositionService(JobPositionRepository jobPositionRepository,
-            RecruitmentRequestService recruitmentRequestService, UserClient userService) {
+            RecruitmentRequestService recruitmentRequestService, UserClient userService,
+            CandidateClient candidateClient) {
         this.jobPositionRepository = jobPositionRepository;
         this.recruitmentRequestService = recruitmentRequestService;
         this.userService = userService;
+        this.candidateClient = candidateClient;
     }
 
     @Transactional
@@ -79,77 +84,198 @@ public class JobPositionService {
         Long deptId = position.getRecruitmentRequest().getDepartmentId();
         String deptName = userService.getDepartmentById(deptId, token).getBody().get("name").asText();
         dto.setDepartmentName(deptName);
+        // Lấy applicationCount từ candidate-service
+        Integer applicationCount = candidateClient.countCandidatesByJobPositionId(id, token);
+        dto.setApplicationCount(applicationCount);
         return dto;
     }
 
-    // public SingleResponseDTO<JobPositionResponseDTO> getByIdWithDepartmentNameAndMetadata(Long id, String token)
-    //         throws IdInvalidException {
-    //     JobPosition position = this.findById(id);
-    //     JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
-    //     Long deptId = position.getRecruitmentRequest().getDepartmentId();
-    //     String deptName = userService.getDepartmentById(deptId, token).getBody().get("name").asText();
-    //     dto.setDepartmentName(deptName);
-    //     return new SingleResponseDTO<>(dto, TextTruncateUtil.getJobPositionCharacterLimits());
+    /**
+     * Lấy nhiều job positions theo IDs và trả về DTO với department info
+     */
+    public List<JobPositionResponseDTO> getByIdsWithDepartmentName(List<Long> ids, String token) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        List<JobPosition> positions = jobPositionRepository.findByIdIn(ids);
+        if (positions.isEmpty()) {
+            return List.of();
+        }
+
+        // Lấy tất cả department IDs
+        List<Long> departmentIds = positions.stream()
+                .map(position -> position.getRecruitmentRequest().getDepartmentId())
+                .distinct()
+                .toList();
+
+        // Lấy department names một lần
+        Map<Long, String> departmentNames = userService.getDepartmentsByIds(departmentIds, token);
+
+        // Convert to DTO
+        return positions.stream()
+                .map(position -> {
+                    JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position, false);
+                    Long deptId = position.getRecruitmentRequest().getDepartmentId();
+                    dto.setDepartmentName(departmentNames.getOrDefault(deptId, "Unknown Department"));
+                    return dto;
+                })
+                .toList();
+    }
+
+    // public SingleResponseDTO<JobPositionResponseDTO>
+    // getByIdWithDepartmentNameAndMetadata(Long id, String token)
+    // throws IdInvalidException {
+    // JobPosition position = this.findById(id);
+    // JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
+    // Long deptId = position.getRecruitmentRequest().getDepartmentId();
+    // String deptName = userService.getDepartmentById(deptId,
+    // token).getBody().get("name").asText();
+    // dto.setDepartmentName(deptName);
+    // return new SingleResponseDTO<>(dto,
+    // TextTruncateUtil.getJobPositionCharacterLimits());
     // }
 
-    public JobPositionResponseDTO getByIdWithPublished(Long id) throws IdInvalidException {
+    public JobPosition getByIdWithPublished(Long id) throws IdInvalidException {
         JobPosition position = this.findById(id);
         if (position.getStatus() != JobPositionStatus.PUBLISHED) {
             throw new IdInvalidException("Vị trí tuyển dụng chưa được xuất bản hoặc không khả dụng");
         }
-        JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
-        Long deptId = position.getRecruitmentRequest().getDepartmentId();
-        String deptName = userService.getPublicDepartmentById(deptId).getBody().get("name").asText();
-        dto.setDepartmentName(deptName);
-        return dto;
+        return position;
     }
 
-    // public SingleResponseDTO<JobPositionResponseDTO> getByIdWithPublishedAndMetadata(Long id)
-    //         throws IdInvalidException {
-    //     JobPosition position = this.findById(id);
-    //     if (position.getStatus() != JobPositionStatus.PUBLISHED) {
-    //         throw new IdInvalidException("Vị trí tuyển dụng chưa được xuất bản hoặc không khả dụng");
-    //     }
-    //     JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
-    //     Long deptId = position.getRecruitmentRequest().getDepartmentId();
-    //     String deptName = userService.getPublicDepartmentById(deptId).getBody().get("name").asText();
-    //     dto.setDepartmentName(deptName);
-    //     return new SingleResponseDTO<>(dto, TextTruncateUtil.getJobPositionCharacterLimits());
+    // public SingleResponseDTO<JobPositionResponseDTO>
+    // getByIdWithPublishedAndMetadata(Long id)
+    // throws IdInvalidException {
+    // JobPosition position = this.findById(id);
+    // if (position.getStatus() != JobPositionStatus.PUBLISHED) {
+    // throw new IdInvalidException("Vị trí tuyển dụng chưa được xuất bản hoặc không
+    // khả dụng");
+    // }
+    // JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
+    // Long deptId = position.getRecruitmentRequest().getDepartmentId();
+    // String deptName =
+    // userService.getPublicDepartmentById(deptId).getBody().get("name").asText();
+    // dto.setDepartmentName(deptName);
+    // return new SingleResponseDTO<>(dto,
+    // TextTruncateUtil.getJobPositionCharacterLimits());
     // }
 
     // public PaginationDTO findAll(Pageable pageable) {
-    //     Page<JobPosition> pageJobPosition = jobPositionRepository.findAll(pageable);
-    //     PaginationDTO rs = new PaginationDTO();
-    //     Meta mt = createMetaWithCharacterLimits(pageJobPosition);
-    //     rs.setMeta(mt);
-    //     rs.setResult(pageJobPosition.getContent().stream()
-    //             .map(position -> JobPositionResponseDTO.fromEntity(position, true))
-    //             .toList());
-    //     return rs;
+    // Page<JobPosition> pageJobPosition = jobPositionRepository.findAll(pageable);
+    // PaginationDTO rs = new PaginationDTO();
+    // Meta mt = createMetaWithCharacterLimits(pageJobPosition);
+    // rs.setMeta(mt);
+    // rs.setResult(pageJobPosition.getContent().stream()
+    // .map(position -> JobPositionResponseDTO.fromEntity(position, true))
+    // .toList());
+    // return rs;
     // }
 
     // public List<JobPosition> findByStatus(JobPositionStatus status) {
-    //     return jobPositionRepository.findByStatus(status);
+    // return jobPositionRepository.findByStatus(status);
     // }
 
     // public List<JobPosition> findPublished() {
-    //     return jobPositionRepository.findByStatus(JobPositionStatus.PUBLISHED);
+    // return jobPositionRepository.findByStatus(JobPositionStatus.PUBLISHED);
     // }
 
-    // public PaginationDTO findByDepartmentId(Long departmentId, Pageable pageable) {
-    //     Page<JobPosition> pageJobPosition = jobPositionRepository.findByDepartmentId(departmentId, pageable);
-    //     PaginationDTO rs = new PaginationDTO();
-    //     Meta mt = createMetaWithCharacterLimits(pageJobPosition);
-    //     rs.setMeta(mt);
-    //     rs.setResult(pageJobPosition.getContent().stream()
-    //             .map(position -> JobPositionResponseDTO.fromEntity(position, true))
-    //             .toList());
-    //     return rs;
+    // public PaginationDTO findByDepartmentId(Long departmentId, Pageable pageable)
+    // {
+    // Page<JobPosition> pageJobPosition =
+    // jobPositionRepository.findByDepartmentId(departmentId, pageable);
+    // PaginationDTO rs = new PaginationDTO();
+    // Meta mt = createMetaWithCharacterLimits(pageJobPosition);
+    // rs.setMeta(mt);
+    // rs.setResult(pageJobPosition.getContent().stream()
+    // .map(position -> JobPositionResponseDTO.fromEntity(position, true))
+    // .toList());
+    // return rs;
     // }
 
-    // public List<JobPosition> findByDepartmentIdAndStatus(Long departmentId, JobPositionStatus status) {
-    //     return jobPositionRepository.findByDepartmentIdAndStatus(departmentId, status);
+    // public List<JobPosition> findByDepartmentIdAndStatus(Long departmentId,
+    // JobPositionStatus status) {
+    // return jobPositionRepository.findByDepartmentIdAndStatus(departmentId,
+    // status);
     // }
+
+    /**
+     * Lấy danh sách JobPosition với filter, không gọi service khác
+     */
+    public List<JobPosition> findAllWithFiltersSimple(Long departmentId, JobPositionStatus status,
+            Boolean published, String keyword, String ids) {
+        // Nếu có ids, lấy theo IDs trước
+        if (ids != null && !ids.trim().isEmpty()) {
+            try {
+                List<Long> idList = List.of(ids.split(","))
+                        .stream()
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(Long::valueOf)
+                        .toList();
+                if (!idList.isEmpty()) {
+                    return jobPositionRepository.findByIdIn(idList);
+                }
+            } catch (Exception e) {
+                System.err.println("Error parsing ids: " + e.getMessage());
+            }
+        }
+
+        // Use repository findByFilters with unlimited pageable
+        Pageable unlimitedPageable = PageRequest.of(0, Integer.MAX_VALUE);
+        Page<JobPosition> pageResult = jobPositionRepository.findByFilters(
+                departmentId, status, published, keyword, unlimitedPageable);
+        return pageResult.getContent();
+    }
+
+    /**
+     * Lấy danh sách JobPosition với filter và phân trang, không gọi service khác
+     */
+    public PaginationDTO findAllWithFiltersSimplePaged(Long departmentId, JobPositionStatus status,
+            Boolean published, String keyword, String ids, Pageable pageable) {
+        Page<JobPosition> pageJobPosition;
+
+        // Nếu có ids, lấy theo IDs trước
+        if (ids != null && !ids.trim().isEmpty()) {
+            try {
+                List<Long> idList = List.of(ids.split(","))
+                        .stream()
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(Long::valueOf)
+                        .toList();
+                if (!idList.isEmpty()) {
+                    // Lấy tất cả và phân trang thủ công
+                    List<JobPosition> allPositions = jobPositionRepository.findByIdIn(idList);
+                    int start = (int) pageable.getOffset();
+                    int end = Math.min((start + pageable.getPageSize()), allPositions.size());
+                    List<JobPosition> pagedContent = start < allPositions.size()
+                            ? allPositions.subList(start, end)
+                            : List.of();
+
+                    pageJobPosition = new PageImpl<>(pagedContent, pageable, allPositions.size());
+                } else {
+                    pageJobPosition = Page.empty(pageable);
+                }
+            } catch (Exception e) {
+                System.err.println("Error parsing ids: " + e.getMessage());
+                pageJobPosition = Page.empty(pageable);
+            }
+        } else {
+            pageJobPosition = jobPositionRepository.findByFilters(departmentId, status,
+                    published, keyword, pageable);
+        }
+
+        PaginationDTO rs = new PaginationDTO();
+        Meta mt = new Meta();
+        mt.setPage(pageJobPosition.getNumber() + 1);
+        mt.setPageSize(pageJobPosition.getSize());
+        mt.setPages(pageJobPosition.getTotalPages());
+        mt.setTotal(pageJobPosition.getTotalElements());
+        rs.setMeta(mt);
+        rs.setResult(pageJobPosition.getContent());
+        return rs;
+    }
 
     public PaginationDTO findAllWithFilters(Long departmentId, JobPositionStatus status,
             Boolean published, String keyword, Pageable pageable, String token) {
@@ -162,19 +288,32 @@ public class JobPositionService {
                 .distinct()
                 .toList();
 
+        // Get unique job position IDs for application count
+        List<Long> jobPositionIds = pageJobPosition.getContent().stream()
+                .map(JobPosition::getId)
+                .distinct()
+                .toList();
+
         // Fetch departments by IDs from UserService in one call
         Map<Long, String> departmentNames = userService.getDepartmentsByIds(departmentIds, token);
+
+        // Fetch application counts by job position IDs from CandidateService
+        Map<Long, Integer> applicationCounts = candidateClient.countCandidatesByJobPositionIds(jobPositionIds, token);
 
         PaginationDTO rs = new PaginationDTO();
         Meta mt = createMetaWithCharacterLimits(pageJobPosition);
         rs.setMeta(mt);
 
-        // Convert to JobPositionResponseDTO with department names
+        // Convert to JobPositionResponseDTO with department names and application
+        // counts
         List<JobPositionResponseDTO> result = pageJobPosition.getContent().stream()
                 .map(position -> {
                     JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position, true);
                     Long deptId = position.getRecruitmentRequest().getDepartmentId();
                     dto.setDepartmentName(departmentNames.getOrDefault(deptId, "Unknown Department"));
+                    // Set applicationCount từ candidate-service
+                    Integer count = applicationCounts.getOrDefault(position.getId(), 0);
+                    dto.setApplicationCount(count);
                     return dto;
                 })
                 .toList();
@@ -194,19 +333,31 @@ public class JobPositionService {
                 .distinct()
                 .toList();
 
+        // Get unique job position IDs for application count
+        List<Long> jobPositionIds = pageJobPosition.getContent().stream()
+                .map(JobPosition::getId)
+                .distinct()
+                .toList();
+
         // Fetch departments by IDs from UserService in one call
         Map<Long, String> departmentNames = userService.getDepartmentsByIds(departmentIds, token);
+
+        // Fetch application counts by job position IDs from CandidateService
+        Map<Long, Integer> applicationCounts = candidateClient.countCandidatesByJobPositionIds(jobPositionIds, token);
 
         PaginationDTO rs = new PaginationDTO();
         Meta mt = createMetaWithCharacterLimits(pageJobPosition);
         rs.setMeta(mt);
 
-        // Convert to GetAllJobPositionDTO with department names
+        // Convert to GetAllJobPositionDTO with department names and application counts
         List<GetAllJobPositionDTO> result = pageJobPosition.getContent().stream()
                 .map(position -> {
                     GetAllJobPositionDTO dto = GetAllJobPositionDTO.fromEntity(position);
                     Long deptId = position.getRecruitmentRequest().getDepartmentId();
                     dto.setDepartmentName(departmentNames.getOrDefault(deptId, "Unknown Department"));
+                    // Set applicationCount từ candidate-service
+                    Integer count = applicationCounts.getOrDefault(position.getId(), 0);
+                    dto.setApplicationCount(count);
                     return dto;
                 })
                 .toList();
@@ -299,14 +450,6 @@ public class JobPositionService {
         }
         position.setStatus(JobPositionStatus.PUBLISHED);
         return jobPositionRepository.save(position);
-    }
-
-    @Transactional
-    public void incrementApplicationCount(Long jobPositionId) throws IdInvalidException {
-        JobPosition position = this.findById(jobPositionId);
-        int current = position.getApplicationCount();
-        position.setApplicationCount(current + 1);
-        jobPositionRepository.save(position);
     }
 
     /**

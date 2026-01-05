@@ -48,14 +48,6 @@ public class WorkflowController {
         return ResponseEntity.ok(workflowService.getAll(type, isActive, keyword, departmentId, pageable));
     }
 
-    @GetMapping("/match")
-    @ApiMessage("Tìm workflow phù hợp dựa trên department_id và level_id")
-    public ResponseEntity<WorkflowResponseDTO> findMatchingWorkflow(
-            @RequestParam(name = "departmentId") Long departmentId,
-            @RequestParam(name = "levelId") Long levelId) {
-        return ResponseEntity.ok(workflowService.findMatchingWorkflow(departmentId, levelId));
-    }
-
     @GetMapping("/{id}")
     @ApiMessage("Lấy thông tin workflow theo ID")
     public ResponseEntity<WorkflowResponseDTO> getById(@PathVariable Long id) {

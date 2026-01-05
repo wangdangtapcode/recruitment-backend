@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,6 +20,7 @@ import com.example.job_service.utils.TextTruncateUtil;
 import com.example.job_service.dto.recruitment.ApproveRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.CancelRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.CreateRecruitmentRequestDTO;
+import com.example.job_service.dto.recruitment.RecruitmentRequestAllWithUserDTO;
 import com.example.job_service.dto.recruitment.RecruitmentRequestWithUserDTO;
 import com.example.job_service.dto.recruitment.RejectRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.ReturnRecruitmentRequestDTO;
@@ -132,6 +134,19 @@ public class RecruitmentRequestService {
                 .collect(Collectors.toList());
     }
 
+    public List<RecruitmentRequest> findAllWithFilters(Long departmentId, String status, Long createdBy,
+            String keyword) {
+        RecruitmentRequestStatus statusEnum = null;
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                statusEnum = RecruitmentRequestStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Invalid status, will be ignored (statusEnum remains null)
+            }
+        }
+        return recruitmentRequestRepository.findByFiltersList(departmentId, statusEnum, createdBy, keyword);
+    }
+
     // Methods with user information
     public RecruitmentRequestWithUserDTO getByIdWithUser(Long id, String token) throws IdInvalidException {
         RecruitmentRequest request = this.findById(id);
@@ -144,21 +159,6 @@ public class RecruitmentRequestService {
         RecruitmentRequestWithUserDTO dto = convertToWithUserDTO(request, token);
         return new SingleResponseDTO<>(dto, TextTruncateUtil.getRecruitmentRequestCharacterLimits());
     }
-
-    // public PaginationDTO getAllByDepartmentIdWithUser(Long departmentId, String
-    // token, Pageable pageable) {
-    // Page<RecruitmentRequest> requests =
-    // recruitmentRequestRepository.findByDepartmentIdAndIsActiveTrue(departmentId,
-    // pageable);
-    // return convertToWithUserDTOList(requests, token);
-    // }
-
-    // public PaginationDTO getAllWithUser(String token, Pageable pageable) {
-
-    // Page<RecruitmentRequest> requests =
-    // recruitmentRequestRepository.findAllByIsActiveTrue(pageable);
-    // return convertToWithUserDTOList(requests, token);
-    // }
 
     public PaginationDTO getAllWithFilters(Long departmentId, String status, Long createdBy, String keyword,
             String token,
@@ -179,11 +179,11 @@ public class RecruitmentRequestService {
     }
 
     private RecruitmentRequestWithUserDTO convertToWithUserDTO(RecruitmentRequest request, String token) {
-        return convertToWithUserDTO(request, token, false);
+        return convertToWithUserDTO(request, token, false, true);
     }
 
     private RecruitmentRequestWithUserDTO convertToWithUserDTO(RecruitmentRequest request, String token,
-            boolean truncateText) {
+            boolean truncateText, boolean includeWorkflow) {
         RecruitmentRequestWithUserDTO dto = RecruitmentRequestWithUserDTO.fromEntity(request, truncateText);
 
         if (request.getRequesterId() != null) {
@@ -218,17 +218,19 @@ public class RecruitmentRequestService {
             }
         }
 
-        // Lấy thông tin workflow nếu có workflowId
+        // Lấy thông tin workflow nếu có workflowId (chỉ khi includeWorkflow = true)
         dto.setWorkflowId(request.getWorkflowId());
         dto.setSubmittedAt(request.getSubmittedAt());
         dto.setOwnerUserId(request.getOwnerUserId());
 
-        // Luôn gọi để lấy workflow info (có thể có tracking ngay cả khi chưa có
-        // workflowId trong request)
-        JsonNode workflowInfo = workflowServiceClient.getWorkflowInfoByRequestId(
-                request.getId(), request.getWorkflowId(), token);
-        if (workflowInfo != null) {
-            dto.setWorkflowInfo(workflowInfo);
+        if (includeWorkflow) {
+            // Luôn gọi để lấy workflow info (có thể có tracking ngay cả khi chưa có
+            // workflowId trong request)
+            JsonNode workflowInfo = workflowServiceClient.getWorkflowInfoByRequestId(
+                    request.getId(), request.getWorkflowId(), token);
+            if (workflowInfo != null) {
+                dto.setWorkflowInfo(workflowInfo);
+            }
         }
 
         return dto;
@@ -251,33 +253,28 @@ public class RecruitmentRequestService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // Lấy tất cả department IDs cần thiết
-        List<Long> departmentIds = requests.getContent().stream()
-                .map(RecruitmentRequest::getDepartmentId)
-                .filter(id -> id != null)
-                .distinct()
-                .collect(Collectors.toList());
-
-        // Lấy thông tin tất cả employees một lần
+        // Lấy thông tin tất cả employees một lần (API này trả về employee với
+        // department đã có sẵn)
         Map<Long, JsonNode> employeeMap = userService.getEmployeesByIds(employeeIds, token);
 
-        // Lấy thông tin tất cả departments một lần
-        Map<Long, JsonNode> departmentMap = departmentIds.stream()
-                .collect(Collectors.toMap(
-                        id -> id,
-                        id -> {
-                            try {
-                                ResponseEntity<JsonNode> response = userService.getDepartmentById(id, token);
-                                return response.getBody();
-                            } catch (Exception e) {
-                                return null;
-                            }
-                        }));
+        // Lấy department từ employees
+        Map<Long, JsonNode> departmentMap = new HashMap<>();
 
-        // Convert từng request sử dụng cached data
+        // Lấy department từ employees (nếu có)
+        for (JsonNode employee : employeeMap.values()) {
+            if (employee != null && employee.has("department")) {
+                JsonNode dept = employee.get("department");
+                if (dept != null && dept.has("id")) {
+                    Long deptId = dept.get("id").asLong();
+                    departmentMap.put(deptId, dept);
+                }
+            }
+        }
+
+        // Convert từng request sử dụng cached data (không lấy workflow info)
         rs.setResult(requests.getContent().stream()
                 .map(request -> {
-                    RecruitmentRequestWithUserDTO dto = convertToWithUserDTO(request, token, true);
+                    RecruitmentRequestAllWithUserDTO dto = RecruitmentRequestAllWithUserDTO.fromEntity(request);
 
                     // Set requester info (requesterId lưu employeeId)
                     if (request.getRequesterId() != null) {
@@ -289,9 +286,12 @@ public class RecruitmentRequestService {
                     // dto.setApprover(employeeMap.get(request.getApprovedId()));
                     // }
 
-                    // Set department info
-                    if (request.getDepartmentId() != null) {
-                        dto.setDepartment(departmentMap.get(request.getDepartmentId()));
+                    // Set department info từ employee của requester
+                    if (request.getRequesterId() != null) {
+                        JsonNode employee = employeeMap.get(request.getRequesterId());
+                        if (employee != null && employee.has("department")) {
+                            dto.setDepartment(employee.get("department"));
+                        }
                     }
                     return dto;
                 })

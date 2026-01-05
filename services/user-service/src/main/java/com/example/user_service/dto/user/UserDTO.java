@@ -1,7 +1,8 @@
 package com.example.user_service.dto.user;
 
+import java.time.LocalDateTime;
+
 import com.example.user_service.model.Employee;
-import com.example.user_service.model.Role;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -18,4 +19,6 @@ public class UserDTO {
     private String refreshToken;
     private Long roleId;
     private Employee employee;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

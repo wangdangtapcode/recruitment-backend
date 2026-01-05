@@ -11,9 +11,9 @@ import com.example.candidate_service.dto.comment.CommentResponseDTO;
 import com.example.candidate_service.dto.comment.CreateCommentDTO;
 import com.example.candidate_service.dto.comment.UpdateCommentDTO;
 import com.example.candidate_service.exception.IdInvalidException;
-import com.example.candidate_service.model.Application;
+import com.example.candidate_service.model.Candidate;
 import com.example.candidate_service.model.Comment;
-import com.example.candidate_service.repository.ApplicationRepository;
+import com.example.candidate_service.repository.CandidateRepository;
 import com.example.candidate_service.repository.CommentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -21,19 +21,19 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class CommentService {
 
     private final CommentRepository commentRepository;
-    private final ApplicationRepository applicationRepository;
+    private final CandidateRepository candidateRepository;
     private final UserService userService;
 
-    public CommentService(CommentRepository commentRepository, ApplicationRepository applicationRepository,
+    public CommentService(CommentRepository commentRepository, CandidateRepository candidateRepository,
             UserService userService) {
         this.commentRepository = commentRepository;
-        this.applicationRepository = applicationRepository;
+        this.candidateRepository = candidateRepository;
         this.userService = userService;
     }
 
-    public List<CommentResponseDTO> getByApplicationId(Long applicationId, String token) throws IdInvalidException {
-        ensureApplicationExists(applicationId);
-        List<Comment> comments = commentRepository.findByApplication_Id(applicationId);
+    public List<CommentResponseDTO> getByCandidateId(Long candidateId, String token) throws IdInvalidException {
+        ensureCandidateExists(candidateId);
+        List<Comment> comments = commentRepository.findByCandidate_Id(candidateId);
 
         // Batch fetch employee names
         Set<Long> employeeIds = comments.stream()
@@ -60,10 +60,10 @@ public class CommentService {
 
     @Transactional
     public CommentResponseDTO create(CreateCommentDTO dto, Long employeeId) throws IdInvalidException {
-        Application application = applicationRepository.findById(dto.getApplicationId())
-                .orElseThrow(() -> new IdInvalidException("Đơn ứng tuyển không tồn tại"));
+        Candidate candidate = candidateRepository.findById(dto.getCandidateId())
+                .orElseThrow(() -> new IdInvalidException("Ứng viên không tồn tại"));
         Comment c = new Comment();
-        c.setApplication(application);
+        c.setCandidate(candidate);
         c.setEmployeeId(employeeId);
         c.setContent(dto.getContent());
         Comment saved = commentRepository.save(c);
@@ -89,9 +89,9 @@ public class CommentService {
         commentRepository.deleteById(id);
     }
 
-    private void ensureApplicationExists(Long applicationId) throws IdInvalidException {
-        if (!applicationRepository.existsById(applicationId)) {
-            throw new IdInvalidException("Đơn ứng tuyển không tồn tại");
+    private void ensureCandidateExists(Long candidateId) throws IdInvalidException {
+        if (!candidateRepository.existsById(candidateId)) {
+            throw new IdInvalidException("Ứng viên không tồn tại");
         }
     }
 

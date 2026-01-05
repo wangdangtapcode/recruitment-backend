@@ -7,8 +7,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CreateReviewDTO {
-    @NotNull(message = "Application ID là bắt buộc")
-    private Long applicationId;
+    @NotNull(message = "Candidate ID là bắt buộc")
+    private Long candidateId;
 
     private String comment; // Nhận xét đánh giá
 }

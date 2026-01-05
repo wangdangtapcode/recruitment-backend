@@ -28,13 +28,13 @@ public interface WorkflowRepository extends JpaRepository<Workflow, Long> {
                         "(:isActive IS NULL OR w.is_active = :isActive) AND " +
                         "(:keyword IS NULL OR LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(w.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND "
                         +
-                        "(:departmentId IS NULL OR (w.apply_conditions IS NOT NULL AND JSON_EXTRACT(w.apply_conditions, '$.department_id') = :departmentId))", countQuery = "SELECT COUNT(*) FROM workflows w WHERE "
+                        "(:departmentId IS NULL OR w.department_id = :departmentId)", countQuery = "SELECT COUNT(*) FROM workflows w WHERE "
                                         +
                                         "(:type IS NULL OR w.type = :type) AND " +
                                         "(:isActive IS NULL OR w.is_active = :isActive) AND " +
                                         "(:keyword IS NULL OR LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(w.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND "
                                         +
-                                        "(:departmentId IS NULL OR (w.apply_conditions IS NOT NULL AND JSON_EXTRACT(w.apply_conditions, '$.department_id') = :departmentId))", nativeQuery = true)
+                                        "(:departmentId IS NULL OR w.department_id = :departmentId)", nativeQuery = true)
         Page<Workflow> findByFilters(
                         @Param("type") String type,
                         @Param("isActive") Boolean isActive,
@@ -42,15 +42,11 @@ public interface WorkflowRepository extends JpaRepository<Workflow, Long> {
                         @Param("departmentId") Long departmentId,
                         Pageable pageable);
 
-        // Tìm workflow phù hợp dựa trên điều kiện (department_id, level_id)
-        // apply_conditions là JSON string, cần parse để so sánh
+        // Tìm workflow phù hợp dựa trên department_id
         @Query(value = "SELECT * FROM workflows w WHERE " +
                         "w.is_active = true AND " +
-                        "w.apply_conditions IS NOT NULL AND " +
-                        "JSON_EXTRACT(w.apply_conditions, '$.department_id') = :departmentId AND " +
-                        "JSON_EXTRACT(w.apply_conditions, '$.level_id') = :levelId " +
+                        "w.department_id = :departmentId " +
                         "LIMIT 1", nativeQuery = true)
         Optional<Workflow> findMatchingWorkflow(
-                        @Param("departmentId") Long departmentId,
-                        @Param("levelId") Long levelId);
+                        @Param("departmentId") Long departmentId);
 }

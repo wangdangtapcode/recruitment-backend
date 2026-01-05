@@ -8,6 +8,7 @@ public enum RecruitmentRequestStatus {
     WITHDRAWN, 
     APPROVED, 
     REJECTED, 
-    CANCELLED, 
+    CANCELLED,
+    
     COMPLETED 
 }

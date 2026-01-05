@@ -40,6 +40,7 @@ public class ResponseLoginDTO {
         private String name;
         private String role;
         private Long departmentId;
+        private String departmentCode;
     }
 
     @Getter

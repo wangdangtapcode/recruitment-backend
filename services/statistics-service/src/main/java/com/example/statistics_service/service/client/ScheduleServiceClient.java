@@ -68,12 +68,12 @@ public class ScheduleServiceClient {
         }
     }
 
-    public List<JsonNode> getUpcomingSchedules(String token, int limit) {
+    public List<JsonNode> getUpcomingSchedules(String token, Long participantId, int limit) {
         try {
             LocalDate today = LocalDate.now();
             LocalDate nextWeek = today.plusDays(7);
 
-            return getSchedules(token, today, nextWeek, null, null);
+            return getSchedules(token, today, nextWeek, participantId, "USER");
         } catch (Exception ex) {
             System.err.println("Error fetching upcoming schedules: " + ex.getMessage());
             return List.of();

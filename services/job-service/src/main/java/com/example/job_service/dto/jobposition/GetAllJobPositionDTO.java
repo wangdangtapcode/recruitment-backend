@@ -31,7 +31,8 @@ public class GetAllJobPositionDTO {
         dto.setExperienceLevel(position.getExperienceLevel());
         dto.setYearsOfExperience(position.getYearsOfExperience());
         dto.setStatus(position.getStatus());
-        dto.setApplicationCount(position.getApplicationCount());
+        // applicationCount sẽ được set từ service (gọi candidate-service)
+        dto.setApplicationCount(0);
         if (position.getRecruitmentRequest() != null) {
             dto.setRecruitmentRequestId(position.getRecruitmentRequest().getId());
         }

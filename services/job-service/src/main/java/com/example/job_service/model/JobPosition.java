@@ -40,7 +40,6 @@ public class JobPosition {
     private boolean isRemote;
     private int quantity;
     private LocalDate deadline;
-    private int applicationCount;
     private String yearsOfExperience;
     public LocalDateTime publishedAt;
     @Enumerated(EnumType.STRING)

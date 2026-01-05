@@ -5,14 +5,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.example.candidate_service.utils.SecurityUtil;
-import com.example.candidate_service.utils.enums.CandidateStage;
+import com.example.candidate_service.utils.enums.CandidateStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import java.util.Set;
 
 @Entity
@@ -25,7 +24,7 @@ public class Candidate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String fullName;
+    private String name;
     @Column(unique = true)
     private String email;
 
@@ -50,19 +49,26 @@ public class Candidate {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    private CandidateStage stage;
+    private LocalDate appliedDate;
+    @Enumerated(EnumType.STRING)
+    private CandidateStatus status;
+    @Column(columnDefinition = "TEXT")
+    private String rejectionReason;
+    private String resumeUrl;
+    @Column(columnDefinition = "TEXT")
 
-    // @ManyToOne(fetch = FetchType.LAZY)
-    // @JoinColumn(name = "referrer_id")
-    // private Candidate referrer;
+    private Long jobPositionId;
 
-    @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL)
-    @JsonIgnore
-    private Set<Application> applications;
     private Long createdBy;
     private Long updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL)
+    private Set<Comment> comments;
+
+    @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL)
+    private Set<Review> reviews;
 
     @PrePersist
     public void prePersist() {

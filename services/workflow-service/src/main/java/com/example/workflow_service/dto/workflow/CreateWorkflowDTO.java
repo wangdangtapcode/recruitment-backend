@@ -7,7 +7,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @Setter
@@ -21,10 +20,10 @@ public class CreateWorkflowDTO {
     @NotNull(message = "Loại workflow không được để trống")
     private WorkflowType type;
 
-    // Điều kiện áp dụng workflow (JSON format: {"department_id": 1, "level_id": 3})
-    private Map<String, Object> applyConditions;
+    // Department ID để áp dụng workflow
+    private Long departmentId;
 
     private Long createdBy;
 
-    private List<CreateWorkflowStepDTO> steps;
+    private List<CreateStepDTO> steps;
 }

@@ -7,29 +7,17 @@ This repository is a **starter template** for building a microservices-based sys
 ## 📁 Folder Structure
 
 ```
-microservices-assignment-starter/
-├── README.md                       # This instruction file
-├── .env.example                    # Example environment variables
-├── docker-compose.yml              # Multi-container setup for all services
-├── docs/                           # Documentation folder
-│   ├── architecture.md             # Describe your system design here
-│   ├── analysis-and-design.md      # Document system analysis and design details
-│   ├── asset/                      # Store images, diagrams, or other visual assets for documentation
-│   └── api-specs/                  # API specifications in OpenAPI (YAML)
-│       ├── service-a.yaml
-│       └── service-b.yaml
-├── scripts/                        # Utility or deployment scripts
-│   └── init.sh
-├── services/                       # Application microservices
+backend/
+├── README.md               
+├── docker-compose.yml            
+├── services/                      
 │   ├── service-a/
 │   │   ├── Dockerfile
 │   │   └── src/
-│   │   └── readme.md               # Service A instructions and description
 │   └── service-b/
 │       ├── Dockerfile
 │       └── src/
-│   │   └── readme.md               # Service B instructions and description
-└── gateway/                        # API Gateway / reverse proxy
+└── gateway/                      
     ├── Dockerfile
     └── src/
 

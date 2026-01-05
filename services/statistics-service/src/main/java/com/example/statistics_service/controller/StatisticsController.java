@@ -43,11 +43,12 @@ public class StatisticsController {
     @GetMapping("/job-openings")
     @ApiMessage("Lấy danh sách vị trí tuyển dụng với thông tin chi tiết")
     public ResponseEntity<List<JobOpeningDTO>> getJobOpenings(
+            @RequestParam(name = "page", defaultValue = "1", required = false) int page,
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit) {
         Optional<String> tokenOpt = SecurityUtil.getCurrentUserJWT();
         String token = tokenOpt.orElse(null);
 
-        List<JobOpeningDTO> jobOpenings = statisticsService.getJobOpenings(token, limit);
+        List<JobOpeningDTO> jobOpenings = statisticsService.getJobOpenings(token, page, limit);
         return ResponseEntity.ok(jobOpenings);
     }
 
@@ -64,28 +65,5 @@ public class StatisticsController {
 
         UpcomingScheduleDTO schedules = statisticsService.getUpcomingSchedules(token, limit);
         return ResponseEntity.ok(schedules);
-    }
-
-    /**
-     * Lấy dữ liệu biểu đồ chart về applications
-     * GET /api/v1/statistics-service/statistics/applications/chart
-     * 
-     * Query params:
-     * - chartType: TIMELINE, STATUS, DEPARTMENT, POSITION (mặc định: TIMELINE)
-     * - period: Chuỗi mô tả kỳ thống kê (ví dụ: "30 ngày qua", "90 ngày qua", "7
-     * tháng này", "tháng này", "năm này")
-     * - periodType: WEEKLY, MONTHLY, YEARLY (optional, nếu có period thì không cần)
-     */
-    @GetMapping("/applications/chart")
-    @ApiMessage("Lấy dữ liệu biểu đồ chart về applications")
-    public ResponseEntity<ApplicationChartDTO> getApplicationChart(
-            @RequestParam(name = "chartType", defaultValue = "TIMELINE", required = false) String chartType,
-            @RequestParam(name = "period", required = false) String period,
-            @RequestParam(name = "periodType", required = false) String periodType) {
-        Optional<String> tokenOpt = SecurityUtil.getCurrentUserJWT();
-        String token = tokenOpt.orElse(null);
-
-        ApplicationChartDTO chart = statisticsService.getApplicationChart(token, chartType, period, periodType);
-        return ResponseEntity.ok(chart);
     }
 }

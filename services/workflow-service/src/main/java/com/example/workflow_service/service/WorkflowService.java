@@ -1,8 +1,9 @@
 package com.example.workflow_service.service;
 
+import com.example.workflow_service.dto.Meta;
 import com.example.workflow_service.dto.PaginationDTO;
 import com.example.workflow_service.dto.workflow.CreateWorkflowDTO;
-import com.example.workflow_service.dto.workflow.CreateWorkflowStepDTO;
+import com.example.workflow_service.dto.workflow.CreateStepDTO;
 import com.example.workflow_service.dto.workflow.UpdateWorkflowDTO;
 import com.example.workflow_service.dto.workflow.WorkflowResponseDTO;
 import com.example.workflow_service.dto.workflow.WorkflowStepResponseDTO;
@@ -44,11 +45,11 @@ public class WorkflowService {
         if (dto.getSteps() != null && !dto.getSteps().isEmpty()) {
             // Thu thập tất cả position IDs từ steps
             List<Long> positionIds = dto.getSteps().stream()
-                    .map(CreateWorkflowStepDTO::getApproverPositionId)
+                    .map(CreateStepDTO::getApproverPositionId)
                     .filter(positionId -> positionId != null)
                     .distinct()
                     .collect(Collectors.toList());
-
+            System.out.println("positionIds: " + positionIds);
             if (!positionIds.isEmpty()) {
                 // Lấy token từ SecurityContext
                 String token = SecurityUtil.getCurrentUserJWT().orElse(null);
@@ -56,15 +57,15 @@ public class WorkflowService {
                 // Gọi user-service để lấy hierarchyOrder của các positions
                 Map<Long, Integer> positionHierarchyOrders = userService.getPositionHierarchyOrdersByIds(positionIds,
                         token);
-
+                System.out.println("positionHierarchyOrders: " + positionHierarchyOrders);
                 // Validate: các steps phải có hierarchyOrder tăng dần theo stepOrder
                 // Sắp xếp steps theo stepOrder
-                List<CreateWorkflowStepDTO> sortedSteps = dto.getSteps().stream()
+                List<CreateStepDTO> sortedSteps = dto.getSteps().stream()
                         .sorted((s1, s2) -> Integer.compare(s1.getStepOrder(), s2.getStepOrder()))
                         .collect(Collectors.toList());
 
                 Integer previousHierarchyOrder = null;
-                for (CreateWorkflowStepDTO stepDTO : sortedSteps) {
+                for (CreateStepDTO stepDTO : sortedSteps) {
                     Long positionId = stepDTO.getApproverPositionId();
                     Integer hierarchyOrder = positionHierarchyOrders.get(positionId);
 
@@ -72,12 +73,15 @@ public class WorkflowService {
                         throw new CustomException("Không tìm thấy hierarchyOrder cho position ID: " + positionId);
                     }
 
-                    // Kiểm tra hierarchyOrder phải tăng dần (step sau phải có level >= step trước)
-                    if (previousHierarchyOrder != null && hierarchyOrder < previousHierarchyOrder) {
+                    // Kiểm tra hierarchyOrder phải giảm dần (step sau phải có level >= step trước)
+                    // hierarchyOrder thấp hơn = level cao hơn (CEO=1, Staff=4)
+                    // Để đi từ level thấp lên cao, hierarchyOrder phải giảm dần
+                    if (previousHierarchyOrder != null && hierarchyOrder > previousHierarchyOrder) {
                         throw new CustomException(
                                 "Thứ tự hierarchy không hợp lệ: Step " + stepDTO.getStepOrder() +
-                                        " có hierarchyOrder (" + hierarchyOrder + ") thấp hơn step trước (" +
-                                        previousHierarchyOrder + "). Workflow phải đi từ level thấp lên level cao.");
+                                        " có hierarchyOrder (" + hierarchyOrder + ") cao hơn step trước (" +
+                                        previousHierarchyOrder
+                                        + "). Workflow phải đi từ level thấp lên level cao (hierarchyOrder phải giảm dần).");
                     }
 
                     previousHierarchyOrder = hierarchyOrder;
@@ -89,7 +93,7 @@ public class WorkflowService {
         workflow.setName(dto.getName());
         workflow.setDescription(dto.getDescription());
         workflow.setType(dto.getType());
-        workflow.setApplyConditions(dto.getApplyConditions());
+        workflow.setDepartmentId(dto.getDepartmentId());
         workflow.setIsActive(true);
         workflow.setCreatedBy(SecurityUtil.extractEmployeeId());
 
@@ -102,7 +106,6 @@ public class WorkflowService {
                         WorkflowStep step = new WorkflowStep();
                         step.setWorkflow(savedWorkflow);
                         step.setStepOrder(stepDTO.getStepOrder());
-                        step.setStepName(stepDTO.getStepName());
                         step.setApproverPositionId(stepDTO.getApproverPositionId());
                         step.setIsActive(true);
                         return step;
@@ -154,7 +157,7 @@ public class WorkflowService {
                 .collect(Collectors.toList());
 
         PaginationDTO paginationDTO = new PaginationDTO();
-        com.example.workflow_service.dto.Meta meta = new com.example.workflow_service.dto.Meta();
+        Meta meta = new Meta();
         meta.setPage(workflowPage.getNumber() + 1);
         meta.setPageSize(workflowPage.getSize());
         meta.setPages(workflowPage.getTotalPages());
@@ -184,8 +187,8 @@ public class WorkflowService {
         if (dto.getType() != null) {
             workflow.setType(dto.getType());
         }
-        if (dto.getApplyConditions() != null) {
-            workflow.setApplyConditions(dto.getApplyConditions());
+        if (dto.getDepartmentId() != null) {
+            workflow.setDepartmentId(dto.getDepartmentId());
         }
         if (dto.getIsActive() != null) {
             workflow.setIsActive(dto.getIsActive());
@@ -196,7 +199,7 @@ public class WorkflowService {
         if (dto.getSteps() != null && !dto.getSteps().isEmpty()) {
             // Thu thập tất cả position IDs từ steps
             List<Long> positionIds = dto.getSteps().stream()
-                    .map(CreateWorkflowStepDTO::getApproverPositionId)
+                    .map(CreateStepDTO::getApproverPositionId)
                     .filter(positionId -> positionId != null)
                     .distinct()
                     .collect(Collectors.toList());
@@ -211,12 +214,12 @@ public class WorkflowService {
 
                 // Validate: các steps phải có hierarchyOrder tăng dần theo stepOrder
                 // Sắp xếp steps theo stepOrder
-                List<CreateWorkflowStepDTO> sortedSteps = dto.getSteps().stream()
+                List<CreateStepDTO> sortedSteps = dto.getSteps().stream()
                         .sorted((s1, s2) -> Integer.compare(s1.getStepOrder(), s2.getStepOrder()))
                         .collect(Collectors.toList());
 
                 Integer previousHierarchyOrder = null;
-                for (CreateWorkflowStepDTO stepDTO : sortedSteps) {
+                for (CreateStepDTO stepDTO : sortedSteps) {
                     Long positionId = stepDTO.getApproverPositionId();
                     Integer hierarchyOrder = positionHierarchyOrders.get(positionId);
 
@@ -224,12 +227,15 @@ public class WorkflowService {
                         throw new CustomException("Không tìm thấy hierarchyOrder cho position ID: " + positionId);
                     }
 
-                    // Kiểm tra hierarchyOrder phải tăng dần (step sau phải có level >= step trước)
-                    if (previousHierarchyOrder != null && hierarchyOrder < previousHierarchyOrder) {
+                    // Kiểm tra hierarchyOrder phải giảm dần (step sau phải có level >= step trước)
+                    // hierarchyOrder thấp hơn = level cao hơn (CEO=1, Staff=4)
+                    // Để đi từ level thấp lên cao, hierarchyOrder phải giảm dần
+                    if (previousHierarchyOrder != null && hierarchyOrder > previousHierarchyOrder) {
                         throw new CustomException(
                                 "Thứ tự hierarchy không hợp lệ: Step " + stepDTO.getStepOrder() +
-                                        " có hierarchyOrder (" + hierarchyOrder + ") thấp hơn step trước (" +
-                                        previousHierarchyOrder + "). Workflow phải đi từ level thấp lên level cao.");
+                                        " có hierarchyOrder (" + hierarchyOrder + ") cao hơn step trước (" +
+                                        previousHierarchyOrder
+                                        + "). Workflow phải đi từ level thấp lên level cao (hierarchyOrder phải giảm dần).");
                     }
 
                     previousHierarchyOrder = hierarchyOrder;
@@ -250,7 +256,6 @@ public class WorkflowService {
                             WorkflowStep step = new WorkflowStep();
                             step.setWorkflow(finalWorkflow);
                             step.setStepOrder(stepDTO.getStepOrder());
-                            step.setStepName(stepDTO.getStepName());
                             step.setApproverPositionId(stepDTO.getApproverPositionId());
                             step.setIsActive(true);
                             return step;
@@ -272,15 +277,6 @@ public class WorkflowService {
         // Soft delete
         workflow.setIsActive(false);
         workflowRepository.save(workflow);
-    }
-
-    @Transactional(readOnly = true)
-    public WorkflowResponseDTO findMatchingWorkflow(Long departmentId, Long levelId) {
-        Workflow workflow = workflowRepository.findMatchingWorkflow(departmentId, levelId)
-                .orElseThrow(() -> new CustomException(
-                        "Không tìm thấy workflow phù hợp với department_id: " + departmentId +
-                                " và level_id: " + levelId));
-        return toResponseDTO(workflow);
     }
 
     private WorkflowResponseDTO toResponseDTO(Workflow workflow) {
@@ -309,7 +305,7 @@ public class WorkflowService {
         dto.setName(workflow.getName());
         dto.setDescription(workflow.getDescription());
         dto.setType(workflow.getType());
-        dto.setApplyConditions(workflow.getApplyConditions());
+        dto.setDepartmentId(workflow.getDepartmentId());
         dto.setIsActive(workflow.getIsActive());
         dto.setCreatedBy(workflow.getCreatedBy());
         dto.setUpdatedBy(workflow.getUpdatedBy());
@@ -331,7 +327,6 @@ public class WorkflowService {
         WorkflowStepResponseDTO dto = new WorkflowStepResponseDTO();
         dto.setId(step.getId());
         dto.setStepOrder(step.getStepOrder());
-        dto.setStepName(step.getStepName());
         dto.setApproverPositionId(step.getApproverPositionId());
         System.out.println("step.getApproverPositionId(): " + step.getApproverPositionId());
         System.out.println("positionNamesMap: " + positionNamesMap);

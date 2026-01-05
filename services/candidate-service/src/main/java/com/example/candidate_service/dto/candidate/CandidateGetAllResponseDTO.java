@@ -1,12 +1,10 @@
 package com.example.candidate_service.dto.candidate;
 
 import java.math.BigDecimal;
-import java.util.Set;
+import java.time.LocalDate;
 
-import com.example.candidate_service.model.Application;
 import com.example.candidate_service.model.Candidate;
-import com.example.candidate_service.model.Comment;
-import com.example.candidate_service.utils.enums.CandidateStage;
+import com.example.candidate_service.utils.enums.CandidateStatus;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +13,7 @@ import lombok.Setter;
 @Setter
 public class CandidateGetAllResponseDTO {
     private Long id;
-    private String fullName;
+    private String name;
     private String email;
     private String phone;
     private String dateOfBirth;
@@ -29,12 +27,19 @@ public class CandidateGetAllResponseDTO {
     private String graduationYear;
     private BigDecimal gpa;
     private String notes;
-    private CandidateStage stage;
+
+    private LocalDate appliedDate;
+    private CandidateStatus status;
+    private String resumeUrl;
+    private Long jobPositionId;
+    private String jobPositionTitle;
+    private Long departmentId;
+    // private String departmentName;
 
     public static CandidateGetAllResponseDTO fromEntity(Candidate candidate) {
         CandidateGetAllResponseDTO dto = new CandidateGetAllResponseDTO();
         dto.setId(candidate.getId());
-        dto.setFullName(candidate.getFullName());
+        dto.setName(candidate.getName());
         dto.setEmail(candidate.getEmail());
         dto.setPhone(candidate.getPhone());
         dto.setDateOfBirth(candidate.getDateOfBirth());
@@ -48,7 +53,10 @@ public class CandidateGetAllResponseDTO {
         dto.setGraduationYear(candidate.getGraduationYear());
         dto.setGpa(candidate.getGpa());
         dto.setNotes(candidate.getNotes());
-        dto.setStage(candidate.getStage());
+        dto.setAppliedDate(candidate.getAppliedDate());
+        dto.setStatus(candidate.getStatus());
+        dto.setResumeUrl(candidate.getResumeUrl());
+        dto.setJobPositionId(candidate.getJobPositionId());
         return dto;
     }
 }

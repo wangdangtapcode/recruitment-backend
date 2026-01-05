@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @Setter
@@ -17,11 +16,11 @@ public class UpdateWorkflowDTO {
 
     private WorkflowType type;
 
-    private Map<String, Object> applyConditions;
+    private Long departmentId;
 
     private Boolean isActive;
 
     private Long updatedBy;
 
-    private List<CreateWorkflowStepDTO> steps;
+    private List<CreateStepDTO> steps;
 }

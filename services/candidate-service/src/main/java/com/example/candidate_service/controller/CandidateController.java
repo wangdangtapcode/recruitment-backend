@@ -19,12 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.candidate_service.dto.PaginationDTO;
 import com.example.candidate_service.dto.candidate.CandidateDetailResponseDTO;
+import com.example.candidate_service.dto.candidate.CandidateStatisticsDTO;
 import com.example.candidate_service.dto.candidate.CreateCandidateDTO;
 import com.example.candidate_service.dto.candidate.UpdateCandidateDTO;
 import com.example.candidate_service.exception.IdInvalidException;
+import com.example.candidate_service.model.Candidate;
 import com.example.candidate_service.service.CandidateService;
+import com.example.candidate_service.utils.SecurityUtil;
 import com.example.candidate_service.utils.annotation.ApiMessage;
-import com.example.candidate_service.utils.enums.CandidateStage;
+import com.example.candidate_service.utils.enums.CandidateStatus;
 
 @RestController
 @RequestMapping("/api/v1/candidate-service/candidates")
@@ -39,7 +42,11 @@ public class CandidateController {
     @GetMapping
     @ApiMessage("Lấy danh sách ứng viên với bộ lọc, phân trang và sắp xếp")
     public ResponseEntity<PaginationDTO> getAllCandidates(
-            @RequestParam(name = "stage", required = false) CandidateStage stage,
+            @RequestParam(name = "candidateId", required = false) Long candidateId,
+            @RequestParam(name = "jobPositionId", required = false) Long jobPositionId,
+            @RequestParam(name = "status", required = false) CandidateStatus status,
+            @RequestParam(name = "startDate", required = false) String startDate,
+            @RequestParam(name = "endDate", required = false) String endDate,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "departmentId", required = false) Long departmentId,
             @RequestParam(name = "page", defaultValue = "1", required = false) int page,
@@ -56,22 +63,24 @@ public class CandidateController {
         Sort sort = Sort.by(direction, sortBy);
         Pageable pageable = PageRequest.of(page - 1, limit, sort);
 
-        PaginationDTO paginationDTO = candidateService.getAllWithFilters(stage, keyword, departmentId, pageable);
-
-        return ResponseEntity.ok(paginationDTO);
+        String token = SecurityUtil.getCurrentUserJWT().orElse("");
+        return ResponseEntity.ok(candidateService.getAllWithFilters(
+                candidateId, jobPositionId, status, startDate, endDate, keyword, departmentId, pageable, token));
     }
 
     @GetMapping("/{id}")
     @ApiMessage("Lấy thông tin ứng viên")
     public ResponseEntity<CandidateDetailResponseDTO> getById(@PathVariable Long id) throws IdInvalidException {
-        CandidateDetailResponseDTO candidate = candidateService.getById(id);
+        String token = SecurityUtil.getCurrentUserJWT().orElse("");
+        CandidateDetailResponseDTO candidate = candidateService.getCandidateDetailById(id, token);
         return ResponseEntity.ok(candidate);
     }
 
     @PostMapping
     @ApiMessage("Tạo mới ứng viên")
-    public ResponseEntity<CandidateDetailResponseDTO> create(@Validated @RequestBody CreateCandidateDTO dto) {
-        CandidateDetailResponseDTO saved = candidateService.create(dto);
+    public ResponseEntity<Candidate> create(@Validated @RequestBody CreateCandidateDTO dto)
+            throws IdInvalidException {
+        Candidate saved = candidateService.create(dto);
         return ResponseEntity.ok(saved);
     }
 
@@ -91,14 +100,6 @@ public class CandidateController {
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{id}/stage")
-    @ApiMessage("Cập nhật giai đoạn (stage) của ứng viên")
-    public ResponseEntity<CandidateDetailResponseDTO> changeStage(@PathVariable Long id,
-            @RequestParam CandidateStage stage) throws IdInvalidException {
-        CandidateDetailResponseDTO saved = candidateService.changeStage(id, stage);
-        return ResponseEntity.ok(saved);
-    }
-
     @GetMapping(params = "ids")
     public ResponseEntity<List<CandidateDetailResponseDTO>> findByIds(@RequestParam("ids") String ids) {
         List<Long> candidateIds = List.of(ids.split(","))
@@ -108,5 +109,35 @@ public class CandidateController {
                 .map(Long::valueOf)
                 .toList();
         return ResponseEntity.ok(this.candidateService.getByIds(candidateIds));
+    }
+
+    @PutMapping("/status/{id}")
+    @ApiMessage("Cập nhật trạng thái ứng viên")
+    public ResponseEntity<CandidateDetailResponseDTO> updateCandidateStatus(
+            @PathVariable Long id,
+            @RequestParam String status,
+            @RequestParam(required = false) String feedback) throws IdInvalidException {
+        return ResponseEntity.ok(candidateService.updateCandidateStatus(id, status, feedback,
+                SecurityUtil.extractEmployeeId()));
+    }
+
+    @GetMapping("/count")
+    @ApiMessage("Đếm số lượng ứng viên theo jobPositionId ")
+    public ResponseEntity<Long> countCandidatesByJobPositionId(
+            @RequestParam(name = "jobPositionId", required = false) Long jobPositionId) {
+        return ResponseEntity.ok(candidateService.countCandidatesByJobPositionId(jobPositionId));
+    }
+
+    @GetMapping("/statistics")
+    @ApiMessage("Lấy dữ liệu ứng viên cho thống kê")
+    public ResponseEntity<List<CandidateStatisticsDTO>> getCandidatesForStatistics(
+            @RequestParam(name = "status", required = false) CandidateStatus status,
+            @RequestParam(name = "startDate", required = false) String startDate,
+            @RequestParam(name = "endDate", required = false) String endDate,
+            @RequestParam(name = "jobPositionId", required = false) Long jobPositionId,
+            @RequestParam(name = "departmentId", required = false) Long departmentId) {
+        String token = SecurityUtil.getCurrentUserJWT().orElse("");
+        return ResponseEntity.ok(candidateService.getCandidatesForStatistics(
+                status, startDate, endDate, jobPositionId, departmentId, token));
     }
 }

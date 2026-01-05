@@ -2,7 +2,7 @@ package com.example.schedule_service.service;
 
 import com.example.schedule_service.dto.Meta;
 import com.example.schedule_service.dto.PaginationDTO;
-import com.example.schedule_service.dto.schedule.ScheduleRequest;
+import com.example.schedule_service.dto.schedule.CreateScheduleDTO;
 import com.example.schedule_service.dto.schedule.ScheduleDetailDTO;
 import com.example.schedule_service.dto.schedule.ScheduleParticipantDTO;
 import com.example.schedule_service.dto.schedule.AvailableParticipantDTO;
@@ -52,7 +52,7 @@ public class ScheduleService {
         this.notificationProducer = notificationProducer;
     }
 
-    public Schedule createSchedule(ScheduleRequest request) {
+    public Schedule createSchedule(CreateScheduleDTO request) {
         Schedule schedule = new Schedule();
         schedule.setTitle(request.getTitle());
         schedule.setDescription(request.getDescription());
@@ -77,11 +77,11 @@ public class ScheduleService {
             candidate.setSchedule(savedSchedule);
             savedSchedule.getParticipants().add(candidate);
         }
-        if (request.getEmployeeIds() != null) {
-            for (Long employeeId : request.getEmployeeIds()) {
+        if (request.getUserIds() != null) {
+            for (Long userId : request.getUserIds()) {
                 ScheduleParticipant userP = new ScheduleParticipant();
                 userP.setParticipantType("USER");
-                userP.setParticipantId(employeeId); // Lưu employeeId
+                userP.setParticipantId(userId); // Lưu userId
                 userP.setResponseStatus("PENDING");
                 userP.setSchedule(savedSchedule);
                 savedSchedule.getParticipants().add(userP);
@@ -117,7 +117,7 @@ public class ScheduleService {
         return saved;
     }
 
-    public Schedule updateSchedule(Long id, ScheduleRequest request) {
+    public Schedule updateSchedule(Long id, CreateScheduleDTO request) {
         Schedule schedule = scheduleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("lịch hẹn không tồn tại với id: " + id));
 
@@ -141,8 +141,8 @@ public class ScheduleService {
             candidate.setSchedule(schedule);
             schedule.getParticipants().add(candidate);
         }
-        if (request.getEmployeeIds() != null) {
-            for (Long employeeId : request.getEmployeeIds()) {
+        if (request.getUserIds() != null) {
+            for (Long employeeId : request.getUserIds()) {
                 ScheduleParticipant userP = new ScheduleParticipant();
                 userP.setParticipantType("USER");
                 userP.setParticipantId(employeeId); // Lưu employeeId

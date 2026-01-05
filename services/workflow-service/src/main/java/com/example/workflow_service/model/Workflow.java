@@ -5,12 +5,10 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import com.example.workflow_service.utils.JpaJsonConverter;
 import com.example.workflow_service.utils.enums.WorkflowType;
 
 import java.time.LocalDateTime;
 import java.util.Set;
-import java.util.Map;
 
 @Entity
 @Table(name = "workflows")
@@ -32,9 +30,8 @@ public class Workflow {
     @Column(nullable = false)
     private WorkflowType type;
 
-    @Column(name = "apply_conditions", columnDefinition = "JSON")
-    @Convert(converter = JpaJsonConverter.class)
-    private Map<String, Object> applyConditions;
+    @Column(name = "department_id")
+    private Long departmentId;
 
     private Boolean isActive = true;
 

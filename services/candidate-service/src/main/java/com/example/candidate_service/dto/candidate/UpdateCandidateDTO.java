@@ -2,7 +2,7 @@ package com.example.candidate_service.dto.candidate;
 
 import java.math.BigDecimal;
 
-import com.example.candidate_service.utils.enums.CandidateStage;
+import com.example.candidate_service.utils.enums.CandidateStatus;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -10,7 +10,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class UpdateCandidateDTO {
-    private String fullName;
+    private String name;
     private String email;
     private String phone;
     private String dateOfBirth;
@@ -24,5 +24,5 @@ public class UpdateCandidateDTO {
     private String graduationYear;
     private BigDecimal gpa;
     private String notes;
-    private CandidateStage stage;
+    private CandidateStatus status;
 }

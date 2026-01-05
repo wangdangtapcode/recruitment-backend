@@ -6,7 +6,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @Setter
@@ -20,7 +19,7 @@ public class WorkflowResponseDTO {
 
     private WorkflowType type;
 
-    private Map<String, Object> applyConditions;
+    private Long departmentId;
 
     private Boolean isActive;
 

@@ -43,7 +43,7 @@ public class CandidateService {
 
             JsonNode root = objectMapper.readTree(response.getBody());
             JsonNode data = root.get("data");
-            return ResponseEntity.ok(data.get("fullName"));
+            return ResponseEntity.ok(data.get("name"));
 
         } catch (HttpClientErrorException | HttpServerErrorException ex) {
             try {
@@ -85,8 +85,8 @@ public class CandidateService {
             ObjectNode idToName = objectMapper.createObjectNode();
             if (data != null && data.isArray()) {
                 for (JsonNode cand : data) {
-                    if (cand.has("id") && cand.has("fullName")) {
-                        idToName.put(String.valueOf(cand.get("id").asLong()), cand.get("fullName").asText());
+                    if (cand.has("id") && cand.has("name")) {
+                        idToName.put(String.valueOf(cand.get("id").asLong()), cand.get("name").asText());
                     }
                 }
             }
@@ -115,8 +115,7 @@ public class CandidateService {
     }
 
     /**
-     * Tìm candidate theo email và lấy application gần nhất để xác định nhân viên
-     * phụ trách
+     * Tìm candidate theo email để xác định nhân viên phụ trách
      * 
      * @param email Email của candidate
      * @return employeeId (nhân viên phụ trách) hoặc null nếu không tìm thấy
@@ -153,25 +152,24 @@ public class CandidateService {
                 return null;
             }
 
-            // Lấy application gần nhất của candidate này (sắp xếp theo id desc để lấy mới
-            // nhất)
-            String applicationUrl = candidateServiceUrl + "/api/v1/candidate-service/applications?candidateId="
+            // Lấy candidate này (đã gộp application vào candidate)
+            String candidateDetailUrl = candidateServiceUrl + "/api/v1/candidate-service/candidates?candidateId="
                     + candidateId + "&page=1&limit=1&sortBy=id&sortOrder=desc";
 
-            ResponseEntity<String> applicationResponse = restTemplate.exchange(
-                    applicationUrl, HttpMethod.GET, entity, String.class);
+            ResponseEntity<String> candidateDetailResponse = restTemplate.exchange(
+                    candidateDetailUrl, HttpMethod.GET, entity, String.class);
 
-            JsonNode applicationRoot = objectMapper.readTree(applicationResponse.getBody());
-            JsonNode applicationData = applicationRoot.path("data").path("result");
+            JsonNode candidateDetailRoot = objectMapper.readTree(candidateDetailResponse.getBody());
+            JsonNode candidateDetailData = candidateDetailRoot.path("data").path("result");
 
-            if (applicationData != null && applicationData.isArray() && applicationData.size() > 0) {
-                JsonNode firstApp = applicationData.get(0);
+            if (candidateDetailData != null && candidateDetailData.isArray() && candidateDetailData.size() > 0) {
+                JsonNode firstCandidate = candidateDetailData.get(0);
                 // Ưu tiên updatedBy (người cập nhật gần nhất), nếu không có thì dùng createdBy
-                if (firstApp.has("updatedBy") && !firstApp.get("updatedBy").isNull()) {
-                    return firstApp.get("updatedBy").asLong();
+                if (firstCandidate.has("updatedBy") && !firstCandidate.get("updatedBy").isNull()) {
+                    return firstCandidate.get("updatedBy").asLong();
                 }
-                if (firstApp.has("createdBy") && !firstApp.get("createdBy").isNull()) {
-                    return firstApp.get("createdBy").asLong();
+                if (firstCandidate.has("createdBy") && !firstCandidate.get("createdBy").isNull()) {
+                    return firstCandidate.get("createdBy").asLong();
                 }
             }
 

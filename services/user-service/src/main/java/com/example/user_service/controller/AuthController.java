@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.user_service.dto.login.LoginDTO;
 import com.example.user_service.dto.login.ResponseLoginDTO;
 import com.example.user_service.exception.CustomException;
+import com.example.user_service.model.Department;
 import com.example.user_service.model.User;
 import com.example.user_service.service.PermissionService;
 import com.example.user_service.service.UserService;
@@ -74,13 +75,17 @@ public class AuthController {
                                 : currentUserDB.getEmail();
 
                 // Tạo token với cả userId và employeeId
+                Department department = currentUserDB.getEmployee() != null
+                                ? currentUserDB.getEmployee().getDepartment()
+                                : null;
                 ResponseLoginDTO.UserToken userToken = new ResponseLoginDTO.UserToken(
                                 currentUserDB.getId(),
                                 employeeId != null ? employeeId : 0L,
                                 employeeEmail,
                                 employeeName != null ? employeeName : "",
                                 currentUserDB.getRole().getName(),
-                                currentUserDB.getEmployee().getDepartment().getId());
+                                department != null ? department.getId() : null,
+                                department != null ? department.getCode() : null);
 
                 if (currentUserDB != null) {
                         ResponseLoginDTO.UserLogin userLogin = new ResponseLoginDTO.UserLogin(
@@ -175,13 +180,17 @@ public class AuthController {
                                 : currentUserDB.getEmail();
 
                 // Tạo token với cả userId và employeeId
+                Department department = currentUserDB.getEmployee() != null
+                                ? currentUserDB.getEmployee().getDepartment()
+                                : null;
                 ResponseLoginDTO.UserToken userToken = new ResponseLoginDTO.UserToken(
                                 currentUserDB.getId(),
                                 employeeId != null ? employeeId : 0L,
                                 employeeEmail,
                                 employeeName != null ? employeeName : "",
                                 currentUserDB.getRole().getName(),
-                                currentUserDB.getEmployee().getDepartment().getId());
+                                department != null ? department.getId() : null,
+                                department != null ? department.getCode() : null);
 
                 if (currentUserDB != null) {
                         ResponseLoginDTO.UserLogin userLogin = new ResponseLoginDTO.UserLogin(

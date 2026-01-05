@@ -62,35 +62,41 @@ public class DataInitializer implements CommandLineRunner {
                 // 1. TẠO PHÒNG BAN (DEPARTMENTS)
                 // =====================================================================================
                 Department directorBoard = new Department();
+                directorBoard.setCode("BOARD");
                 directorBoard.setName("Ban Giám đốc");
                 directorBoard.setDescription("Chịu trách nhiệm quản lý và điều hành chung toàn bộ công ty.");
                 directorBoard.set_active(true);
 
                 Department hrDepartment = new Department();
+                hrDepartment.setCode("HR");
                 hrDepartment.setName("Phòng Nhân sự");
                 hrDepartment.setDescription(
                                 "Chịu trách nhiệm về các vấn đề liên quan đến con người, bao gồm tuyển dụng, đào tạo và chính sách.");
                 hrDepartment.set_active(true);
 
                 Department salesDepartment = new Department();
+                salesDepartment.setCode("SALES");
                 salesDepartment.setName("Phòng Kinh doanh");
                 salesDepartment
                                 .setDescription("Phụ trách các hoạt động bán hàng, tìm kiếm và duy trì mối quan hệ với khách hàng.");
                 salesDepartment.set_active(true);
 
                 Department techDepartment = new Department();
+                techDepartment.setCode("TECH");
                 techDepartment.setName("Phòng Kỹ thuật");
                 techDepartment.setDescription(
                                 "Phát triển, bảo trì và vận hành các sản phẩm, hệ thống công nghệ của công ty.");
                 techDepartment.set_active(true);
 
                 Department marketingDepartment = new Department();
+                marketingDepartment.setCode("MKT");
                 marketingDepartment.setName("Phòng Marketing");
                 marketingDepartment
                                 .setDescription("Xây dựng và thực hiện các chiến lược tiếp thị, quảng bá thương hiệu và sản phẩm.");
                 marketingDepartment.set_active(true);
 
                 Department accountingDepartment = new Department();
+                accountingDepartment.setCode("ACC");
                 accountingDepartment.setName("Phòng Kế toán");
                 accountingDepartment.setDescription("Quản lý các vấn đề tài chính, kế toán và thuế của công ty.");
                 accountingDepartment.set_active(true);
@@ -181,6 +187,8 @@ public class DataInitializer implements CommandLineRunner {
                                 "job-service:job-skills:read", "job-service:job-skills:manage",
                                 "job-service:job-categories:read", "job-service:job-categories:manage",
                                 // candidate-service permissions
+                                // Note: applications permissions kept for backward compatibility (Application
+                                // merged into Candidate)
                                 "candidate-service:applications:read", "candidate-service:applications:manage",
                                 "candidate-service:candidates:read", "candidate-service:candidates:manage",
                                 "candidate-service:comments:read", "candidate-service:comments:manage",
@@ -235,9 +243,7 @@ public class DataInitializer implements CommandLineRunner {
                                 requirePermission.apply("job-service:recruitment-requests:manage"),
                                 requirePermission.apply("job-service:job-skills:read"),
                                 requirePermission.apply("job-service:job-categories:read"),
-                                // candidate-service - đọc tất cả, manage applications
-                                requirePermission.apply("candidate-service:applications:read"),
-                                requirePermission.apply("candidate-service:applications:manage"),
+                                // candidate-service - đọc tất cả, manage candidates
                                 requirePermission.apply("candidate-service:candidates:read"),
                                 requirePermission.apply("candidate-service:comments:read"),
                                 // communications-service - đọc và quản lý lịch
@@ -268,9 +274,8 @@ public class DataInitializer implements CommandLineRunner {
                                 requirePermission.apply("job-service:recruitment-requests:manage"),
                                 requirePermission.apply("job-service:job-skills:read"),
                                 requirePermission.apply("job-service:job-categories:read"),
-                                // candidate-service - đọc và manage tất cả
-                                requirePermission.apply("candidate-service:applications:read"),
-                                requirePermission.apply("candidate-service:applications:manage"),
+                                // candidate-service - đọc và manage tất cả (applications merged into
+                                // candidates)
                                 requirePermission.apply("candidate-service:candidates:read"),
                                 requirePermission.apply("candidate-service:candidates:manage"),
                                 requirePermission.apply("candidate-service:comments:read"),
@@ -303,9 +308,8 @@ public class DataInitializer implements CommandLineRunner {
                                 requirePermission.apply("job-service:recruitment-requests:read"),
                                 requirePermission.apply("job-service:job-skills:read"),
                                 requirePermission.apply("job-service:job-categories:read"),
-                                // candidate-service - đọc và manage applications của mình
-                                requirePermission.apply("candidate-service:applications:read"),
-                                requirePermission.apply("candidate-service:applications:manage"),
+                                // candidate-service - đọc và manage candidates của mình (applications merged
+                                // into candidates)
                                 requirePermission.apply("candidate-service:candidates:read"),
                                 requirePermission.apply("candidate-service:comments:read"),
                                 requirePermission.apply("candidate-service:comments:manage"),

@@ -18,9 +18,9 @@ public class Comment {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "application_id", nullable = true)
+    @JoinColumn(name = "candidate_id", nullable = true)
     @JsonIgnore
-    private Application application;
+    private Candidate candidate;
 
     private Long employeeId; // Người tạo bình luận
 

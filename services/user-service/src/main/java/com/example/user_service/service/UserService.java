@@ -191,6 +191,8 @@ public class UserService {
             dto.setRoleId(user.getRole().getId());
         }
         dto.setEmployee(user.getEmployee());
+        dto.setCreatedAt(user.getCreatedAt());
+        dto.setUpdatedAt(user.getUpdatedAt());
         return dto;
     }
 }

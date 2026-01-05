@@ -14,10 +14,8 @@ public class RecruitmentRequestAllWithUserDTO {
     private String title;
     private Integer quantity;
     private Long requesterId;
-    private Long approvedId;
     private Long departmentId;
     private JsonNode requester;
-    private JsonNode approver;
     private JsonNode department;
     private RecruitmentRequestStatus status;
     private LocalDateTime createdAt;

@@ -4,6 +4,7 @@ import com.example.notification_service.model.Notification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -35,4 +36,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
         Page<Notification> findByRecipientId(Long recipientId, Pageable pageable);
 
         Page<Notification> findByDeliveryStatus(String deliveryStatus, Pageable pageable);
+
+        @Modifying(clearAutomatically = true)
+        @Query("UPDATE Notification n SET n.isRead = true, n.readAt = :readAt WHERE n.recipientId = :recipientId AND n.isRead = false")
+        int markAllAsReadByRecipientId(@Param("recipientId") Long recipientId, @Param("readAt") LocalDateTime readAt);
 }

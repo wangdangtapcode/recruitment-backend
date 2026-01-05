@@ -18,9 +18,9 @@ import com.example.candidate_service.dto.review.CreateReviewDTO;
 import com.example.candidate_service.dto.review.ReviewResponseDTO;
 import com.example.candidate_service.dto.review.UpdateReviewDTO;
 import com.example.candidate_service.exception.IdInvalidException;
-import com.example.candidate_service.model.Application;
+import com.example.candidate_service.model.Candidate;
 import com.example.candidate_service.model.Review;
-import com.example.candidate_service.repository.ApplicationRepository;
+import com.example.candidate_service.repository.CandidateRepository;
 import com.example.candidate_service.repository.ReviewRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -28,23 +28,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class ReviewService {
 
     private final ReviewRepository reviewRepository;
-    private final ApplicationRepository applicationRepository;
+    private final CandidateRepository candidateRepository;
     private final UserService userService;
 
-    public ReviewService(ReviewRepository reviewRepository, ApplicationRepository applicationRepository,
+    public ReviewService(ReviewRepository reviewRepository, CandidateRepository candidateRepository,
             UserService userService) {
         this.reviewRepository = reviewRepository;
-        this.applicationRepository = applicationRepository;
+        this.candidateRepository = candidateRepository;
         this.userService = userService;
     }
 
-    public List<ReviewResponseDTO> getByApplicationId(Long applicationId, String token) throws IdInvalidException {
-        ensureApplicationExists(applicationId);
-        List<Review> reviews = reviewRepository.findByApplication_Id(applicationId);
-        return convertToResponseList(reviews, token);
-    }
-
-    public PaginationDTO getAllWithFilters(Long applicationId, Long reviewerId,
+    public PaginationDTO getAllWithFilters(Long candidateId, Long reviewerId,
             LocalDateTime startDate, LocalDateTime endDate,
             int page, int limit, String sortBy, String sortOrder,
             String token) {
@@ -66,7 +60,7 @@ public class ReviewService {
 
         // Query with filters
         Page<Review> reviewPage = reviewRepository.findByFilters(
-                applicationId, reviewerId, startDate, endDate, pageable);
+                candidateId, reviewerId, startDate, endDate, pageable);
 
         // Convert to DTOs
         List<ReviewResponseDTO> reviewDTOs = convertToResponseList(reviewPage.getContent(), token);
@@ -83,6 +77,11 @@ public class ReviewService {
         paginationDTO.setResult(reviewDTOs);
 
         return paginationDTO;
+    }
+
+    public List<ReviewResponseDTO> getByCandidateId(Long candidateId, String token) {
+        List<Review> reviews = reviewRepository.findByCandidate_Id(candidateId);
+        return convertToResponseList(reviews, token);
     }
 
     public ReviewResponseDTO getById(Long id, String token) throws IdInvalidException {
@@ -102,11 +101,11 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponseDTO create(CreateReviewDTO dto, Long reviewerId) throws IdInvalidException {
-        Application application = applicationRepository.findById(dto.getApplicationId())
-                .orElseThrow(() -> new IdInvalidException("Đơn ứng tuyển không tồn tại"));
+        Candidate candidate = candidateRepository.findById(dto.getCandidateId())
+                .orElseThrow(() -> new IdInvalidException("Ứng viên không tồn tại"));
 
         Review review = new Review();
-        review.setApplication(application);
+        review.setCandidate(candidate);
         review.setReviewerId(reviewerId);
         review.setComment(dto.getComment());
 
@@ -145,12 +144,6 @@ public class ReviewService {
         reviewRepository.deleteById(id);
     }
 
-    private void ensureApplicationExists(Long applicationId) throws IdInvalidException {
-        if (!applicationRepository.existsById(applicationId)) {
-            throw new IdInvalidException("Đơn ứng tuyển không tồn tại");
-        }
-    }
-
     private List<ReviewResponseDTO> convertToResponseList(List<Review> reviews, String token) {
         // Batch fetch reviewer names
         Set<Long> reviewerIds = reviews.stream()
@@ -175,7 +168,7 @@ public class ReviewService {
     private ReviewResponseDTO convertToResponse(Review review, JsonNode idToName) {
         ReviewResponseDTO dto = new ReviewResponseDTO();
         dto.setId(review.getId());
-        dto.setApplicationId(review.getApplication().getId());
+        dto.setCandidateId(review.getCandidate().getId());
         dto.setReviewerId(review.getReviewerId());
         dto.setComment(review.getComment());
         dto.setCreatedAt(review.getCreatedAt());

@@ -70,6 +70,24 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Đánh dấu tất cả thông báo của người dùng là đã đọc
+     * 
+     * @param recipientId ID của người nhận
+     * @return Số lượng thông báo đã được đánh dấu là đã đọc
+     */
+    public int markAllAsRead(Long recipientId) {
+        LocalDateTime readAt = LocalDateTime.now();
+        int updatedCount = notificationRepository.markAllAsReadByRecipientId(recipientId, readAt);
+
+        if (updatedCount > 0) {
+            // Broadcast unread count = 0 sau khi đánh dấu tất cả là đã đọc
+            socketIOBroadcastService.publishUnreadCount(recipientId, 0L);
+        }
+
+        return updatedCount;
+    }
+
     public PaginationDTO getAllNotificationsWithFilters(Long recipientId, String status, Pageable pageable) {
 
         Page<Notification> notificationPage;

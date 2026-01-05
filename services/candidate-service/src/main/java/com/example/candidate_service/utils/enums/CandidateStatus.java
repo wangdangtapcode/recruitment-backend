@@ -1,10 +1,10 @@
 package com.example.candidate_service.utils.enums;
 
-public enum ApplicationStatus {
+public enum CandidateStatus {
 
     SUBMITTED,
 
-    // REVIEWING,
+    REVIEWING,
     INTERVIEW,
     OFFER,
     HIRED,

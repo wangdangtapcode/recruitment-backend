@@ -154,6 +154,33 @@ public class SecurityUtil {
         }
         return null;
     }
+
+    public static String extractDepartmentCode() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null)
+            return null;
+
+        if (auth instanceof JwtAuthenticationToken token) {
+            Object user = token.getTokenAttributes().get("user");
+            if (user instanceof java.util.Map<?, ?> map) {
+                Object departmentCode = map.get("departmentCode");
+                if (departmentCode instanceof String s)
+                    return s;
+            }
+            return null;
+        }
+
+        Object principal = auth.getPrincipal();
+        if (principal instanceof Jwt jwt) {
+            Object user = jwt.getClaim("user");
+            if (user instanceof java.util.Map<?, ?> map) {
+                Object departmentCode = map.get("departmentCode");
+                if (departmentCode instanceof String s)
+                    return s;
+            }
+        }
+        return null;
+    }
     // public static boolean isAuthenticated(){
     // Authentication authentication =
     // SecurityContextHolder.getContext().getAuthentication();

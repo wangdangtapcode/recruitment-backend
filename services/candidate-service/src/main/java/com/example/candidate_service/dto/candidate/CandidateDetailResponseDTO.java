@@ -1,12 +1,13 @@
 package com.example.candidate_service.dto.candidate;
 
 import java.math.BigDecimal;
-import java.util.Set;
+import java.time.LocalDate;
+import java.util.List;
 
-import com.example.candidate_service.model.Application;
+import com.example.candidate_service.dto.comment.CommentResponseDTO;
+import com.example.candidate_service.dto.review.ReviewResponseDTO;
 import com.example.candidate_service.model.Candidate;
-import com.example.candidate_service.model.Comment;
-import com.example.candidate_service.utils.enums.CandidateStage;
+import com.example.candidate_service.utils.enums.CandidateStatus;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +16,7 @@ import lombok.Setter;
 @Setter
 public class CandidateDetailResponseDTO {
     private Long id;
-    private String fullName;
+    private String name;
     private String email;
     private String phone;
     private String dateOfBirth;
@@ -29,13 +30,24 @@ public class CandidateDetailResponseDTO {
     private String graduationYear;
     private BigDecimal gpa;
     private String notes;
-    private Set<Application> applications;
-    private CandidateStage stage;
+
+    // Application fields
+    private LocalDate appliedDate;
+    private CandidateStatus status;
+    private String rejectionReason;
+    private String resumeUrl;
+    private Long jobPositionId;
+
+    // Related data
+    private List<ReviewResponseDTO> reviews;
+    private List<CommentResponseDTO> comments;
+    private Object jobPosition; // từ job-service
+    private List<Object> upcomingSchedules; // từ communications-service
 
     public static CandidateDetailResponseDTO fromEntity(Candidate candidate) {
         CandidateDetailResponseDTO dto = new CandidateDetailResponseDTO();
         dto.setId(candidate.getId());
-        dto.setFullName(candidate.getFullName());
+        dto.setName(candidate.getName());
         dto.setEmail(candidate.getEmail());
         dto.setPhone(candidate.getPhone());
         dto.setDateOfBirth(candidate.getDateOfBirth());
@@ -49,8 +61,11 @@ public class CandidateDetailResponseDTO {
         dto.setGraduationYear(candidate.getGraduationYear());
         dto.setGpa(candidate.getGpa());
         dto.setNotes(candidate.getNotes());
-        dto.setStage(candidate.getStage());
-        dto.setApplications(candidate.getApplications());
+        dto.setAppliedDate(candidate.getAppliedDate());
+        dto.setStatus(candidate.getStatus());
+        dto.setRejectionReason(candidate.getRejectionReason());
+        dto.setResumeUrl(candidate.getResumeUrl());
+        dto.setJobPositionId(candidate.getJobPositionId());
         return dto;
     }
 }

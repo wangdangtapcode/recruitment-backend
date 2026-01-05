@@ -7,7 +7,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CreateCandidateDTO {
+public class UploadCVDTO {
     @NotBlank(message = "Họ tên không được để trống")
     private String name;
     @NotBlank(message = "Email không được để trống")
@@ -19,5 +19,4 @@ public class CreateCandidateDTO {
     @NotBlank(message = "CV URL không được để trống")
     private String cvUrl;
     private String notes;
-    private Long createdBy; // Nhân viên tạo ứng viên
 }

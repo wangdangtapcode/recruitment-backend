@@ -40,4 +40,6 @@ public interface JobPositionRepository extends JpaRepository<JobPosition, Long> 
                         @Param("published") Boolean published,
                         @Param("keyword") String keyword,
                         Pageable pageable);
+
+        List<JobPosition> findByIdIn(List<Long> ids);
 }

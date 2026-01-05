@@ -21,8 +21,6 @@ public class WorkflowStep {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workflow_id", nullable = false)
     private Workflow workflow;
-    @Column(name = "step_name", nullable = false)
-    private String stepName;
     @Column(name = "step_order", nullable = false)
     private Integer stepOrder;
 

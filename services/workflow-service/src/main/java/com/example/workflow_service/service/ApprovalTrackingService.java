@@ -75,10 +75,9 @@ public class ApprovalTrackingService {
     public ApprovalTrackingResponseDTO initializeApproval(CreateApprovalTrackingDTO dto) {
         // Bước 2: Tìm workflow phù hợp
         Workflow workflow = workflowRepository.findMatchingWorkflow(
-                dto.getDepartmentId(), dto.getLevelId())
+                dto.getDepartmentId())
                 .orElseThrow(() -> new CustomException(
-                        "Không tìm thấy workflow phù hợp với department_id: " + dto.getDepartmentId() +
-                                " và level_id: " + dto.getLevelId()));
+                        "Không tìm thấy workflow phù hợp với department_id: " + dto.getDepartmentId()));
 
         // Bước 3: Lấy bước đầu tiên
         WorkflowStep firstStep = workflowStepRepository
@@ -428,7 +427,7 @@ public class ApprovalTrackingService {
         dto.setName(workflow.getName());
         dto.setDescription(workflow.getDescription());
         dto.setType(workflow.getType());
-        dto.setApplyConditions(workflow.getApplyConditions());
+        dto.setDepartmentId(workflow.getDepartmentId());
         dto.setIsActive(workflow.getIsActive());
         dto.setCreatedBy(workflow.getCreatedBy());
         dto.setUpdatedBy(workflow.getUpdatedBy());
@@ -456,7 +455,6 @@ public class ApprovalTrackingService {
         WorkflowStepResponseDTO dto = new WorkflowStepResponseDTO();
         dto.setId(step.getId());
         dto.setStepOrder(step.getStepOrder());
-        dto.setStepName(step.getStepName());
         dto.setApproverPositionId(step.getApproverPositionId());
         dto.setIsActive(step.getIsActive());
         dto.setCreatedAt(step.getCreatedAt());
@@ -670,7 +668,7 @@ public class ApprovalTrackingService {
             // Thông báo cho requester và owner về việc bước hiện tại đã được phê duyệt
             notifyRequester(event,
                     "Yêu cầu #" + event.getRequestId() + " đã được phê duyệt",
-                    "Yêu cầu đã được phê duyệt ở bước " + currentStep.getStepName());
+                    "Yêu cầu đã được phê duyệt ở bước " + currentStep.getStepOrder());
 
             if (nextStep != null) {
                 // Có bước tiếp theo: chuyển sang bước tiếp
@@ -860,8 +858,7 @@ public class ApprovalTrackingService {
             return;
         }
 
-        String stepName = step.getStepName() != null ? step.getStepName()
-                : "Bước " + step.getStepOrder();
+        String stepName = "Bước " + step.getStepOrder();
         String title = "Yêu cầu #" + requestId + " cần xử lý";
         String message = "Bước '" + stepName + "' đang chờ phê duyệt.";
 

@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 public class ReviewResponseDTO {
     private Long id;
-    private Long applicationId;
+    private Long candidateId;
     private Long reviewerId;
     private String reviewerName;
     private String comment;

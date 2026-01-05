@@ -105,9 +105,20 @@ public class NotificationController {
     }
 
     @PutMapping("/{notificationId}/read")
+    @ApiMessage("Đánh dấu một thông báo là đã đọc")
     public ResponseEntity<String> markAsRead(@PathVariable Long notificationId) {
         notificationService.markAsRead(notificationId);
         return ResponseEntity.ok("Thông báo đã đọc");
+    }
+
+    @PutMapping("/read-all")
+    @ApiMessage("Đánh dấu tất cả thông báo của người dùng hiện tại là đã đọc")
+    public ResponseEntity<Map<String, Object>> markAllAsRead() {
+        Long recipientId = SecurityUtil.extractEmployeeId();
+        int updatedCount = notificationService.markAllAsRead(recipientId);
+        return ResponseEntity.ok(Map.of(
+                "message", "Đã đánh dấu tất cả thông báo là đã đọc",
+                "updatedCount", updatedCount));
     }
 
     @GetMapping("/stats/{recipientId}")

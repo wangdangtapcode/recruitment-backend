@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 public class JobOpeningDTO {
     private Long id;
     private String title; // Tên vị trí
-    private String iconColor; // Màu icon (purple, green, pink, etc.)
+    // private String iconColor; // Màu icon (purple, green, pink, etc.)
     private String employmentType; // "Full-time", "Part-time"
     private String workLocation; // "On-site", "Hybrid", "Remote"
     private Integer applicantCount; // Số ứng viên

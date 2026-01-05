@@ -2,7 +2,7 @@ package com.example.schedule_service.controller;
 
 import com.example.schedule_service.dto.PaginationDTO;
 import com.example.schedule_service.dto.schedule.ScheduleDetailDTO;
-import com.example.schedule_service.dto.schedule.ScheduleRequest;
+import com.example.schedule_service.dto.schedule.CreateScheduleDTO;
 import com.example.schedule_service.dto.schedule.ScheduleStatisticsDTO;
 import com.example.schedule_service.dto.schedule.AvailableParticipantDTO;
 import com.example.schedule_service.model.Schedule;
@@ -30,14 +30,14 @@ public class ScheduleController {
     }
 
     @PostMapping
-    public ResponseEntity<Schedule> createSchedule(@Valid @RequestBody ScheduleRequest request) {
+    public ResponseEntity<Schedule> createSchedule(@Valid @RequestBody CreateScheduleDTO request) {
         request.setCreatedById(SecurityUtil.extractEmployeeId());
         Schedule schedule = scheduleService.createSchedule(request);
         return ResponseEntity.ok(schedule);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Schedule> updateSchedule(@PathVariable Long id, @Valid @RequestBody ScheduleRequest request) {
+    public ResponseEntity<Schedule> updateSchedule(@PathVariable Long id, @Valid @RequestBody CreateScheduleDTO request) {
         request.setCreatedById(SecurityUtil.extractEmployeeId());
         Schedule schedule = scheduleService.updateSchedule(id, request);
         return ResponseEntity.ok(schedule);

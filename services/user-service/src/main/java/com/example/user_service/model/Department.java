@@ -29,6 +29,8 @@ public class Department {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(name = "code", nullable = false, unique = true, length = 50)
+    private String code; // Mã phòng ban dùng cho hệ thống / dev (tìm kiếm, mapping)
     private String name;
     @Column(columnDefinition = "MEDIUMTEXT")
     private String description;

@@ -1,6 +1,7 @@
 package com.example.candidate_service.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -137,5 +138,113 @@ public class JobService {
             System.err.println("Error fetching job positions by department ID: " + e.getMessage());
         }
         return jobPositionIds;
+    }
+
+    /**
+     * Lấy job positions theo departmentId và trả về đầy đủ thông tin (Map với
+     * JsonNode)
+     * Sử dụng API /simple để không gọi user service
+     */
+    public Map<Long, JsonNode> getJobPositionsByDepartmentId(Long departmentId, String token) {
+        Map<Long, JsonNode> jobPositionMap = new HashMap<>();
+        try {
+            // Gọi API /simple với departmentId filter - API này trả về PaginationDTO
+            String url = jobServiceUrl + "/api/v1/job-service/job-positions/simple?departmentId=" + departmentId
+                    + "&limit=1000";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<Response<PaginationDTO>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<Response<PaginationDTO>>() {
+                    });
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                PaginationDTO pagination = response.getBody().getData();
+                Object resultObj = pagination.getResult();
+                if (resultObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> resultList = (List<Object>) resultObj;
+                    for (Object item : resultList) {
+                        JsonNode jpNode = objectMapper.valueToTree(item);
+                        if (jpNode != null && jpNode.has("id")) {
+                            Long jpId = jpNode.get("id").asLong();
+                            jobPositionMap.put(jpId, jpNode);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Log error and return empty map
+            System.err.println("Error fetching job positions by department ID: " + e.getMessage());
+        }
+        return jobPositionMap;
+    }
+
+    /**
+     * Lấy nhiều job positions theo IDs một lần - sử dụng API /simple (không gọi
+     * user service)
+     */
+    public Map<Long, JsonNode> getJobPositionsByIdsSimple(List<Long> ids, String token) {
+        Map<Long, JsonNode> jobPositionMap = new HashMap<>();
+
+        if (ids == null || ids.isEmpty()) {
+            return jobPositionMap;
+        }
+
+        try {
+            // Tạo query string với các IDs
+            String idsParam = ids.stream()
+                    .map(String::valueOf)
+                    .collect(java.util.stream.Collectors.joining(","));
+
+            // Gọi API /simple để lấy JobPosition entities (không có departmentName, không
+            // gọi user service) - API này trả về PaginationDTO
+            String url = jobServiceUrl + "/api/v1/job-service/job-positions/simple?ids=" + idsParam + "&limit=1000";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<Response<PaginationDTO>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<Response<PaginationDTO>>() {
+                    });
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                PaginationDTO pagination = response.getBody().getData();
+                Object resultObj = pagination.getResult();
+                if (resultObj instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> resultList = (List<Object>) resultObj;
+                    for (Object item : resultList) {
+                        JsonNode jpNode = objectMapper.valueToTree(item);
+                        if (jpNode != null && jpNode.has("id")) {
+                            Long jpId = jpNode.get("id").asLong();
+                            jobPositionMap.put(jpId, jpNode);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching job positions by IDs: " + e.getMessage());
+        }
+
+        return jobPositionMap;
+    }
+
+    /**
+     * Lấy nhiều job positions theo IDs một lần với thông tin department (deprecated
+     * - dùng getJobPositionsByIdsSimple)
+     */
+    public Map<Long, JsonNode> getJobPositionsByIds(List<Long> ids, String token) {
+        return getJobPositionsByIdsSimple(ids, token);
     }
 }

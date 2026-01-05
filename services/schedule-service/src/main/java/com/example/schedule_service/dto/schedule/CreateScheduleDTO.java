@@ -10,7 +10,7 @@ import java.util.List;
 import com.example.schedule_service.utils.enums.MeetingType;
 
 @Data
-public class ScheduleRequest {
+public class CreateScheduleDTO {
 
     @NotBlank(message = "tiêu đề là bắt buộc")
     private String title;
@@ -38,5 +38,5 @@ public class ScheduleRequest {
     private Long createdById; // Employee Id (người tạo lịch hẹn)
 
     private Long candidateId;
-    private List<Long> employeeIds; // Danh sách Employee Ids tham gia (khi participantType = "USER")
+    private List<Long> userIds; // Danh sách Employee Ids tham gia (khi participantType = "USER")
 }

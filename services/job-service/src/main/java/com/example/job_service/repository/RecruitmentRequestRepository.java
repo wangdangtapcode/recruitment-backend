@@ -36,4 +36,16 @@ public interface RecruitmentRequestRepository extends JpaRepository<RecruitmentR
                         @Param("createdBy") Long createdBy,
                         @Param("keyword") String keyword,
                         Pageable pageable);
+
+        @Query("SELECT rr FROM RecruitmentRequest rr WHERE " +
+                        "rr.isActive = true AND " +
+                        "(:departmentId IS NULL OR rr.departmentId = :departmentId) AND " +
+                        "(:status IS NULL OR rr.status = :status) AND " +
+                        "(:createdBy IS NULL OR rr.requesterId = :createdBy) AND " +
+                        "(:keyword IS NULL OR LOWER(rr.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                        "LOWER(rr.reason) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+        List<RecruitmentRequest> findByFiltersList(@Param("departmentId") Long departmentId,
+                        @Param("status") RecruitmentRequestStatus status,
+                        @Param("createdBy") Long createdBy,
+                        @Param("keyword") String keyword);
 }

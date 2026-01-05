@@ -6,6 +6,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CreateCommentDTO {
-    private Long applicationId;
+    private Long candidateId;
     private String content;
 }

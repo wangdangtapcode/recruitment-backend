@@ -30,7 +30,7 @@ public class ReviewController {
     @GetMapping
     @ApiMessage("Lấy danh sách đánh giá với filter và pagination")
     public ResponseEntity<PaginationDTO> getAll(
-            @RequestParam(name = "applicationId", required = false) Long applicationId,
+            @RequestParam(name = "candidateId", required = false) Long candidateId,
             @RequestParam(name = "reviewerId", required = false) Long reviewerId,
             @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
@@ -40,16 +40,8 @@ public class ReviewController {
             @RequestParam(name = "sortOrder", defaultValue = "desc", required = false) String sortOrder) {
         String token = SecurityUtil.getCurrentUserJWT().orElse("");
         PaginationDTO result = reviewService.getAllWithFilters(
-                applicationId, reviewerId, startDate, endDate, page, limit, sortBy, sortOrder, token);
+                candidateId, reviewerId, startDate, endDate, page, limit, sortBy, sortOrder, token);
         return ResponseEntity.ok(result);
-    }
-
-    @GetMapping("/application/{applicationId}")
-    @ApiMessage("Lấy danh sách đánh giá theo application")
-    public ResponseEntity<List<ReviewResponseDTO>> getByApplication(@PathVariable Long applicationId)
-            throws IdInvalidException {
-        String token = SecurityUtil.getCurrentUserJWT().orElse("");
-        return ResponseEntity.ok(reviewService.getByApplicationId(applicationId, token));
     }
 
     @GetMapping("/{id}")
