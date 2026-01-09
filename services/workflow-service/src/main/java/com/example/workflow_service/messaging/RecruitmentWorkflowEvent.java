@@ -21,6 +21,8 @@ public class RecruitmentWorkflowEvent {
     private String requestStatus;
     private Long ownerUserId;
     private Long requesterId;
+    // Đối với offer, departmentId có thể không có nên cần candidateId để suy ra
+    private Long candidateId;
     private Long departmentId;
     private LocalDateTime occurredAt;
     private String authToken;

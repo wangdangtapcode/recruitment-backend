@@ -21,6 +21,7 @@ import com.example.workflow_service.repository.WorkflowRepository;
 import com.example.workflow_service.repository.WorkflowStepRepository;
 import com.example.workflow_service.utils.SecurityUtil;
 import com.example.workflow_service.utils.enums.ApprovalStatus;
+import com.example.workflow_service.utils.enums.WorkflowType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +58,7 @@ public class ApprovalTrackingService {
     private final NotificationProducer notificationProducer;
     private final ObjectMapper objectMapper;
     private final UserService userService;
+    private final CandidateService candidateService;
     private static final Logger log = LoggerFactory.getLogger(ApprovalTrackingService.class);
 
     private final RestTemplate restTemplate;
@@ -334,9 +336,43 @@ public class ApprovalTrackingService {
 
     @Transactional(readOnly = true)
     public RequestWorkflowInfoDTO getWorkflowInfoByRequestId(
-            Long requestId, Long workflowId) {
+            Long requestId, Long workflowId, String requestType) {
         // Lấy tất cả approval tracking của request này
-        List<ApprovalTracking> trackings = approvalTrackingRepository.findByRequestId(requestId);
+        List<ApprovalTracking> allTrackings = approvalTrackingRepository.findByRequestId(requestId);
+
+        // Filter theo workflow type nếu có requestType để tránh trùng requestId giữa
+        // RECRUITMENT_REQUEST và OFFER
+        List<ApprovalTracking> trackings = allTrackings;
+        if (requestType != null && !requestType.trim().isEmpty()) {
+            String normalizedType = requestType.toUpperCase();
+            final WorkflowType workflowType;
+            if ("RECRUITMENT_REQUEST".equals(normalizedType) || "REQUEST".equals(normalizedType)) {
+                workflowType = WorkflowType.REQUEST;
+            } else if ("OFFER".equals(normalizedType)) {
+                workflowType = WorkflowType.OFFER;
+            } else {
+                workflowType = null;
+            }
+
+            if (workflowType != null) {
+                trackings = allTrackings.stream()
+                        .filter(tracking -> {
+                            WorkflowStep step = tracking.getStep();
+                            if (step != null && step.getWorkflow() != null) {
+                                return workflowType.equals(step.getWorkflow().getType());
+                            }
+                            return false;
+                        })
+                        .collect(Collectors.toList());
+
+                if (trackings.isEmpty()) {
+                    log.warn("Không tìm thấy tracking nào cho requestId: {} với type: {}", requestId, requestType);
+                } else {
+                    log.debug("Filtered {} trackings từ {} total trackings cho requestId: {} với type: {}",
+                            trackings.size(), allTrackings.size(), requestId, requestType);
+                }
+            }
+        }
 
         // Tìm workflowId từ tracking hoặc từ parameter
         Long actualWorkflowId = workflowId;
@@ -359,14 +395,33 @@ public class ApprovalTrackingService {
             }
         }
 
-        // Thu thập tất cả position IDs từ trackings và workflow steps
-        Set<Long> allPositionIds = trackings.stream()
+        // Lấy thông tin workflow trước để thu thập position IDs từ tất cả các steps
+        Workflow workflow = null;
+        if (actualWorkflowId != null) {
+            workflow = workflowRepository.findById(actualWorkflowId).orElse(null);
+        }
+
+        // Thu thập tất cả position IDs từ trackings
+        Set<Long> allPositionIdsFromTrackings = trackings.stream()
                 .map(tracking -> {
                     WorkflowStep step = tracking.getStep();
                     return step != null ? step.getApproverPositionId() : null;
                 })
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
+
+        // Thu thập tất cả position IDs từ workflow steps (nếu có workflow)
+        Set<Long> allPositionIdsFromWorkflow = new java.util.HashSet<>();
+        if (workflow != null && workflow.getSteps() != null) {
+            allPositionIdsFromWorkflow = workflow.getSteps().stream()
+                    .map(WorkflowStep::getApproverPositionId)
+                    .filter(id -> id != null)
+                    .collect(Collectors.toSet());
+        }
+
+        // Kết hợp position IDs từ cả trackings và workflow steps
+        Set<Long> allPositionIds = new java.util.HashSet<>(allPositionIdsFromTrackings);
+        allPositionIds.addAll(allPositionIdsFromWorkflow);
 
         // Thu thập tất cả user IDs từ trackings (actionUserId)
         Set<Long> allActionUserIds = trackings.stream()
@@ -383,27 +438,28 @@ public class ApprovalTrackingService {
         // Lấy token từ SecurityContext
         String token = SecurityUtil.getCurrentUserJWT().orElse(null);
         // Gọi user-service một lần để lấy tất cả position names (từ positionIds)
+        System.out.println("allPositionIds: " + allPositionIds);
         Map<Long, String> positionNamesMap = userService.getPositionNamesByIds(
                 allPositionIds.stream().collect(Collectors.toList()),
                 token);
+        System.out.println("positionNamesMap: " + positionNamesMap);
+
         // Gọi user-service một lần để lấy tất cả user names
         Map<Long, String> userNamesMap = userService.getUserNamesByIds(
                 allActionUserIds.stream().collect(Collectors.toList()),
                 token);
+        System.out.println("userNamesMap: " + userNamesMap);
         // Gọi user-service một lần để lấy tất cả position names từ assigned user IDs
         Map<Long, String> positionNamesByUserIdMap = userService.getPositionNamesByIds(
                 allAssignedUserIds.stream().collect(Collectors.toList()),
                 token);
-
+        System.out.println("positionNamesByUserIdMap: " + positionNamesByUserIdMap);
         RequestWorkflowInfoDTO result = new RequestWorkflowInfoDTO();
 
-        // Lấy thông tin workflow nếu có
-        if (actualWorkflowId != null) {
-            Workflow workflow = workflowRepository.findById(actualWorkflowId).orElse(null);
-            if (workflow != null) {
-                WorkflowResponseDTO workflowDTO = convertWorkflowToDTO(workflow, positionNamesMap);
-                result.setWorkflow(workflowDTO);
-            }
+        // Convert workflow với position names
+        if (workflow != null) {
+            WorkflowResponseDTO workflowDTO = convertWorkflowToDTO(workflow, positionNamesMap);
+            result.setWorkflow(workflowDTO);
         }
 
         // Convert approval trackings với position names và user names
@@ -474,6 +530,23 @@ public class ApprovalTrackingService {
         if (event == null || event.getEventType() == null || event.getRequestId() == null) {
             return;
         }
+        // Resolve departmentId nếu chưa có
+        if (event.getDepartmentId() == null && "OFFER".equalsIgnoreCase(event.getRequestType())) {
+            Long candidateId = event.getCandidateId();
+            System.out.println("candidateId: " + candidateId);
+            if (candidateId != null) {
+                Long departmentId = candidateService.getDepartmentIdFromCandidate(candidateId, event.getAuthToken());
+                System.out.println("departmentId: " + departmentId);
+                if (departmentId != null) {
+                    event.setDepartmentId(departmentId);
+                } else {
+                    log.warn("Offer {} không có departmentId sau khi cố gắng suy ra từ candidate {}",
+                            event.getRequestId(), candidateId);
+                }
+            } else {
+                log.warn("Offer {} không có candidateId", event.getRequestId());
+            }
+        }
         String eventType = event.getEventType().toUpperCase();
         switch (eventType) {
             case "REQUEST_SUBMITTED":
@@ -530,9 +603,10 @@ public class ApprovalTrackingService {
             dto.setActionUserName(userName);
         }
 
-        // Set assignedName (positionName) từ map nếu có
-        if (positionNamesByUserIdMap != null && tracking.getApproverPositionId() != null) {
-            String positionName = positionNamesByUserIdMap.get(tracking.getApproverPositionId());
+        // Set approverPositionName từ positionNamesMap (có đầy đủ từ workflow steps và
+        // trackings)
+        if (positionNamesMap != null && tracking.getApproverPositionId() != null) {
+            String positionName = positionNamesMap.get(tracking.getApproverPositionId());
             dto.setApproverPositionName(positionName);
         }
 
@@ -586,9 +660,17 @@ public class ApprovalTrackingService {
             return;
         }
 
-        // Kiểm tra xem có tracking nào đang pending không
-        List<ApprovalTracking> pending = approvalTrackingRepository
+        // Đảm bảo departmentId đã được resolve cho offer
+        if ("OFFER".equalsIgnoreCase(event.getRequestType()) && event.getDepartmentId() == null) {
+            log.warn("Offer {} không có departmentId khi submit, không thể tạo tracking", event.getRequestId());
+            return;
+        }
+
+        // Kiểm tra xem có tracking nào đang pending không (filter theo workflow type)
+        List<ApprovalTracking> allPending = approvalTrackingRepository
                 .findByRequestIdAndStatus(event.getRequestId(), ApprovalStatus.PENDING);
+        WorkflowType workflowType = getWorkflowTypeFromRequestType(event.getRequestType());
+        List<ApprovalTracking> pending = filterByWorkflowType(allPending, workflowType);
 
         if (!pending.isEmpty()) {
             boolean allReturnPlaceholders = pending.stream()
@@ -604,13 +686,23 @@ public class ApprovalTrackingService {
                     approvalTrackingRepository.save(tracking);
                 });
             } else {
-                log.debug("Request {} already has pending approval step, skip initialization", event.getRequestId());
-                return;
+                // Cancel tất cả tracking cũ và tạo mới (đặc biệt cho offer khi resubmit)
+                log.info("Request/Offer {} có tracking cũ đang pending, cancel và tạo mới", event.getRequestId());
+                pending.forEach(tracking -> {
+                    tracking.setStatus(ApprovalStatus.CANCELLED);
+                    tracking.setActionType("RESUBMIT");
+                    tracking.setActionUserId(event.getActorUserId());
+                    tracking.setActionAt(LocalDateTime.now());
+                    tracking.setNotes("Cancelled due to resubmit");
+                    approvalTrackingRepository.save(tracking);
+                });
             }
         }
 
         // Kiểm tra xem có tracking nào đã bị return không (submit lại sau return)
+        // Filter theo workflow type để tránh nhầm lẫn
         List<ApprovalTracking> allTrackings = approvalTrackingRepository.findByRequestId(event.getRequestId());
+        allTrackings = filterByWorkflowType(allTrackings, workflowType);
         ApprovalTracking returnedTracking = allTrackings.stream()
                 .filter(t -> t.getReturnedToStepId() != null)
                 .findFirst()
@@ -633,6 +725,60 @@ public class ApprovalTrackingService {
                     .findByWorkflowIdAndStepOrder(workflow.getId(), 1)
                     .orElseThrow(() -> new CustomException("Workflow không có bước đầu tiên"));
 
+            // Logic: Nếu người tạo yêu cầu trùng với người duyệt ở bước 1 (cùng positionId
+            // VÀ departmentId),
+            // tự động bỏ qua bước 1
+            if (event.getRequesterId() != null && targetStep.getApproverPositionId() != null
+                    && event.getDepartmentId() != null) {
+                Long requesterPositionId = getRequesterPositionId(event.getRequesterId(), event.getAuthToken());
+                Long requesterDepartmentId = getRequesterDepartmentId(event.getRequesterId(), event.getAuthToken());
+
+                // Kiểm tra cả positionId VÀ departmentId phải trùng
+                // departmentId lấy từ event (đã có sẵn cho cả RECRUITMENT_REQUEST và OFFER)
+                boolean positionMatches = requesterPositionId != null
+                        && requesterPositionId.equals(targetStep.getApproverPositionId());
+                boolean departmentMatches = requesterDepartmentId != null
+                        && requesterDepartmentId.equals(event.getDepartmentId());
+
+                if (positionMatches && departmentMatches) {
+                    // Requester trùng với approver của step 1 (cùng position và department):
+                    // tự động approve step 1 và chuyển sang step 2
+                    log.info(
+                            "Requester {} (positionId: {}, departmentId: {}) trùng với approver của step 1 (positionId: {}, departmentId: {}), tự động bỏ qua step 1",
+                            event.getRequesterId(), requesterPositionId, requesterDepartmentId,
+                            targetStep.getApproverPositionId(), event.getDepartmentId());
+
+                    // Tạo tracking cho step 1 với status APPROVED (tự động approve)
+                    ApprovalTracking step1Tracking = createTrackingForStep(event.getRequestId(), targetStep,
+                            event.getDepartmentId(), event.getAuthToken());
+                    step1Tracking.setStatus(ApprovalStatus.APPROVED);
+                    step1Tracking.setActionType("APPROVE");
+                    step1Tracking.setActionUserId(event.getRequesterId());
+                    step1Tracking.setActionAt(LocalDateTime.now());
+                    step1Tracking.setNotes("Người tạo trùng với bước đầu");
+                    approvalTrackingRepository.save(step1Tracking);
+
+                    // Tạo tracking cho step 2 (nếu có)
+                    WorkflowStep nextStep = workflowStepRepository
+                            .findByWorkflowIdAndStepOrder(workflow.getId(), 2)
+                            .orElse(null);
+                    if (nextStep != null) {
+                        createTrackingForStep(event.getRequestId(), nextStep, event.getDepartmentId(),
+                                event.getAuthToken());
+                    } else {
+                        // Không còn bước nào: workflow đã hoàn thành
+                        log.info("Request/Offer {} đã hoàn thành tất cả các bước workflow (auto-approve step 1)",
+                                event.getRequestId());
+                        sendWorkflowCompletedEvent(event);
+                    }
+                    return; // Đã xử lý xong, không cần tạo tracking thêm
+                } else {
+                    log.debug(
+                            "Requester {} không trùng với approver của step 1 - requester (positionId: {}, departmentId: {}), step (positionId: {}, departmentId: {})",
+                            event.getRequesterId(), requesterPositionId, requesterDepartmentId,
+                            targetStep.getApproverPositionId(), event.getDepartmentId());
+                }
+            }
         }
 
         ApprovalTracking newTracking = createTrackingForStep(event.getRequestId(), targetStep, event.getDepartmentId(),
@@ -675,9 +821,11 @@ public class ApprovalTrackingService {
                 moveToNextStep(current, event.getDepartmentId(), event.getAuthToken());
             } else {
                 // Không còn bước nào: đã hoàn thành workflow
-                // Kiểm tra xem còn tracking nào pending không
-                List<ApprovalTracking> remainingPending = approvalTrackingRepository
+                // Kiểm tra xem còn tracking nào pending không (filter theo workflow type)
+                List<ApprovalTracking> allRemainingPending = approvalTrackingRepository
                         .findByRequestIdAndStatus(event.getRequestId(), ApprovalStatus.PENDING);
+                WorkflowType eventWorkflowType = getWorkflowTypeFromRequestType(event.getRequestType());
+                List<ApprovalTracking> remainingPending = filterByWorkflowType(allRemainingPending, eventWorkflowType);
 
                 if (remainingPending.isEmpty()) {
                     // Không còn bước nào pending: workflow đã hoàn thành
@@ -704,7 +852,7 @@ public class ApprovalTrackingService {
 
     private void handleRequestReturned(RecruitmentWorkflowEvent event) {
         // Đánh dấu bước hiện tại là RETURNED
-        ApprovalTracking currentTracking = findCurrentPendingTracking(event.getRequestId());
+        ApprovalTracking currentTracking = findCurrentPendingTracking(event.getRequestId(), event.getRequestType());
         if (currentTracking == null) {
             log.warn("Không tìm thấy approval tracking đang chờ cho request {}", event.getRequestId());
             return;
@@ -747,9 +895,11 @@ public class ApprovalTrackingService {
 
     private void handleRequestCancelled(RecruitmentWorkflowEvent event) {
         // Cancel: Hủy yêu cầu (có thể ở bất kỳ trạng thái nào)
-        // Invalidate tất cả các tracking đang pending
-        List<ApprovalTracking> pendingTrackings = approvalTrackingRepository
+        // Invalidate tất cả các tracking đang pending (filter theo workflow type)
+        List<ApprovalTracking> allPendingTrackings = approvalTrackingRepository
                 .findByRequestIdAndStatus(event.getRequestId(), ApprovalStatus.PENDING);
+        WorkflowType workflowType = getWorkflowTypeFromRequestType(event.getRequestType());
+        List<ApprovalTracking> pendingTrackings = filterByWorkflowType(allPendingTrackings, workflowType);
 
         for (ApprovalTracking tracking : pendingTrackings) {
             tracking.setStatus(ApprovalStatus.CANCELLED);
@@ -769,9 +919,11 @@ public class ApprovalTrackingService {
 
     private void handleRequestWithdrawn(RecruitmentWorkflowEvent event) {
         // Withdraw: Rút lại yêu cầu (chỉ submitter/owner mới có thể)
-        // Invalidate tất cả các tracking đang pending
-        List<ApprovalTracking> pendingTrackings = approvalTrackingRepository
+        // Invalidate tất cả các tracking đang pending (filter theo workflow type)
+        List<ApprovalTracking> allPendingTrackings = approvalTrackingRepository
                 .findByRequestIdAndStatus(event.getRequestId(), ApprovalStatus.PENDING);
+        WorkflowType workflowType = getWorkflowTypeFromRequestType(event.getRequestType());
+        List<ApprovalTracking> pendingTrackings = filterByWorkflowType(allPendingTrackings, workflowType);
 
         for (ApprovalTracking tracking : pendingTrackings) {
             tracking.setStatus(ApprovalStatus.CANCELLED);
@@ -798,6 +950,7 @@ public class ApprovalTrackingService {
                 .orElseThrow(() -> new CustomException("Không tìm thấy workflow step: " + currentStepId));
 
         Workflow workflow = currentStep.getWorkflow();
+        WorkflowType workflowType = workflow != null ? workflow.getType() : null;
         List<WorkflowStep> allSteps = workflowStepRepository.findByWorkflowIdOrderByStepOrderAsc(workflow.getId());
 
         // Tìm các bước có stepOrder >= currentStep.stepOrder
@@ -807,8 +960,9 @@ public class ApprovalTrackingService {
                 .collect(Collectors.toList());
 
         if (!futureStepIds.isEmpty()) {
-            // Tìm và invalidate các tracking của các bước này
-            List<ApprovalTracking> futureTrackings = approvalTrackingRepository.findByRequestId(requestId)
+            // Tìm và invalidate các tracking của các bước này (filter theo workflow type)
+            List<ApprovalTracking> allFutureTrackings = approvalTrackingRepository.findByRequestId(requestId);
+            List<ApprovalTracking> futureTrackings = filterByWorkflowType(allFutureTrackings, workflowType)
                     .stream()
                     .filter(t -> t.getStep() != null && futureStepIds.contains(t.getStep().getId())
                             && t.getStatus() == ApprovalStatus.PENDING)
@@ -894,7 +1048,7 @@ public class ApprovalTrackingService {
             ApprovalStatus status,
             String actionType,
             String notes) {
-        ApprovalTracking tracking = findCurrentPendingTracking(event.getRequestId());
+        ApprovalTracking tracking = findCurrentPendingTracking(event.getRequestId(), event.getRequestType());
         if (tracking == null) {
             log.warn("Không tìm thấy approval tracking đang chờ cho request {}", event.getRequestId());
             return null;
@@ -907,19 +1061,74 @@ public class ApprovalTrackingService {
         return approvalTrackingRepository.save(tracking);
     }
 
-    private ApprovalTracking findCurrentPendingTracking(Long requestId) {
-        return approvalTrackingRepository
-                .findByRequestIdAndStatus(requestId, ApprovalStatus.PENDING)
-                .stream()
+    /**
+     * Helper method để filter tracking theo workflow type
+     */
+    private List<ApprovalTracking> filterByWorkflowType(List<ApprovalTracking> trackings, WorkflowType workflowType) {
+        if (workflowType == null) {
+            return trackings;
+        }
+        return trackings.stream()
+                .filter(tracking -> {
+                    WorkflowStep step = tracking.getStep();
+                    if (step != null && step.getWorkflow() != null) {
+                        return workflowType.equals(step.getWorkflow().getType());
+                    }
+                    return false;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy workflow type từ requestType string
+     */
+    private WorkflowType getWorkflowTypeFromRequestType(String requestType) {
+        if (requestType == null || requestType.trim().isEmpty()) {
+            return null;
+        }
+        String normalizedType = requestType.toUpperCase();
+        if ("RECRUITMENT_REQUEST".equals(normalizedType) || "REQUEST".equals(normalizedType)) {
+            return WorkflowType.REQUEST;
+        } else if ("OFFER".equals(normalizedType)) {
+            return WorkflowType.OFFER;
+        }
+        return null;
+    }
+
+    private ApprovalTracking findCurrentPendingTracking(Long requestId, String requestType) {
+        List<ApprovalTracking> allPending = approvalTrackingRepository
+                .findByRequestIdAndStatus(requestId, ApprovalStatus.PENDING);
+
+        // Filter theo workflow type nếu có
+        WorkflowType workflowType = getWorkflowTypeFromRequestType(requestType);
+        List<ApprovalTracking> filtered = filterByWorkflowType(allPending, workflowType);
+
+        return filtered.stream()
                 .findFirst()
                 .orElse(null);
     }
 
     private ApprovalTracking createTrackingForStep(Long requestId, WorkflowStep step, Long departmentId,
             String authToken) {
-        // Tìm actionUserId dựa trên levelId và departmentId
-        Long actionUserId = userService.findUserByPositionIdAndDepartmentId(step.getApproverPositionId(), departmentId,
-                authToken);
+        log.info("Tạo tracking cho requestId: {}, stepId: {}, departmentId: {}", requestId, step.getId(), departmentId);
+        log.info("step.getApproverPositionId(): {}", step.getApproverPositionId());
+
+        // Kiểm tra departmentId trước khi tìm actionUserId
+        if (departmentId == null) {
+            log.warn("departmentId là null khi tạo tracking cho requestId: {}, stepId: {}", requestId, step.getId());
+        }
+
+        // Tìm actionUserId dựa trên positionId và departmentId
+        Long actionUserId = null;
+        if (departmentId != null && step.getApproverPositionId() != null) {
+            actionUserId = userService.findUserByPositionIdAndDepartmentId(step.getApproverPositionId(), departmentId,
+                    authToken);
+            log.info("Tìm được actionUserId: {} cho positionId: {}, departmentId: {}",
+                    actionUserId, step.getApproverPositionId(), departmentId);
+        } else {
+            log.warn("Không thể tìm actionUserId vì departmentId: {} hoặc approverPositionId: {} là null",
+                    departmentId, step.getApproverPositionId());
+        }
         // Long assignedUserId = findUserByPositionId(step.getApproverPositionId());
         // if (assignedUserId == null) {
         // log.warn("Không tìm thấy user cho vị trí {} khi tạo bước mới cho request {}",
@@ -946,6 +1155,75 @@ public class ApprovalTrackingService {
     private boolean isReturnPlaceholderTracking(ApprovalTracking tracking) {
         String notes = tracking.getNotes();
         return notes != null && notes.startsWith("Waiting for update after return");
+    }
+
+    /**
+     * Lấy positionId của requester từ user-service
+     */
+    private Long getRequesterPositionId(Long requesterId, String token) {
+        if (requesterId == null) {
+            return null;
+        }
+        try {
+            String url = userServiceBaseUrl + "/api/v1/user-service/employees/" + requesterId;
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+            HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
+            ResponseEntity<Response<com.fasterxml.jackson.databind.JsonNode>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, requestEntity,
+                    new ParameterizedTypeReference<Response<com.fasterxml.jackson.databind.JsonNode>>() {
+                    });
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                com.fasterxml.jackson.databind.JsonNode employee = response.getBody().getData();
+                if (employee.has("position") && employee.get("position").has("id")) {
+                    return employee.get("position").get("id").asLong();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Không thể lấy position của requester {}: {}", requesterId, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Lấy departmentId của requester từ user-service
+     */
+    private Long getRequesterDepartmentId(Long requesterId, String token) {
+        if (requesterId == null) {
+            return null;
+        }
+        try {
+            String url = userServiceBaseUrl + "/api/v1/user-service/employees/" + requesterId;
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+            HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
+            ResponseEntity<Response<com.fasterxml.jackson.databind.JsonNode>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, requestEntity,
+                    new ParameterizedTypeReference<Response<com.fasterxml.jackson.databind.JsonNode>>() {
+                    });
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                com.fasterxml.jackson.databind.JsonNode employee = response.getBody().getData();
+                // Lấy departmentId từ department.id hoặc departmentId
+                if (employee.has("department")) {
+                    com.fasterxml.jackson.databind.JsonNode department = employee.get("department");
+                    if (department.has("id") && !department.get("id").isNull()) {
+                        return department.get("id").asLong();
+                    }
+                }
+                if (employee.has("departmentId") && !employee.get("departmentId").isNull()) {
+                    return employee.get("departmentId").asLong();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Không thể lấy departmentId của requester {}: {}", requesterId, e.getMessage());
+        }
+        return null;
     }
 
     /**

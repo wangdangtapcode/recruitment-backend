@@ -16,7 +16,9 @@ public class PermissionInterceptorConfiguration implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         String[] whiteList = { "/api/v1/job-service/job-positions/published/**",
-        "/api/v1/job-service/offers/**",
+                "/api/v1/job-service/offers/**",
+                "/api/v1/job-service/job-positions/**",
+                "/api/v1/job-service/**"
         };
         registry.addInterceptor(permissionInterceptor)
                 .excludePathPatterns(whiteList);

@@ -36,7 +36,7 @@ public class ScheduleService {
         try {
             String url = scheduleServiceUrl
                     + "/api/v1/schedule-service/schedules?participantId=" + candidateId
-                    + "&participantType=CANDIDATE&status=SCHEDULED";
+                    + "&participantType=CANDIDATE";
             HttpHeaders headers = new HttpHeaders();
             headers.setAccept(List.of(MediaType.APPLICATION_JSON));
             if (token != null && !token.isEmpty()) {
@@ -58,6 +58,42 @@ public class ScheduleService {
             errorNode.put("message", "Không thể kết nối tới Communications Service: " + e.getMessage());
             errorNode.putNull("data");
             return ResponseEntity.internalServerError().body(errorNode);
+        }
+    }
+
+    /**
+     * Lấy danh sách candidateIds mà user đã tham gia phỏng vấn
+     * Gọi API riêng trong schedule-service để lấy danh sách candidateIds
+     * 
+     * @param employeeId Employee ID của user
+     * @param token      JWT token (không cần thiết cho API mới nhưng giữ để tương
+     *                   thích)
+     * @return Danh sách candidate IDs
+     */
+    public List<Long> getCandidateIdsByInterviewer(Long employeeId, String token) {
+        try {
+            String url = scheduleServiceUrl
+                    + "/api/v1/schedule-service/schedules/candidates-by-interviewer/" + employeeId;
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            // Response sẽ bị wrap bởi FormatResponse thành Response<List<Long>>
+            ResponseEntity<Response<List<Long>>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<Response<List<Long>>>() {
+                    });
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                return response.getBody().getData();
+            }
+            return List.of();
+        } catch (Exception e) {
+            // Log error nếu cần
+            return List.of();
         }
     }
 }

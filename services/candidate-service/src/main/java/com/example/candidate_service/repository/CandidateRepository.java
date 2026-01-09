@@ -33,7 +33,8 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
                         "(:candidateId IS NULL OR c.id = :candidateId) AND " +
                         "(:startDate IS NULL OR c.appliedDate >= :startDate) AND " +
                         "(:endDate IS NULL OR c.appliedDate <= :endDate) AND " +
-                        "(:keyword IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
+                        "(:keyword IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND "
+                        +
                         "(:jobPositionIds IS NULL OR c.jobPositionId IN :jobPositionIds)")
         Page<Candidate> findByFilters(
                         @Param("jobPositionId") Long jobPositionId,

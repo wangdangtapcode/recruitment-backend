@@ -24,7 +24,6 @@ import com.example.job_service.dto.recruitment.RecruitmentRequestAllWithUserDTO;
 import com.example.job_service.dto.recruitment.RecruitmentRequestWithUserDTO;
 import com.example.job_service.dto.recruitment.RejectRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.ReturnRecruitmentRequestDTO;
-import com.example.job_service.dto.recruitment.WithdrawRecruitmentRequestDTO;
 import com.example.job_service.exception.IdInvalidException;
 import com.example.job_service.exception.UserClientException;
 import com.example.job_service.messaging.RecruitmentWorkflowEvent;
@@ -164,6 +163,9 @@ public class RecruitmentRequestService {
             String token,
             Pageable pageable) {
         RecruitmentRequestStatus statusEnum = null;
+        if (departmentId != null && departmentId == 1) {
+            departmentId = null;
+        }
         if (status != null && !status.trim().isEmpty()) {
             try {
                 statusEnum = RecruitmentRequestStatus.valueOf(status.toUpperCase());
@@ -227,7 +229,7 @@ public class RecruitmentRequestService {
             // Luôn gọi để lấy workflow info (có thể có tracking ngay cả khi chưa có
             // workflowId trong request)
             JsonNode workflowInfo = workflowServiceClient.getWorkflowInfoByRequestId(
-                    request.getId(), request.getWorkflowId(), token);
+                    request.getId(), request.getWorkflowId(), "REQUEST", token);
             if (workflowInfo != null) {
                 dto.setWorkflowInfo(workflowInfo);
             }
@@ -391,7 +393,7 @@ public class RecruitmentRequestService {
     }
 
     @Transactional
-    public RecruitmentRequest withdraw(Long id, WithdrawRecruitmentRequestDTO dto, Long actorId, String token)
+    public RecruitmentRequest withdraw(Long id, Long actorId, String token)
             throws IdInvalidException {
         RecruitmentRequest request = this.findById(id);
 
@@ -407,10 +409,9 @@ public class RecruitmentRequestService {
         }
 
         request.setStatus(RecruitmentRequestStatus.WITHDRAWN);
-        // request.setApprovalNotes(dto.getReason());
         RecruitmentRequest saved = recruitmentRequestRepository.save(request);
 
-        publishWorkflowEvent("REQUEST_WITHDRAWN", saved, actorId, null, dto.getReason(), null, null, token);
+        publishWorkflowEvent("REQUEST_WITHDRAWN", saved, actorId, null, null, null, null, token);
         return saved;
     }
 

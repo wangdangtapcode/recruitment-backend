@@ -15,6 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.job_service.dto.Response;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @Service
 public class CandidateClient {
@@ -89,5 +92,43 @@ public class CandidateClient {
         }
 
         return counts;
+    }
+
+    /**
+     * Lấy thông tin chi tiết ứng viên theo ID
+     * 
+     * @param candidateId ID của ứng viên
+     * @param token       JWT token
+     * @return Thông tin ứng viên dưới dạng JsonNode
+     */
+    public ResponseEntity<JsonNode> getCandidateById(Long candidateId, String token) {
+        try {
+            String url = candidateServiceUrl + "/api/v1/candidate-service/candidates/" + candidateId;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<Response<JsonNode>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity,
+                    new ParameterizedTypeReference<Response<JsonNode>>() {
+                    });
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                return ResponseEntity.ok(response.getBody().getData());
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            ObjectNode errorNode = objectMapper.createObjectNode();
+            errorNode.put("statusCode", 500);
+            errorNode.put("error", "Internal Server Error");
+            errorNode.put("message", "Không thể kết nối tới Candidate Service: " + e.getMessage());
+            errorNode.putNull("data");
+            return ResponseEntity.internalServerError().body(errorNode);
+        }
     }
 }

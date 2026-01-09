@@ -78,6 +78,14 @@ public class JobPositionService {
                 .orElseThrow(() -> new IdInvalidException("Vị trí tuyển dụng không tồn tại"));
     }
 
+    /**
+     * Lấy job position đơn giản theo ID, không gọi service khác
+     * Dùng cho service-to-service calls
+     */
+    public JobPosition getByIdSimple(Long id) throws IdInvalidException {
+        return findById(id);
+    }
+
     public JobPositionResponseDTO getByIdWithDepartmentName(Long id, String token) throws IdInvalidException {
         JobPosition position = this.findById(id);
         JobPositionResponseDTO dto = JobPositionResponseDTO.fromEntity(position);
@@ -279,6 +287,10 @@ public class JobPositionService {
 
     public PaginationDTO findAllWithFilters(Long departmentId, JobPositionStatus status,
             Boolean published, String keyword, Pageable pageable, String token) {
+                if (departmentId != null && departmentId == 1) {
+                    departmentId = null;
+                }
+
         Page<JobPosition> pageJobPosition = jobPositionRepository.findByFilters(departmentId, status,
                 published, keyword, pageable);
 

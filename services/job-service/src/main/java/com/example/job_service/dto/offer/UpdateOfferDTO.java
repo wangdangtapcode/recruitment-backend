@@ -9,7 +9,9 @@ import java.time.LocalDate;
 @Setter
 public class UpdateOfferDTO {
     private Long candidateId;
-    private Long positionId;
-    private LocalDate probationStartDate;
+    private Long basicSalary;
+    private Integer probationSalaryRate;
+    private LocalDate onboardingDate;
+    private Integer probationPeriod;
     private String notes;
 }

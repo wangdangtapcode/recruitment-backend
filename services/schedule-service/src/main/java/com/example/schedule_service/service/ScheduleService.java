@@ -11,6 +11,7 @@ import com.example.schedule_service.messaging.NotificationProducer;
 import com.example.schedule_service.model.Schedule;
 import com.example.schedule_service.model.ScheduleParticipant;
 import com.example.schedule_service.repository.ScheduleRepository;
+import com.example.schedule_service.utils.SecurityUtil;
 import com.example.schedule_service.repository.ScheduleParticipantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -90,29 +91,27 @@ public class ScheduleService {
         Schedule saved = scheduleRepository.save(savedSchedule);
 
         // Thông báo cho tất cả người tham gia
-        // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
-        // List<Long> participantIds = new java.util.ArrayList<>();
-        // if (request.getEmployeeIds() != null) {
-        // participantIds.addAll(request.getEmployeeIds());
-        // }
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        List<Long> participantIds = new java.util.ArrayList<>();
+        if (request.getUserIds() != null) {
+            participantIds.addAll(request.getUserIds());
+        }
 
-        // if (!participantIds.isEmpty()) {
-        // String scheduleInfo = saved.getTitle() != null ? saved.getTitle() : "Lịch
-        // hẹn";
-        // if (saved.getStartTime() != null) {
-        // scheduleInfo += " vào " + saved.getStartTime();
-        // }
-        // if (saved.getLocation() != null) {
-        // scheduleInfo += " tại " + saved.getLocation();
-        // }
+        if (!participantIds.isEmpty()) {
+            String scheduleInfo = saved.getTitle() != null ? saved.getTitle() : "Lịch hẹn";
+            if (saved.getStartTime() != null) {
+                scheduleInfo += " vào " + saved.getStartTime();
+            }
+            if (saved.getLocation() != null) {
+                scheduleInfo += " tại " + saved.getLocation();
+            }
 
-        // notificationProducer.sendNotificationToMultiple(
-        // participantIds,
-        // "Bạn có lịch hẹn mới",
-        // "Bạn đã được mời tham gia: " + scheduleInfo + ".",
-        // token
-        // );
-        // }
+            notificationProducer.sendNotificationToMultiple(
+                    participantIds,
+                    "Bạn có lịch hẹn mới",
+                    "Bạn đã được mời tham gia: " + scheduleInfo + ".",
+                    token);
+        }
 
         return saved;
     }
@@ -132,7 +131,14 @@ public class ScheduleService {
         schedule.setReminderTime(request.getReminderTime());
 
         // Rebuild participants per new DTO
-        schedule.setParticipants(new HashSet<>());
+        // Không tạo HashSet mới, mà clear collection hiện tại để tránh lỗi orphan
+        // removal
+        if (schedule.getParticipants() == null) {
+            schedule.setParticipants(new HashSet<>());
+        } else {
+            schedule.getParticipants().clear();
+        }
+
         if (request.getCandidateId() != null) {
             ScheduleParticipant candidate = new ScheduleParticipant();
             candidate.setParticipantType("CANDIDATE");
@@ -155,29 +161,27 @@ public class ScheduleService {
         Schedule saved = scheduleRepository.save(schedule);
 
         // Thông báo cho tất cả người tham gia về cập nhật
-        // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
-        // List<Long> participantIds = new java.util.ArrayList<>();
-        // if (request.getEmployeeIds() != null) {
-        // participantIds.addAll(request.getEmployeeIds());
-        // }
+        String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+        List<Long> participantIds = new java.util.ArrayList<>();
+        if (request.getUserIds() != null) {
+            participantIds.addAll(request.getUserIds());
+        }
 
-        // if (!participantIds.isEmpty()) {
-        // String scheduleInfo = saved.getTitle() != null ? saved.getTitle() : "Lịch
-        // hẹn";
-        // if (saved.getStartTime() != null) {
-        // scheduleInfo += " vào " + saved.getStartTime();
-        // }
-        // if (saved.getLocation() != null) {
-        // scheduleInfo += " tại " + saved.getLocation();
-        // }
+        if (!participantIds.isEmpty()) {
+            String scheduleInfo = saved.getTitle() != null ? saved.getTitle() : "Lịch hẹn";
+            if (saved.getStartTime() != null) {
+                scheduleInfo += " vào " + saved.getStartTime();
+            }
+            if (saved.getLocation() != null) {
+                scheduleInfo += " tại " + saved.getLocation();
+            }
 
-        // notificationProducer.sendNotificationToMultiple(
-        // participantIds,
-        // "Lịch hẹn đã được cập nhật",
-        // "Lịch hẹn '" + scheduleInfo + "' đã được cập nhật.",
-        // token
-        // );
-        // }
+            notificationProducer.sendNotificationToMultiple(
+                    participantIds,
+                    "Lịch hẹn đã được cập nhật",
+                    "Lịch hẹn '" + scheduleInfo + "' đã được cập nhật.",
+                    token);
+        }
 
         return saved;
     }
@@ -327,6 +331,7 @@ public class ScheduleService {
         return dto;
     }
 
+    @Transactional
     public Schedule updateScheduleStatus(Long id, String status) {
         Schedule schedule = scheduleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lịch hẹn không tồn tại với id: " + id));
@@ -563,5 +568,15 @@ public class ScheduleService {
                         .title(schedule.getTitle())
                         .build())
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Lấy danh sách candidateIds mà một employee đã tham gia phỏng vấn
+     * 
+     * @param employeeId Employee ID của người phỏng vấn
+     * @return Danh sách candidate IDs
+     */
+    public List<Long> getCandidateIdsByInterviewer(Long employeeId) {
+        return scheduleParticipantRepository.findCandidateIdsByInterviewer(employeeId);
     }
 }

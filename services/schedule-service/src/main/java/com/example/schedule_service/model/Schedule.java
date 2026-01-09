@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.example.schedule_service.utils.enums.MeetingType;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+
 public class Schedule {
 
     @Id
@@ -39,13 +41,16 @@ public class Schedule {
     @Column(name = "end_time")
     private LocalDateTime endTime;
 
-
     private Integer reminderTime;
+
+    @Column(name = "reminder_sent")
+    private Boolean reminderSent = false; // Đánh dấu đã gửi reminder chưa
+
     @Column(name = "room_id")
     private Long roomId;
 
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<ScheduleParticipant> participants;
+    private Set<ScheduleParticipant> participants = new HashSet<>();
 
     private Long createdById; // Lưu employeeId (người tạo lịch hẹn)
 

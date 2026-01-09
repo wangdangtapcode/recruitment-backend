@@ -25,12 +25,12 @@ public class Candidate {
     private Long id;
 
     private String name;
-    @Column(unique = true)
+
     private String email;
 
     private String phone;
 
-    private String dateOfBirth;
+    private LocalDate dateOfBirth;
 
     private String gender;
     private String nationality;
@@ -68,7 +68,7 @@ public class Candidate {
     private Set<Comment> comments;
 
     @OneToMany(mappedBy = "candidate", cascade = CascadeType.ALL)
-    private Set<Review> reviews;
+    private Set<ReviewCandidate> reviews;
 
     @PrePersist
     public void prePersist() {

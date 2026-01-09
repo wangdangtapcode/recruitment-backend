@@ -44,6 +44,12 @@ public class JobPositionController {
         return ResponseEntity.ok(jobPositionService.getByIdWithDepartmentName(id, token));
     }
 
+    @GetMapping("/simple/{id}")
+    @ApiMessage("Lấy thông tin vị trí tuyển dụng đơn giản theo ID (không gọi service khác)")
+    public ResponseEntity<JobPosition> getByIdSimple(@PathVariable Long id) throws IdInvalidException {
+        return ResponseEntity.ok(jobPositionService.getByIdSimple(id));
+    }
+
     @GetMapping
     @ApiMessage("Lấy danh sách vị trí tuyển dụng với bộ lọc, phân trang và sắp xếp")
     public ResponseEntity<PaginationDTO> getAllDetail(

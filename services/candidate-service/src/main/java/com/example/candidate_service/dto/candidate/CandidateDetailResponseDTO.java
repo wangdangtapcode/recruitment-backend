@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.example.candidate_service.dto.comment.CommentResponseDTO;
-import com.example.candidate_service.dto.review.ReviewResponseDTO;
+import com.example.candidate_service.dto.review.ReviewCandidateResponseDTO;
 import com.example.candidate_service.model.Candidate;
 import com.example.candidate_service.utils.enums.CandidateStatus;
 
@@ -19,7 +19,7 @@ public class CandidateDetailResponseDTO {
     private String name;
     private String email;
     private String phone;
-    private String dateOfBirth;
+    private LocalDate dateOfBirth;
     private String gender;
     private String nationality;
     private String idNumber;
@@ -39,7 +39,7 @@ public class CandidateDetailResponseDTO {
     private Long jobPositionId;
 
     // Related data
-    private List<ReviewResponseDTO> reviews;
+    private List<ReviewCandidateResponseDTO> reviews;
     private List<CommentResponseDTO> comments;
     private Object jobPosition; // từ job-service
     private List<Object> upcomingSchedules; // từ communications-service

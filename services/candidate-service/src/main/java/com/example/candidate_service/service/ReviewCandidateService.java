@@ -14,26 +14,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.candidate_service.dto.Meta;
 import com.example.candidate_service.dto.PaginationDTO;
-import com.example.candidate_service.dto.review.CreateReviewDTO;
-import com.example.candidate_service.dto.review.ReviewResponseDTO;
-import com.example.candidate_service.dto.review.UpdateReviewDTO;
+import com.example.candidate_service.dto.review.CreateReviewCandidateDTO;
+import com.example.candidate_service.dto.review.ReviewCandidateResponseDTO;
+import com.example.candidate_service.dto.review.UpdateReviewCandidateDTO;
 import com.example.candidate_service.exception.IdInvalidException;
 import com.example.candidate_service.model.Candidate;
-import com.example.candidate_service.model.Review;
+import com.example.candidate_service.model.ReviewCandidate;
 import com.example.candidate_service.repository.CandidateRepository;
-import com.example.candidate_service.repository.ReviewRepository;
+import com.example.candidate_service.repository.ReviewCandidateRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 
 @Service
-public class ReviewService {
+public class ReviewCandidateService {
 
-    private final ReviewRepository reviewRepository;
+    private final ReviewCandidateRepository reviewCandidateRepository;
     private final CandidateRepository candidateRepository;
     private final UserService userService;
 
-    public ReviewService(ReviewRepository reviewRepository, CandidateRepository candidateRepository,
+    public ReviewCandidateService(ReviewCandidateRepository reviewCandidateRepository,
+            CandidateRepository candidateRepository,
             UserService userService) {
-        this.reviewRepository = reviewRepository;
+        this.reviewCandidateRepository = reviewCandidateRepository;
         this.candidateRepository = candidateRepository;
         this.userService = userService;
     }
@@ -59,11 +60,11 @@ public class ReviewService {
         Pageable pageable = PageRequest.of(page - 1, limit, sort);
 
         // Query with filters
-        Page<Review> reviewPage = reviewRepository.findByFilters(
+        Page<ReviewCandidate> reviewPage = reviewCandidateRepository.findByFilters(
                 candidateId, reviewerId, startDate, endDate, pageable);
 
         // Convert to DTOs
-        List<ReviewResponseDTO> reviewDTOs = convertToResponseList(reviewPage.getContent(), token);
+        List<ReviewCandidateResponseDTO> reviewDTOs = convertToResponseList(reviewPage.getContent(), token);
 
         // Create pagination metadata
         Meta meta = new Meta();
@@ -79,13 +80,13 @@ public class ReviewService {
         return paginationDTO;
     }
 
-    public List<ReviewResponseDTO> getByCandidateId(Long candidateId, String token) {
-        List<Review> reviews = reviewRepository.findByCandidate_Id(candidateId);
+    public List<ReviewCandidateResponseDTO> getByCandidateId(Long candidateId, String token) {
+        List<ReviewCandidate> reviews = reviewCandidateRepository.findByCandidate_Id(candidateId);
         return convertToResponseList(reviews, token);
     }
 
-    public ReviewResponseDTO getById(Long id, String token) throws IdInvalidException {
-        Review review = reviewRepository.findById(id)
+    public ReviewCandidateResponseDTO getById(Long id, String token) throws IdInvalidException {
+        ReviewCandidate review = reviewCandidateRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("Đánh giá không tồn tại"));
 
         JsonNode idToName = null;
@@ -100,22 +101,36 @@ public class ReviewService {
     }
 
     @Transactional
-    public ReviewResponseDTO create(CreateReviewDTO dto, Long reviewerId) throws IdInvalidException {
+    public ReviewCandidateResponseDTO create(CreateReviewCandidateDTO dto, Long reviewerId) throws IdInvalidException {
+        // Validation cho INTERVIEW
+        if (dto.getCandidateId() == null) {
+            throw new IdInvalidException("Candidate ID là bắt buộc cho đánh giá phỏng vấn");
+        }
         Candidate candidate = candidateRepository.findById(dto.getCandidateId())
                 .orElseThrow(() -> new IdInvalidException("Ứng viên không tồn tại"));
 
-        Review review = new Review();
-        review.setCandidate(candidate);
+        ReviewCandidate review = new ReviewCandidate();
         review.setReviewerId(reviewerId);
-        review.setComment(dto.getComment());
+        review.setCandidate(candidate);
 
-        Review saved = reviewRepository.save(review);
+        // INTERVIEW chỉ cần 3 tiêu chí: chuyên môn, giao tiếp, kinh nghiệm
+        review.setProfessionalSkillScore(dto.getProfessionalSkillScore());
+        review.setCommunicationSkillScore(dto.getCommunicationSkillScore());
+        review.setWorkExperienceScore(dto.getWorkExperienceScore());
+
+        // Các trường chung
+        review.setStrengths(dto.getStrengths());
+        review.setWeaknesses(dto.getWeaknesses());
+        review.setConclusion(dto.getConclusion());
+
+        ReviewCandidate saved = reviewCandidateRepository.save(review);
         return convertToResponse(saved, null);
     }
 
     @Transactional
-    public ReviewResponseDTO update(Long id, UpdateReviewDTO dto, Long reviewerId) throws IdInvalidException {
-        Review review = reviewRepository.findById(id)
+    public ReviewCandidateResponseDTO update(Long id, UpdateReviewCandidateDTO dto, Long reviewerId)
+            throws IdInvalidException {
+        ReviewCandidate review = reviewCandidateRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("Đánh giá không tồn tại"));
 
         // Chỉ cho phép người tạo review mới được update
@@ -123,17 +138,35 @@ public class ReviewService {
             throw new IdInvalidException("Bạn không có quyền cập nhật đánh giá này");
         }
 
-        if (dto.getComment() != null) {
-            review.setComment(dto.getComment());
+        // Update INTERVIEW fields
+        if (dto.getProfessionalSkillScore() != null) {
+            review.setProfessionalSkillScore(dto.getProfessionalSkillScore());
+        }
+        if (dto.getCommunicationSkillScore() != null) {
+            review.setCommunicationSkillScore(dto.getCommunicationSkillScore());
+        }
+        if (dto.getWorkExperienceScore() != null) {
+            review.setWorkExperienceScore(dto.getWorkExperienceScore());
         }
 
-        Review saved = reviewRepository.save(review);
+        // Update các trường chung
+        if (dto.getStrengths() != null) {
+            review.setStrengths(dto.getStrengths());
+        }
+        if (dto.getWeaknesses() != null) {
+            review.setWeaknesses(dto.getWeaknesses());
+        }
+        if (dto.getConclusion() != null) {
+            review.setConclusion(dto.getConclusion());
+        }
+
+        ReviewCandidate saved = reviewCandidateRepository.save(review);
         return convertToResponse(saved, null);
     }
 
     @Transactional
     public void delete(Long id, Long reviewerId) throws IdInvalidException {
-        Review review = reviewRepository.findById(id)
+        ReviewCandidate review = reviewCandidateRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("Đánh giá không tồn tại"));
 
         // Chỉ cho phép người tạo review mới được xóa
@@ -141,13 +174,13 @@ public class ReviewService {
             throw new IdInvalidException("Bạn không có quyền xóa đánh giá này");
         }
 
-        reviewRepository.deleteById(id);
+        reviewCandidateRepository.deleteById(id);
     }
 
-    private List<ReviewResponseDTO> convertToResponseList(List<Review> reviews, String token) {
+    private List<ReviewCandidateResponseDTO> convertToResponseList(List<ReviewCandidate> reviews, String token) {
         // Batch fetch reviewer names
         Set<Long> reviewerIds = reviews.stream()
-                .map(Review::getReviewerId)
+                .map(ReviewCandidate::getReviewerId)
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
 
@@ -165,14 +198,37 @@ public class ReviewService {
                 .collect(Collectors.toList());
     }
 
-    private ReviewResponseDTO convertToResponse(Review review, JsonNode idToName) {
-        ReviewResponseDTO dto = new ReviewResponseDTO();
+    private ReviewCandidateResponseDTO convertToResponse(ReviewCandidate review, JsonNode idToName) {
+        ReviewCandidateResponseDTO dto = new ReviewCandidateResponseDTO();
         dto.setId(review.getId());
-        dto.setCandidateId(review.getCandidate().getId());
         dto.setReviewerId(review.getReviewerId());
-        dto.setComment(review.getComment());
         dto.setCreatedAt(review.getCreatedAt());
         dto.setUpdatedAt(review.getUpdatedAt());
+
+        // Set candidateId
+        if (review.getCandidate() != null) {
+            dto.setCandidateId(review.getCandidate().getId());
+        }
+
+        // INTERVIEW: chỉ 3 tiêu chí
+        dto.setProfessionalSkillScore(review.getProfessionalSkillScore());
+        dto.setCommunicationSkillScore(review.getCommunicationSkillScore());
+        dto.setWorkExperienceScore(review.getWorkExperienceScore());
+
+        // Tính điểm trung bình từ 3 tiêu chí
+        if (review.getProfessionalSkillScore() != null &&
+                review.getCommunicationSkillScore() != null &&
+                review.getWorkExperienceScore() != null) {
+            double sum = review.getProfessionalSkillScore() +
+                    review.getCommunicationSkillScore() +
+                    review.getWorkExperienceScore();
+            dto.setAverageScore(sum / 3.0);
+        }
+
+        // Các trường chung
+        dto.setStrengths(review.getStrengths());
+        dto.setWeaknesses(review.getWeaknesses());
+        dto.setConclusion(review.getConclusion());
 
         // Set reviewer name
         if (idToName != null && review.getReviewerId() != null) {
@@ -185,3 +241,4 @@ public class ReviewService {
         return dto;
     }
 }
+

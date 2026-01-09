@@ -170,8 +170,14 @@ public class WorkflowService {
 
     @Transactional
     public WorkflowResponseDTO update(Long id, UpdateWorkflowDTO dto) {
+        // Load workflow với steps để đảm bảo relationship được load
         Workflow workflow = workflowRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("Không tìm thấy workflow với ID: " + id));
+        
+        // Load steps để đảm bảo Set được khởi tạo
+        if (workflow.getSteps() == null) {
+            workflow.setSteps(new java.util.HashSet<>());
+        }
 
         // Kiểm tra tên workflow nếu thay đổi
         if (dto.getName() != null && !dto.getName().equals(workflow.getName())) {
@@ -245,23 +251,20 @@ public class WorkflowService {
 
         // Cập nhật steps nếu có
         if (dto.getSteps() != null) {
-            // Xóa các steps cũ
-            workflowStepRepository.deleteByWorkflowId(id);
-
-            // Tạo các steps mới
-            final Workflow finalWorkflow = workflow;
+            // Xóa tất cả steps cũ bằng cách clear Set
+            // orphanRemoval = true sẽ tự động xóa các steps bị remove khỏi Set
+            workflow.getSteps().clear();
+            
+            // Tạo các steps mới và thêm vào Set
             if (!dto.getSteps().isEmpty()) {
-                List<WorkflowStep> steps = dto.getSteps().stream()
-                        .map(stepDTO -> {
-                            WorkflowStep step = new WorkflowStep();
-                            step.setWorkflow(finalWorkflow);
-                            step.setStepOrder(stepDTO.getStepOrder());
-                            step.setApproverPositionId(stepDTO.getApproverPositionId());
-                            step.setIsActive(true);
-                            return step;
-                        })
-                        .collect(Collectors.toList());
-                workflowStepRepository.saveAll(steps);
+                for (CreateStepDTO stepDTO : dto.getSteps()) {
+                    WorkflowStep step = new WorkflowStep();
+                    step.setWorkflow(workflow);
+                    step.setStepOrder(stepDTO.getStepOrder());
+                    step.setApproverPositionId(stepDTO.getApproverPositionId());
+                    step.setIsActive(true);
+                    workflow.getSteps().add(step);
+                }
             }
         }
 

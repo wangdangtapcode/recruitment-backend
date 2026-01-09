@@ -143,4 +143,82 @@ public class UserService {
         }
     }
 
+    /**
+     * Tạo Employee từ Candidate bằng cách gọi user-service
+     */
+    public ResponseEntity<JsonNode> createEmployeeFromCandidate(
+            Long candidateId,
+            String name,
+            String email,
+            String phone,
+            String dateOfBirth,
+            String gender,
+            String nationality,
+            String idNumber,
+            String address,
+            String avatarUrl,
+            Long departmentId,
+            Long positionId,
+            String status,
+            String token) {
+        try {
+            String url = userServiceUrl + "/api/v1/user-service/employees/from-candidate";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+
+            // Tạo request body
+            ObjectNode requestBody = objectMapper.createObjectNode();
+            requestBody.put("candidateId", candidateId);
+            requestBody.put("name", name);
+            requestBody.put("email", email);
+            requestBody.put("phone", phone);
+            if (dateOfBirth != null) {
+                requestBody.put("dateOfBirth", dateOfBirth);
+            }
+            if (gender != null) {
+                requestBody.put("gender", gender);
+            }
+            if (nationality != null) {
+                requestBody.put("nationality", nationality);
+            }
+            if (idNumber != null) {
+                requestBody.put("idNumber", idNumber);
+            }
+            if (address != null) {
+                requestBody.put("address", address);
+            }
+            if (avatarUrl != null) {
+                requestBody.put("avatarUrl", avatarUrl);
+            }
+            requestBody.put("departmentId", departmentId);
+            requestBody.put("positionId", positionId);
+            if (status != null) {
+                requestBody.put("status", status);
+            }
+
+            HttpEntity<ObjectNode> entity = new HttpEntity<>(requestBody, headers);
+            ResponseEntity<Response<JsonNode>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, entity,
+                    new ParameterizedTypeReference<Response<JsonNode>>() {
+                    });
+
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                return ResponseEntity.ok(response.getBody().getData());
+            }
+            return ResponseEntity.status(response.getStatusCode()).build();
+        } catch (Exception e) {
+            ObjectNode errorNode = objectMapper.createObjectNode();
+            errorNode.put("statusCode", 500);
+            errorNode.put("error", "Internal Server Error");
+            errorNode.put("message", "Không thể kết nối tới User Service: " + e.getMessage());
+            errorNode.putNull("data");
+            return ResponseEntity.internalServerError().body(errorNode);
+        }
+    }
+
 }

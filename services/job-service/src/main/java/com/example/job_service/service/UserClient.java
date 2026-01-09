@@ -147,8 +147,7 @@ public class UserClient {
                         .collect(Collectors.toMap(
                                 emp -> emp.get("id").asLong(),
                                 emp -> emp,
-                                (existing, replacement) -> existing
-                        ));
+                                (existing, replacement) -> existing));
             }
         } catch (Exception e) {
             // Log error và fallback về cách cũ nếu cần

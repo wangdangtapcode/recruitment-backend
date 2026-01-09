@@ -110,11 +110,29 @@ public class WorkflowClient {
      */
     public JsonNode getWorkflowInfoByRequestId(Long requestId, Long workflowId,
             String token) {
+        return getWorkflowInfoByRequestId(requestId, workflowId, null, token);
+    }
+
+    /**
+     * Lấy thông tin workflow và approval tracking theo requestId với requestType
+     */
+    public JsonNode getWorkflowInfoByRequestId(Long requestId, Long workflowId, String requestType,
+            String token) {
         try {
             String url = String.format("%s/api/v1/workflow-service/approval-trackings/by-request/%d",
                     workflowServiceBaseUrl, requestId);
+            StringBuilder queryParams = new StringBuilder();
             if (workflowId != null) {
-                url += "?workflowId=" + workflowId;
+                queryParams.append("workflowId=").append(workflowId);
+            }
+            if (requestType != null && !requestType.trim().isEmpty()) {
+                if (queryParams.length() > 0) {
+                    queryParams.append("&");
+                }
+                queryParams.append("requestType=").append(requestType);
+            }
+            if (queryParams.length() > 0) {
+                url += "?" + queryParams.toString();
             }
 
             HttpHeaders headers = new HttpHeaders();

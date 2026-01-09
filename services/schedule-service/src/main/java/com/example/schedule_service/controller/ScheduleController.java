@@ -37,7 +37,8 @@ public class ScheduleController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Schedule> updateSchedule(@PathVariable Long id, @Valid @RequestBody CreateScheduleDTO request) {
+    public ResponseEntity<Schedule> updateSchedule(@PathVariable Long id,
+            @Valid @RequestBody CreateScheduleDTO request) {
         request.setCreatedById(SecurityUtil.extractEmployeeId());
         Schedule schedule = scheduleService.updateSchedule(id, request);
         return ResponseEntity.ok(schedule);
@@ -75,10 +76,9 @@ public class ScheduleController {
         return ResponseEntity.ok(data);
     }
 
-    @PutMapping("/{id}/status")
+    @PutMapping("/status/{id}")
     public ResponseEntity<Schedule> updateScheduleStatus(
-            @PathVariable Long id, @RequestBody Map<String, String> request) {
-        String status = request.get("status");
+            @PathVariable Long id, @RequestParam String status) {
         Schedule schedule = scheduleService.updateScheduleStatus(id, status);
         return ResponseEntity.ok(schedule);
     }
@@ -133,5 +133,15 @@ public class ScheduleController {
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "meetingType", required = false) String meetingType) {
         return ResponseEntity.ok(scheduleService.getSchedulesForStatistics(startDate, endDate, status, meetingType));
+    }
+
+    /**
+     * Lấy danh sách candidateIds mà một employee đã tham gia phỏng vấn
+     * GET /api/v1/schedule-service/schedules/candidates-by-interviewer/{employeeId}
+     */
+    @GetMapping("/candidates-by-interviewer/{employeeId}")
+    public ResponseEntity<List<Long>> getCandidateIdsByInterviewer(@PathVariable Long employeeId) {
+        List<Long> candidateIds = scheduleService.getCandidateIdsByInterviewer(employeeId);
+        return ResponseEntity.ok(candidateIds);
     }
 }

@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,96 +27,55 @@ public class StatisticsService {
         private final CandidateServiceClient candidateServiceClient;
         private final ScheduleServiceClient communicationServiceClient;
         private final ObjectMapper objectMapper = new ObjectMapper();
+
         /**
          * Lấy thống kê tổng quan với so sánh kỳ trước
          * GET /api/v1/statistics-service/statistics/summary
          * 
-         * @param token      JWT token
-         * @param periodType WEEKLY, MONTHLY, YEARLY (mặc định: WEEKLY)
+         * @param token     JWT token
+         * @param startDate Ngày bắt đầu (mặc định: ngày hiện tại)
+         * @param endDate   Ngày kết thúc (mặc định: 7 ngày sau startDate)
          */
         // @Cacheable(value = "dashboard-stats", key = "'summary-' + #token + '-' +
-        // #periodType")
-        public SummaryStatisticsDTO getSummaryStatistics(String token, String periodType) {
-                log.info("Fetching summary statistics for period: {}", periodType);
-
-                if (periodType == null || periodType.isEmpty()) {
-                        periodType = "WEEKLY";
-                }
-
+        // #startDate + '-' + #endDate")
+        public SummaryStatisticsDTO getSummaryStatistics(String token, LocalDate startDate, LocalDate endDate) {
                 LocalDate today = LocalDate.now();
-                LocalDate periodStart;
-                LocalDate periodEnd;
-                LocalDate previousPeriodStart;
-                LocalDate previousPeriodEnd;
 
-                switch (periodType.toUpperCase()) {
-                        case "MONTHLY": {
-                                YearMonth currentMonth = YearMonth.from(today);
-                                periodStart = currentMonth.atDay(1);
-                                periodEnd = currentMonth.atEndOfMonth();
+                // Nếu startDate không được cung cấp, mặc định là ngày hiện tại
+                LocalDate periodStart = (startDate != null) ? startDate : today;
 
-                                YearMonth previousMonth = currentMonth.minusMonths(1);
-                                previousPeriodStart = previousMonth.atDay(1);
-                                previousPeriodEnd = previousMonth.atEndOfMonth();
-                                break;
-                        }
-                        case "YEARLY": {
-                                periodStart = LocalDate.of(today.getYear(), 1, 1);
-                                periodEnd = LocalDate.of(today.getYear(), 12, 31);
+                // Nếu endDate không được cung cấp, mặc định là 7 ngày sau startDate
+                LocalDate periodEnd = (endDate != null) ? endDate : periodStart.plusDays(7);
 
-                                previousPeriodStart = LocalDate.of(today.getYear() - 1, 1, 1);
-                                previousPeriodEnd = LocalDate.of(today.getYear() - 1, 12, 31);
-                                break;
-                        }
-                        default: // WEEKLY
-                        {
-                                LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1); // Thứ 2
-                                periodStart = weekStart;
-                                periodEnd = weekStart.plusDays(6); // Chủ nhật
-
-                                previousPeriodStart = weekStart.minusWeeks(1);
-                                previousPeriodEnd = previousPeriodStart.plusDays(6);
-                                break;
-                        }
-                }
+                log.info("Fetching summary statistics from {} to {}", periodStart, periodEnd);
 
                 // Lấy departmentId dựa trên role (CEO xem tất cả, MANAGER/STAFF xem phòng ban
                 // của họ)
                 Long departmentId = getDepartmentIdForStatistics();
-                // Gọi 1 lần API để lấy dữ liệu cho cả 2 kỳ (từ previousPeriodStart đến
-                // periodEnd)
-                String startDateStr = previousPeriodStart.format(DateTimeFormatter.ISO_DATE);
+
+                // Gọi API để lấy dữ liệu cho kỳ hiện tại
+                String startDateStr = periodStart.format(DateTimeFormatter.ISO_DATE);
                 String endDateStr = periodEnd.format(DateTimeFormatter.ISO_DATE);
 
                 List<JsonNode> allApplications = candidateServiceClient.getApplicationsForStatistics(
                                 token, null, startDateStr, endDateStr, null, departmentId);
                 List<JsonNode> allSchedules = communicationServiceClient.getSchedulesForStatistics(
-                                token, previousPeriodStart, periodEnd, null, null);
-                // Filter dữ liệu kỳ hiện tại
-                Long currentApplications = (long) filterApplicationsByDateRange(allApplications, periodStart, periodEnd)
-                                .size();
-                Long currentHired = (long) filterApplicationsByDateRangeAndStatus(allApplications, periodStart,
-                                periodEnd, "HIRED").size();
-                Long currentRejected = (long) filterApplicationsByDateRangeAndStatus(allApplications, periodStart,
-                                periodEnd, "REJECTED").size();
-                Long currentInterviews = (long) filterSchedulesByDateRange(allSchedules, periodStart, periodEnd).size();
+                                token, periodStart, periodEnd, null, null);
 
-                // Filter dữ liệu kỳ trước
-                Long previousApplications = (long) filterApplicationsByDateRange(allApplications, previousPeriodStart,
-                                previousPeriodEnd).size();
-                Long previousHired = (long) filterApplicationsByDateRangeAndStatus(allApplications, previousPeriodStart,
-                                previousPeriodEnd, "HIRED").size();
-                Long previousRejected = (long) filterApplicationsByDateRangeAndStatus(allApplications,
-                                previousPeriodStart, previousPeriodEnd, "REJECTED").size();
-                Long previousInterviews = (long) filterSchedulesByDateRange(allSchedules, previousPeriodStart,
-                                previousPeriodEnd).size();
+                // Tính toán các chỉ số
+                Long applications = (long) filterApplicationsByDateRange(allApplications, periodStart, periodEnd)
+                                .size();
+                Long hired = (long) filterApplicationsByDateRangeAndStatus(allApplications, periodStart,
+                                periodEnd, "HIRED").size();
+                Long rejected = (long) filterApplicationsByDateRangeAndStatus(allApplications, periodStart,
+                                periodEnd, "REJECTED").size();
+                Long interviews = (long) filterSchedulesByDateRange(allSchedules, periodStart, periodEnd).size();
 
                 return SummaryStatisticsDTO.builder()
-                                .periodType(periodType.toUpperCase())
-                                .applications(calculateStatisticItem(currentApplications, previousApplications))
-                                .hired(calculateStatisticItem(currentHired, previousHired))
-                                .interviews(calculateStatisticItem(currentInterviews, previousInterviews))
-                                .rejected(calculateStatisticItem(currentRejected, previousRejected))
+                                .applications(applications)
+                                .hired(hired)
+                                .interviews(interviews)
+                                .rejected(rejected)
                                 .build();
         }
 
@@ -277,26 +235,6 @@ public class StatisticsService {
         // HELPER METHODS
         // ===================================================================
 
-        private SummaryStatisticsDTO.StatisticItem calculateStatisticItem(Long current, Long previous) {
-                if (previous == null || previous == 0) {
-                        return SummaryStatisticsDTO.StatisticItem.builder()
-                                        .value(current)
-                                        .changePercent(0.0)
-                                        .isIncrease(null)
-                                        .build();
-                }
-
-                Double changePercent = ((current.doubleValue() - previous.doubleValue()) / previous.doubleValue())
-                                * 100;
-                Boolean isIncrease = current > previous;
-
-                return SummaryStatisticsDTO.StatisticItem.builder()
-                                .value(current)
-                                .changePercent(Math.round(changePercent * 100.0) / 100.0)
-                                .isIncrease(isIncrease)
-                                .build();
-        }
-
         private String formatSalary(BigDecimal min, BigDecimal max) {
                 if (min == null && max == null)
                         return "";
@@ -319,7 +257,6 @@ public class StatisticsService {
                 long thousands = amount.longValue() / 1_000;
                 return String.valueOf(thousands);
         }
-
 
         /**
          * Lấy departmentId dựa trên role và departmentCode để filter dữ liệu
@@ -348,6 +285,10 @@ public class StatisticsService {
                                 return SecurityUtil.extractDepartmentId();
                         }
                         case "MANAGER":
+                                String departmentCode = SecurityUtil.extractDepartmentCode();
+                                if ("HR".equalsIgnoreCase(departmentCode)) {
+                                        return null; // xem tất cả
+                                }
                                 // MANAGER chỉ xem phòng ban của mình
                                 return SecurityUtil.extractDepartmentId();
                         default:

@@ -83,8 +83,10 @@ public class ApprovalTrackingController {
     @ApiMessage("Lấy thông tin workflow và approval tracking theo requestId")
     public ResponseEntity<RequestWorkflowInfoDTO> getWorkflowInfoByRequestId(
             @PathVariable Long requestId,
-            @RequestParam(name = "workflowId", required = false) Long workflowId) {
-        return ResponseEntity.ok(approvalTrackingService.getWorkflowInfoByRequestId(requestId, workflowId));
+            @RequestParam(name = "workflowId", required = false) Long workflowId,
+            @RequestParam(name = "requestType", required = false) String requestType) {
+        return ResponseEntity
+                .ok(approvalTrackingService.getWorkflowInfoByRequestId(requestId, workflowId, requestType));
     }
 
 }

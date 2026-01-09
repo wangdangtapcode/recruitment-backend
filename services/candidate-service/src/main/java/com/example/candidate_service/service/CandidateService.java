@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,15 +39,19 @@ public class CandidateService {
     private final JobService jobService;
     private final ScheduleService communicationService;
     private final CommentService commentService;
-    private final ReviewService reviewService;
+    private final ReviewCandidateService reviewCandidateService;
+    private final UserService userService;
 
     public CandidateService(CandidateRepository candidateRepository, JobService jobService,
-            ScheduleService communicationService, CommentService commentService, ReviewService reviewService) {
+            ScheduleService communicationService, CommentService commentService,
+            ReviewCandidateService reviewCandidateService,
+            UserService userService) {
         this.candidateRepository = candidateRepository;
         this.jobService = jobService;
         this.communicationService = communicationService;
         this.commentService = commentService;
-        this.reviewService = reviewService;
+        this.reviewCandidateService = reviewCandidateService;
+        this.userService = userService;
     }
 
     public boolean existsByEmail(String email) {
@@ -225,7 +230,8 @@ public class CandidateService {
         Optional.ofNullable(dto.getName()).ifPresent(existing::setName);
         Optional.ofNullable(dto.getEmail()).ifPresent(existing::setEmail);
         Optional.ofNullable(dto.getPhone()).ifPresent(existing::setPhone);
-        Optional.ofNullable(dto.getDateOfBirth()).ifPresent(existing::setDateOfBirth);
+        Optional.ofNullable(dto.getDateOfBirth())
+                .ifPresent(dateOfBirth -> existing.setDateOfBirth(LocalDate.parse(dateOfBirth)));
         Optional.ofNullable(dto.getGender()).ifPresent(existing::setGender);
         Optional.ofNullable(dto.getNationality()).ifPresent(existing::setNationality);
         Optional.ofNullable(dto.getIdNumber()).ifPresent(existing::setIdNumber);
@@ -309,7 +315,7 @@ public class CandidateService {
         }
         // Reviews
         try {
-            dto.setReviews(reviewService.getByCandidateId(candidate.getId(), token));
+            dto.setReviews(reviewCandidateService.getByCandidateId(candidate.getId(), token));
         } catch (Exception e) {
             dto.setReviews(new ArrayList<>());
         }
@@ -333,6 +339,198 @@ public class CandidateService {
             }
         }
         return dto;
+    }
+
+    /**
+     * Lấy departmentId từ candidateId (dùng nội bộ cho các service khác)
+     *
+     * @param candidateId ID của candidate
+     * @param token       JWT token để xác thực (dùng khi gọi job-service)
+     * @return Department ID hoặc null nếu không tìm thấy
+     */
+    public Long getDepartmentIdByCandidateId(Long candidateId, String token) {
+        Candidate candidate = candidateRepository.findById(candidateId).orElse(null);
+        if (candidate == null || candidate.getJobPositionId() == null) {
+            return null;
+        }
+
+        try {
+            ResponseEntity<JsonNode> jobPositionResponse = jobService
+                    .getJobPositionByIdSimple(candidate.getJobPositionId(), token);
+            if (jobPositionResponse.getStatusCode().is2xxSuccessful() && jobPositionResponse.getBody() != null) {
+                JsonNode jobPosition = jobPositionResponse.getBody();
+
+                // Response đã là jobPosition object trực tiếp (không có wrapper data)
+                // Lấy departmentId từ recruitmentRequest.departmentId
+                if (jobPosition.has("recruitmentRequest")
+                        && !jobPosition.get("recruitmentRequest").isNull()) {
+                    JsonNode recruitmentRequest = jobPosition.get("recruitmentRequest");
+                    if (recruitmentRequest.has("departmentId")
+                            && !recruitmentRequest.get("departmentId").isNull()) {
+                        return recruitmentRequest.get("departmentId").asLong();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching departmentId for candidate " + candidateId + ": " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Lấy danh sách ứng viên mà người request đã tham gia phỏng vấn
+     * 
+     * @param employeeId Employee ID của người request
+     * @param token      JWT token
+     * @return Danh sách ứng viên (format đơn giản như getAllCandidates)
+     */
+    public List<CandidateGetAllResponseDTO> getCandidatesByInterviewer(Long employeeId, String token) {
+        // Lấy danh sách candidateIds từ schedule-service
+        List<Long> candidateIds = communicationService.getCandidateIdsByInterviewer(employeeId, token);
+        if (candidateIds.isEmpty()) {
+            return List.of();
+        }
+
+        // Lấy thông tin candidates từ candidateIds
+        List<Candidate> candidates = candidateRepository.findAllById(candidateIds);
+
+        // Batch fetch jobPosition info để lấy title và departmentId
+        Set<Long> jobPositionIds = candidates.stream()
+                .map(Candidate::getJobPositionId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        Map<Long, String> idToTitle = new HashMap<>();
+        Map<Long, Long> idToDepartmentId = new HashMap<>();
+
+        if (!jobPositionIds.isEmpty() && token != null && !token.isEmpty()) {
+            // Batch fetch job positions
+            Map<Long, JsonNode> jobPositions = jobService.getJobPositionsByIdsSimple(
+                    new ArrayList<>(jobPositionIds), token);
+
+            // Extract info từ job positions
+            for (Long jpId : jobPositionIds) {
+                JsonNode body = jobPositions.get(jpId);
+                if (body != null) {
+                    if (body.has("title")) {
+                        idToTitle.put(jpId, body.get("title").asText());
+                    }
+                    // Lấy departmentId từ recruitmentRequest.departmentId
+                    if (body.has("recruitmentRequest") && !body.get("recruitmentRequest").isNull()) {
+                        JsonNode rr = body.get("recruitmentRequest");
+                        if (rr != null && rr.has("departmentId") && !rr.get("departmentId").isNull()) {
+                            idToDepartmentId.put(jpId, rr.get("departmentId").asLong());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Convert sang DTO và enrich với thông tin bổ sung
+        return candidates.stream()
+                .map(candidate -> {
+                    CandidateGetAllResponseDTO dto = CandidateGetAllResponseDTO.fromEntity(candidate);
+                    if (dto.getJobPositionId() != null) {
+                        dto.setJobPositionTitle(idToTitle.get(dto.getJobPositionId()));
+                        dto.setDepartmentId(idToDepartmentId.get(dto.getJobPositionId()));
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Chuyển Candidate thành Employee
+     * Lấy thông tin candidate, sau đó gọi user-service để tạo employee
+     */
+    @Transactional
+    public JsonNode convertCandidateToEmployee(Long candidateId, Long departmentId, Long positionId, String token)
+            throws IdInvalidException {
+        // Lấy thông tin candidate
+        Candidate candidate = candidateRepository.findById(candidateId)
+                .orElseThrow(() -> new IdInvalidException("Ứng viên không tồn tại"));
+
+        // Nếu chưa có departmentId hoặc positionId, cố gắng lấy từ jobPosition
+        Long finalDepartmentId = departmentId;
+        Long finalPositionId = positionId;
+
+        if ((finalDepartmentId == null || finalPositionId == null) && candidate.getJobPositionId() != null) {
+            try {
+                ResponseEntity<JsonNode> jobPositionResponse = jobService.getJobPositionById(
+                        candidate.getJobPositionId(), token);
+                if (jobPositionResponse.getStatusCode().is2xxSuccessful()
+                        && jobPositionResponse.getBody() != null) {
+                    // Response bị wrap bởi FormatResponse, cần lấy data field
+                    JsonNode responseBody = jobPositionResponse.getBody();
+                    JsonNode jobPosition = null;
+
+                    // Kiểm tra xem có data field không (FormatResponse wrap)
+                    if (responseBody.has("data")) {
+                        jobPosition = responseBody.get("data");
+                    } else {
+                        // Nếu không có data field, có thể responseBody chính là jobPosition
+                        jobPosition = responseBody;
+                    }
+
+                    if (jobPosition != null) {
+                        // Ưu tiên lấy departmentId trực tiếp từ jobPosition (nếu có)
+                        if (finalDepartmentId == null && jobPosition.has("departmentId")
+                                && !jobPosition.get("departmentId").isNull()) {
+                            finalDepartmentId = jobPosition.get("departmentId").asLong();
+                        }
+                        // Nếu không có, lấy từ recruitmentRequest
+                        else if (finalDepartmentId == null && jobPosition.has("recruitmentRequest")) {
+                            JsonNode recruitmentRequest = jobPosition.get("recruitmentRequest");
+                            if (recruitmentRequest != null && recruitmentRequest.has("departmentId")
+                                    && !recruitmentRequest.get("departmentId").isNull()) {
+                                finalDepartmentId = recruitmentRequest.get("departmentId").asLong();
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore errors, sẽ dùng giá trị từ parameter
+            }
+        }
+
+        // Validate departmentId và positionId
+        if (finalDepartmentId == null) {
+            throw new IdInvalidException(
+                    "Department ID là bắt buộc. Vui lòng cung cấp hoặc đảm bảo candidate có jobPosition với departmentId");
+        }
+        if (finalPositionId == null) {
+            throw new IdInvalidException("Position ID là bắt buộc. Vui lòng cung cấp positionId");
+        }
+
+        // Gọi user-service để tạo employee
+        // Convert LocalDate sang String
+        String dateOfBirthStr = null;
+        if (candidate.getDateOfBirth() != null) {
+            dateOfBirthStr = candidate.getDateOfBirth().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        }
+
+        ResponseEntity<JsonNode> employeeResponse = userService.createEmployeeFromCandidate(
+                candidate.getId(),
+                candidate.getName(),
+                candidate.getEmail(),
+                candidate.getPhone(),
+                dateOfBirthStr,
+                candidate.getGender(),
+                candidate.getNationality(),
+                candidate.getIdNumber(),
+                candidate.getAddress(),
+                candidate.getAvatarUrl(),
+                finalDepartmentId,
+                finalPositionId,
+                "PROBATION", // Mặc định status là PROBATION
+                token);
+
+        if (employeeResponse.getStatusCode().is2xxSuccessful() && employeeResponse.getBody() != null) {
+            return employeeResponse.getBody();
+        } else {
+            throw new IdInvalidException("Không thể tạo nhân viên từ ứng viên: "
+                    + (employeeResponse.getBody() != null ? employeeResponse.getBody().toString() : "Unknown error"));
+        }
     }
 
     public List<CandidateStatisticsDTO> getCandidatesForStatistics(CandidateStatus status,

@@ -26,19 +26,32 @@ public class Offer {
     private Long candidateId;
 
     /**
-     * ID của vị trí (position)
+     * Lương cơ bản (VNĐ)
      */
-    @Column(name = "position_id", nullable = false)
-    private Long positionId;
+    @Column(name = "basic_salary")
+    private Long basicSalary;
 
     /**
-     * Ngày bắt đầu thử việc
+     * Tỷ lệ lương thử việc (%)
+     * Ví dụ: 85 = 85% lương chính thức
      */
-    @Column(name = "probation_start_date")
-    private LocalDate probationStartDate;
+    @Column(name = "probation_salary_rate")
+    private Integer probationSalaryRate;
 
     /**
-     * Ghi chú về lương
+     * Ngày onboarding
+     */
+    @Column(name = "onboarding_date")
+    private LocalDate onboardingDate;
+
+    /**
+     * Thời gian thử việc (tháng)
+     */
+    @Column(name = "probation_period")
+    private Integer probationPeriod;
+
+    /**
+     * Ghi chú về offer
      */
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
@@ -65,19 +78,6 @@ public class Offer {
      */
     @Column(name = "workflow_id")
     private Long workflowId;
-
-    /**
-     * ID của department
-     */
-    @Column(name = "department_id")
-    private Long departmentId;
-
-    /**
-     * Bước workflow hiện tại
-     * NULL nếu chưa submit hoặc đã kết thúc
-     */
-    @Column(name = "current_step_id")
-    private Long currentStepId;
 
     /**
      * Ngày gửi đi (khác ngày tạo nháp)

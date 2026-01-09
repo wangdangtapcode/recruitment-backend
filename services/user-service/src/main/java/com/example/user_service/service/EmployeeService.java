@@ -9,9 +9,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
 import com.example.user_service.dto.Meta;
 import com.example.user_service.dto.PaginationDTO;
 import com.example.user_service.dto.employee.CreateEmployeeDTO;
+import com.example.user_service.dto.employee.CreateEmployeeFromCandidateDTO;
 import com.example.user_service.dto.employee.UpdateEmployeeDTO;
 import com.example.user_service.exception.CustomException;
 import com.example.user_service.model.Department;
@@ -128,6 +133,9 @@ public class EmployeeService {
 
     public PaginationDTO getAllWithFilters(Long departmentId, Long positionId, String status, String keyword,
             Pageable pageable) {
+        if (positionId != null && positionId == 1L && departmentId != null) {
+            departmentId = 1L;
+        }
         Page<Employee> pageEmployee = this.employeeRepository.findByFilters(departmentId, positionId, status, keyword,
                 pageable);
         PaginationDTO rs = new PaginationDTO();
@@ -151,5 +159,82 @@ public class EmployeeService {
 
     public String uploadAvatar(MultipartFile file) {
         return this.cloudinaryService.uploadFile(file);
+    }
+
+    /**
+     * Tạo Employee từ Candidate
+     * Mapping thông tin từ Candidate sang Employee
+     */
+    public Employee createFromCandidate(CreateEmployeeFromCandidateDTO dto) {
+        Employee employee = new Employee();
+
+        // Mapping các trường cơ bản từ Candidate
+        employee.setName(dto.getName());
+        employee.setEmail(dto.getEmail());
+        employee.setPhone(dto.getPhone());
+        employee.setGender(dto.getGender());
+        employee.setNationality(dto.getNationality());
+        employee.setIdNumber(dto.getIdNumber());
+        employee.setAddress(dto.getAddress());
+        employee.setAvatarUrl(dto.getAvatarUrl());
+
+        // Parse dateOfBirth từ String sang LocalDate
+        if (dto.getDateOfBirth() != null && !dto.getDateOfBirth().isEmpty()) {
+            try {
+                // Thử parse các format phổ biến
+                LocalDate parsedDate = null;
+                String[] formats = {
+                        "yyyy-MM-dd",
+                        "dd/MM/yyyy",
+                        "dd-MM-yyyy",
+                        "yyyy/MM/dd"
+                };
+
+                for (String format : formats) {
+                    try {
+                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
+                        parsedDate = LocalDate.parse(dto.getDateOfBirth(), formatter);
+                        break;
+                    } catch (DateTimeParseException e) {
+                        // Thử format tiếp theo
+                    }
+                }
+
+                if (parsedDate == null) {
+                    // Nếu không parse được, thử ISO format
+                    parsedDate = LocalDate.parse(dto.getDateOfBirth());
+                }
+
+                employee.setDateOfBirth(parsedDate);
+            } catch (Exception e) {
+                throw new CustomException("Định dạng ngày sinh không hợp lệ: " + dto.getDateOfBirth());
+            }
+        }
+
+        // Set candidateId để track
+        employee.setCandidateId(dto.getCandidateId());
+
+        // Set status (mặc định PROBATION khi chuyển từ candidate)
+        employee.setStatus(dto.getStatus() != null ? dto.getStatus() : "PROBATION");
+
+        // Set Department
+        if (dto.getDepartmentId() != null) {
+            Department department = this.departmentService.getById(dto.getDepartmentId());
+            if (department == null) {
+                throw new CustomException("Phòng ban không tồn tại");
+            }
+            employee.setDepartment(department);
+        }
+
+        // Set Position
+        if (dto.getPositionId() != null) {
+            Position position = this.positionService.getById(dto.getPositionId());
+            if (position == null) {
+                throw new CustomException("Vị trí không tồn tại");
+            }
+            employee.setPosition(position);
+        }
+
+        return this.employeeRepository.save(employee);
     }
 }

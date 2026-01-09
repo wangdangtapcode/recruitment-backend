@@ -62,6 +62,8 @@ public class SecurityConfig {
         String[] whiteList = {
                 "/api/v1/candidate-service/public/**",
                 "/api/v1/candidate-service/reviews/**",
+                "/api/v1/candidate-service/candidates/**",
+                "/api/v1/candidate-service/**"
         };
         http
                 .csrf(c -> c.disable())

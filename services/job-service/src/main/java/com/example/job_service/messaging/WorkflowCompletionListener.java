@@ -60,7 +60,6 @@ public class WorkflowCompletionListener {
                     Offer offer = offerRepository.findById(event.getRequestId()).orElse(null);
                     if (offer != null && offer.getStatus() == OfferStatus.PENDING) {
                         offer.setStatus(OfferStatus.APPROVED);
-                        offer.setCurrentStepId(null);
                         offerRepository.save(offer);
                         log.info("Offer {} đã được chuyển sang APPROVED sau khi hoàn thành workflow",
                                 event.getRequestId());
@@ -80,7 +79,6 @@ public class WorkflowCompletionListener {
                         Offer offer = offerRepository.findById(event.getRequestId()).orElse(null);
                         if (offer != null && offer.getStatus() == OfferStatus.PENDING) {
                             offer.setStatus(OfferStatus.APPROVED);
-                            offer.setCurrentStepId(null);
                             offerRepository.save(offer);
                             log.info("Offer {} đã được chuyển sang APPROVED sau khi hoàn thành workflow (fallback)",
                                     event.getRequestId());

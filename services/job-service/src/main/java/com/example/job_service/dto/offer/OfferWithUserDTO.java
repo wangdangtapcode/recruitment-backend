@@ -14,9 +14,10 @@ public class OfferWithUserDTO {
     private Long id;
     private Long candidateId;
     private JsonNode candidate; // Thông tin ứng viên từ candidate-service
-    private Long positionId;
-    private JsonNode position; // Thông tin vị trí từ job-service
-    private LocalDate probationStartDate;
+    private Long basicSalary;
+    private Integer probationSalaryRate;
+    private LocalDate onboardingDate;
+    private Integer probationPeriod;
     private String notes;
     private OfferStatus status;
     private Long requesterId;
@@ -24,27 +25,29 @@ public class OfferWithUserDTO {
     private Long ownerUserId;
     private Long workflowId;
     private JsonNode workflowInfo; // Thông tin workflow và approval tracking
-    private Long departmentId;
-    private JsonNode department;
-    private Long currentStepId;
     private LocalDateTime submittedAt;
     private boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // Thông tin bổ sung từ candidate và job position
+    private String jobPositionTitle; // Vị trí ứng tuyển (từ JobPosition.title)
+    private String departmentName; // Tên phòng ban (từ Department.name)
+    private String levelName; // Tên cấp bậc (từ Level.name hoặc Position.level)
+
     public static OfferWithUserDTO fromEntity(Offer entity) {
         OfferWithUserDTO dto = new OfferWithUserDTO();
         dto.setId(entity.getId());
         dto.setCandidateId(entity.getCandidateId());
-        dto.setPositionId(entity.getPositionId());
-        dto.setProbationStartDate(entity.getProbationStartDate());
+        dto.setBasicSalary(entity.getBasicSalary());
+        dto.setProbationSalaryRate(entity.getProbationSalaryRate());
+        dto.setOnboardingDate(entity.getOnboardingDate());
+        dto.setProbationPeriod(entity.getProbationPeriod());
         dto.setNotes(entity.getNotes());
         dto.setStatus(entity.getStatus());
         dto.setRequesterId(entity.getRequesterId());
         dto.setOwnerUserId(entity.getOwnerUserId());
         dto.setWorkflowId(entity.getWorkflowId());
-        dto.setDepartmentId(entity.getDepartmentId());
-        dto.setCurrentStepId(entity.getCurrentStepId());
         dto.setSubmittedAt(entity.getSubmittedAt());
         dto.setActive(entity.getIsActive());
         dto.setCreatedAt(entity.getCreatedAt());

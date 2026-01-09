@@ -16,7 +16,7 @@ public class CandidateGetAllResponseDTO {
     private String name;
     private String email;
     private String phone;
-    private String dateOfBirth;
+    private LocalDate dateOfBirth;
     private String gender;
     private String nationality;
     private String idNumber;

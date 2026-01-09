@@ -247,4 +247,38 @@ public class JobService {
     public Map<Long, JsonNode> getJobPositionsByIds(List<Long> ids, String token) {
         return getJobPositionsByIdsSimple(ids, token);
     }
+
+    public ResponseEntity<JsonNode> getJobPositionByIdSimple(Long id, String token) {
+        try {
+            String url = jobServiceUrl + "/api/v1/job-service/job-positions/simple/" + id;
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            if (token != null && !token.isEmpty()) {
+                headers.setBearerAuth(token);
+            }
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            // Gọi API simple mới, response sẽ được wrap trong Response<JobPosition>
+            // Parse response thành JsonNode
+            ResponseEntity<JsonNode> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity, JsonNode.class);
+
+            if (response.getBody() != null) {
+                // Response có format: {"statusCode": 200, "data": {...}, ...}
+                JsonNode responseBody = response.getBody();
+                if (responseBody.has("data") && !responseBody.get("data").isNull()) {
+                    return ResponseEntity.ok(responseBody.get("data"));
+                }
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            ObjectNode errorNode = objectMapper.createObjectNode();
+            errorNode.put("statusCode", 500);
+            errorNode.put("error", "Internal Server Error");
+            errorNode.put("message", "Không thể kết nối tới Job Service: " + e.getMessage());
+            errorNode.putNull("data");
+            return ResponseEntity.internalServerError().body(errorNode);
+        }
+    }
+
 }

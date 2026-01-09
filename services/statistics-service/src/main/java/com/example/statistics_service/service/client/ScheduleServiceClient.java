@@ -44,6 +44,7 @@ public class ScheduleServiceClient {
                 builder.queryParam("participantType", participantType);
             }
 
+            builder.queryParam("status", "SCHEDULED");
             String url = builder.build().toUriString();
 
             HttpHeaders headers = new HttpHeaders();

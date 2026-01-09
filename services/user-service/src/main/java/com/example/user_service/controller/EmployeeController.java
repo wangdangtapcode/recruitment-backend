@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.user_service.dto.PaginationDTO;
 import com.example.user_service.dto.employee.CreateEmployeeDTO;
+import com.example.user_service.dto.employee.CreateEmployeeFromCandidateDTO;
 import com.example.user_service.dto.employee.UpdateEmployeeDTO;
 import com.example.user_service.exception.CustomException;
 import com.example.user_service.model.Employee;
@@ -127,5 +128,12 @@ public class EmployeeController {
     public ResponseEntity<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
         String avatarUrl = this.employeeService.uploadAvatar(file);
         return ResponseEntity.ok(avatarUrl);
+    }
+
+    @PostMapping("/from-candidate")
+    @ApiMessage("Tạo nhân viên từ ứng viên")
+    public ResponseEntity<Employee> createFromCandidate(@Valid @RequestBody CreateEmployeeFromCandidateDTO dto) {
+        Employee employee = this.employeeService.createFromCandidate(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(employee);
     }
 }

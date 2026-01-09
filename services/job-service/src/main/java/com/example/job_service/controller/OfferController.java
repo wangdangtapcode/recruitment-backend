@@ -1,7 +1,9 @@
 package com.example.job_service.controller;
 
-import java.util.Optional;
+import java.time.LocalDate;
+import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -10,11 +12,10 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.job_service.dto.PaginationDTO;
-import com.example.job_service.dto.SingleResponseDTO;
 import com.example.job_service.dto.offer.ApproveOfferDTO;
 import com.example.job_service.dto.offer.CancelOfferDTO;
 import com.example.job_service.dto.offer.CreateOfferDTO;
-import com.example.job_service.dto.offer.OfferWithUserDTO;
+import com.example.job_service.dto.offer.OfferDetailDTO;
 import com.example.job_service.dto.offer.RejectOfferDTO;
 import com.example.job_service.dto.offer.ReturnOfferDTO;
 import com.example.job_service.dto.offer.UpdateOfferDTO;
@@ -122,39 +123,43 @@ public class OfferController {
     }
 
     @GetMapping("/{id}")
-    @ApiMessage("Lấy offer tiền lương theo id")
-    public ResponseEntity<SingleResponseDTO<OfferWithUserDTO>> getById(@PathVariable Long id)
+    @ApiMessage("Lấy offer tiền lương theo id (chi tiết)")
+    public ResponseEntity<OfferDetailDTO> getById(@PathVariable Long id)
             throws IdInvalidException {
         String token = SecurityUtil.getCurrentUserJWT().orElse(null);
         if (token == null) {
             throw new RuntimeException("Token không hợp lệ");
         }
-        return ResponseEntity.ok(offerService.getByIdWithUserAndMetadata(id, token));
+        OfferDetailDTO detail = offerService.getByIdDetail(id, token);
+        return ResponseEntity.ok(detail);
     }
 
     // @GetMapping("/department/{departmentId}")
     // @ApiMessage("Lấy danh sách offer tiền lương theo phòng ban")
     // public ResponseEntity<PaginationDTO> getAllByDepartmentId(
-    //         @PathVariable Long departmentId,
-    //         @RequestParam(name = "currentPage", defaultValue = "1", required = false) Optional<String> currentPageOptional,
-    //         @RequestParam(name = "pageSize", defaultValue = "10", required = false) Optional<String> pageSizeOptional) {
-    //     String sCurrentPage = currentPageOptional.orElse("1");
-    //     String sPageSize = pageSizeOptional.orElse("10");
+    // @PathVariable Long departmentId,
+    // @RequestParam(name = "currentPage", defaultValue = "1", required = false)
+    // Optional<String> currentPageOptional,
+    // @RequestParam(name = "pageSize", defaultValue = "10", required = false)
+    // Optional<String> pageSizeOptional) {
+    // String sCurrentPage = currentPageOptional.orElse("1");
+    // String sPageSize = pageSizeOptional.orElse("10");
 
-    //     int current = Integer.parseInt(sCurrentPage);
-    //     int pageSize = Integer.parseInt(sPageSize);
-    //     Pageable pageable = PageRequest.of(current - 1, pageSize);
-    //     String token = SecurityUtil.getCurrentUserJWT().orElse(null);
-    //     if (token == null) {
-    //         throw new RuntimeException("Token không hợp lệ");
-    //     }
-    //     return ResponseEntity.ok(offerService.getAllByDepartmentIdWithUser(departmentId, token, pageable));
+    // int current = Integer.parseInt(sCurrentPage);
+    // int pageSize = Integer.parseInt(sPageSize);
+    // Pageable pageable = PageRequest.of(current - 1, pageSize);
+    // String token = SecurityUtil.getCurrentUserJWT().orElse(null);
+    // if (token == null) {
+    // throw new RuntimeException("Token không hợp lệ");
+    // }
+    // return
+    // ResponseEntity.ok(offerService.getAllByDepartmentIdWithUser(departmentId,
+    // token, pageable));
     // }
 
     @GetMapping
     @ApiMessage("Lấy danh sách offer tiền lương với bộ lọc, phân trang và sắp xếp")
     public ResponseEntity<PaginationDTO> getAll(
-            @RequestParam(name = "departmentId", required = false) Long departmentId,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "createdBy", required = false) Long createdBy,
             @RequestParam(name = "keyword", required = false) String keyword,
@@ -177,8 +182,25 @@ public class OfferController {
             throw new RuntimeException("Token không hợp lệ");
         }
 
-        return ResponseEntity.ok(offerService.getAllWithFilters(departmentId, status, createdBy, keyword, token,
+        return ResponseEntity.ok(offerService.getAllWithFilters(status, createdBy, keyword, token,
                 pageable));
+    }
+
+    @GetMapping("/simple")
+    @ApiMessage("Lấy danh sách offer tiền lương đơn giản")
+    public ResponseEntity<List<Offer>> getAllSimple(
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "candidateId", required = false) Long candidateId,
+            @RequestParam(name = "workflowId", required = false) Long workflowId,
+            @RequestParam(name = "ownerUserId", required = false) Long ownerUserId,
+            @RequestParam(name = "minSalary", required = false) Long minSalary,
+            @RequestParam(name = "maxSalary", required = false) Long maxSalary,
+            @RequestParam(name = "onboardingDateFrom", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate onboardingDateFrom,
+            @RequestParam(name = "onboardingDateTo", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate onboardingDateTo,
+            @RequestParam(name = "keyword", required = false) String keyword) {
+        return ResponseEntity.ok(offerService.findAllWithFilters(status, candidateId,
+                workflowId, ownerUserId, minSalary, maxSalary, onboardingDateFrom, onboardingDateTo,
+                keyword));
     }
 
     @PutMapping("/{id}")
@@ -195,4 +217,3 @@ public class OfferController {
         return ResponseEntity.noContent().build();
     }
 }
-

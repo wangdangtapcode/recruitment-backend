@@ -16,7 +16,6 @@ import com.example.job_service.dto.recruitment.CreateRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.RecruitmentRequestWithUserDTO;
 import com.example.job_service.dto.recruitment.RejectRecruitmentRequestDTO;
 import com.example.job_service.dto.recruitment.ReturnRecruitmentRequestDTO;
-import com.example.job_service.dto.recruitment.WithdrawRecruitmentRequestDTO;
 import com.example.job_service.exception.IdInvalidException;
 import com.example.job_service.model.RecruitmentRequest;
 import com.example.job_service.service.RecruitmentRequestService;
@@ -175,14 +174,13 @@ public class RecruitmentRequestController {
     @PostMapping("/withdraw/{id}")
     @ApiMessage("Rút lại yêu cầu tuyển dụng (chỉ submitter/owner mới có thể rút)")
     public ResponseEntity<RecruitmentRequest> withdrawRequest(
-            @PathVariable Long id,
-            @Validated @RequestBody WithdrawRecruitmentRequestDTO dto) throws IdInvalidException {
+            @PathVariable Long id) throws IdInvalidException {
         Long actorId = SecurityUtil.extractEmployeeId();
         String token = SecurityUtil.getCurrentUserJWT().orElse(null);
         if (token == null) {
             throw new RuntimeException("Token không hợp lệ");
         }
-        return ResponseEntity.ok(recruitmentRequestService.withdraw(id, dto, actorId, token));
+        return ResponseEntity.ok(recruitmentRequestService.withdraw(id, actorId, token));
     }
 
 }

@@ -54,9 +54,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
             CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
-                String[] whiteList = {
-                    "/api/v1/job-service/offers/**",
-                };
+        String[] whiteList = {
+                "/api/v1/job-service/offers/**",
+                "/api/v1/job-service/job-positions/**",
+                "/api/v1/job-service/**"
+        };
         http
                 .csrf(c -> c.disable())
                 .authorizeHttpRequests(

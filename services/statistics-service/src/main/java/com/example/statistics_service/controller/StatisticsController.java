@@ -6,9 +6,11 @@ import com.example.statistics_service.utils.SecurityUtil;
 import com.example.statistics_service.utils.annotation.ApiMessage;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,16 +25,18 @@ public class StatisticsController {
      * Lấy thống kê tổng quan với so sánh kỳ trước
      * GET /api/v1/statistics-service/statistics/summary
      * 
-     * @param periodType WEEKLY (mặc định), MONTHLY, YEARLY
+     * @param startDate Ngày bắt đầu (mặc định: ngày hiện tại)
+     * @param endDate   Ngày kết thúc (mặc định: 7 ngày sau startDate)
      */
     @GetMapping("/summary")
     @ApiMessage("Lấy thống kê tổng quan - Hồ sơ ứng tuyển, Tuyển, Phỏng vấn, Từ chối")
     public ResponseEntity<SummaryStatisticsDTO> getSummaryStatistics(
-            @RequestParam(name = "periodType", defaultValue = "WEEKLY", required = false) String periodType) {
+            @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         Optional<String> tokenOpt = SecurityUtil.getCurrentUserJWT();
         String token = tokenOpt.orElse(null);
 
-        SummaryStatisticsDTO statistics = statisticsService.getSummaryStatistics(token, periodType);
+        SummaryStatisticsDTO statistics = statisticsService.getSummaryStatistics(token, startDate, endDate);
         return ResponseEntity.ok(statistics);
     }
 
