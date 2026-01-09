@@ -173,7 +173,7 @@ public class WorkflowService {
         // Load workflow với steps để đảm bảo relationship được load
         Workflow workflow = workflowRepository.findById(id)
                 .orElseThrow(() -> new IdInvalidException("Không tìm thấy workflow với ID: " + id));
-        
+
         // Load steps để đảm bảo Set được khởi tạo
         if (workflow.getSteps() == null) {
             workflow.setSteps(new java.util.HashSet<>());
@@ -254,7 +254,7 @@ public class WorkflowService {
             // Xóa tất cả steps cũ bằng cách clear Set
             // orphanRemoval = true sẽ tự động xóa các steps bị remove khỏi Set
             workflow.getSteps().clear();
-            
+
             // Tạo các steps mới và thêm vào Set
             if (!dto.getSteps().isEmpty()) {
                 for (CreateStepDTO stepDTO : dto.getSteps()) {

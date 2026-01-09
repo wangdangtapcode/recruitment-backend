@@ -241,4 +241,3 @@ public class ReviewCandidateService {
         return dto;
     }
 }
-

@@ -29,4 +29,3 @@ public class UpdateReviewCandidateDTO {
      */
     private Boolean conclusion;
 }
-
